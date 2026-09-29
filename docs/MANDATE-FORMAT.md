@@ -70,11 +70,26 @@ surface area and an unevaluable one is worse than a missing one:
 | Predicate | Operand |
 | --- | --- |
 | `amount_lte` / `amount_gte` | integer |
-| `daily_total_lte` | integer |
-| `window_total_lte` | `{"amount": int, "seconds": int}` |
+| `daily_total_lte` / `daily_total_gte` | integer |
+| `window_total_lte` / `window_total_gte` | `{"amount": int, "seconds": int}` |
+| `spend_count_lte` / `spend_count_gte` | `{"count": int, "seconds": int}` |
 | `recipient_in` / `recipient_not_in` | vendor list name |
 | `category_in` / `category_not_in` | list of category strings |
-| `spend_count_lte` | `{"count": int, "seconds": int}` |
+
+Every predicate is a plain boolean function over facts the contract already
+holds. The two call sites differ only in what a `True` means:
+
+- in a reflex `check`, `True` is required for the spend to pass;
+- in a judgment `when`, `True` convenes the jury.
+
+A `check` or `when` object holds **exactly one** predicate in v1. Multiple
+predicates would need stated conjunction semantics, and an ambiguous rule is
+worse than a missing one.
+
+`daily_total_*` is a **rolling 86400-second window**, not a calendar day. This
+avoids a timezone, which a mandate has no way to carry unambiguously. All
+windows are half-open — `(now - seconds, now]` — and include the spend being
+evaluated.
 
 ## Judgment rules
 

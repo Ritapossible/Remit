@@ -129,7 +129,17 @@ CLAUDE.md           project memory: hard constraints, conventions, commands
 
 ## Status
 
-Design phase. No contract deployed yet. See [PLAN.md](PLAN.md).
+**Phase 1 complete** — the deterministic engine (`contracts/remit_core.py`) is
+written and verified: 134 tests, 100% statement and 99% branch coverage, and a
+mutation pass in which all 20 mutants were killed, so every guard has a test
+that fails when the guard is removed.
+
+No contract deployed yet. Phase 2 is the chain layer. See [PLAN.md](PLAN.md).
+
+```bash
+python3 -m pytest tests/direct        # 134 tests, ~0.3s, no chain needed
+python3 tests/mutation_check.py       # every guard must be killable
+```
 
 ## Built with
 

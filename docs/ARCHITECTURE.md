@@ -225,14 +225,25 @@ Measured, not assumed. Full detail and rationale in `CLAUDE.md`.
 ## 10. Open questions
 
 Recorded rather than resolved, because guessing them would be worse than
-carrying them.
+carrying them. Two were answered in Phase 1 and are struck through; the
+numbers now live in tests, so changing a constant without changing a test is
+not possible.
 
-1. **Bond denomination.** Fixed native amount, or a fraction of the spend? A
-   fraction scales with what is at risk but makes small spends uneconomic to
-   challenge. Leaning fraction with a floor; needs the numbers from Phase 1.
-2. **Standing decay.** How fast does a losing challenger's escalated bond decay
-   back to the floor? Too fast is exploitable, too slow bans honest challengers
-   who had one bad week.
+~~1. **Bond denomination.**~~ **Answered in Phase 1.** A fraction of the spend
+   with a floor: `max(floor, amount * 1000 / 10000)` — 10% of what is at risk,
+   never less than the floor. A flat bond makes a large spend cheap to grief; a
+   pure fraction makes a small spend uneconomic to challenge at all. The floor
+   prices attention, the fraction scales with exposure. Fixed by
+   `tests/direct/test_core_bonds.py`.
+
+~~2. **Standing decay.**~~ **Answered in Phase 1.** Escalation is geometric in
+   the challenger's effective loss count (×2, capped at 64×), and one loss is
+   forgiven per **7 days** since the last. A single win resets the streak
+   outright. Grinding through an escalation costs double each attempt; waiting
+   one out costs a week of inactivity per step. Both are priced, neither is
+   free, and an honest challenger who had one bad week is back to the floor in
+   days rather than banned. Fixed by `tests/direct/test_core_bonds.py`.
+
 3. **Mandate hosting.** IPFS, or any HTTPS URI with a digest? The digest makes
    the host untrusted, so HTTPS is defensible — but availability becomes a
    liveness dependency. Leaning: any URI, digest-pinned, with the registered

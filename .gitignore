@@ -28,3 +28,8 @@ deployments.local.json
 
 # OS
 .DS_Store
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
