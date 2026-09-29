@@ -1,0 +1,36 @@
+{
+  "remit_mandate_version": 1,
+  "_comment": "The three standard judgment rules. Each asks a question code provably cannot evaluate. Copy into a mandate and adjust triggers to taste; the triggers are the principal's dial between safety and latency.",
+  "rules": [
+    {
+      "id": "brief-alignment",
+      "type": "judgment",
+      "when": {"amount_gte": 20000},
+      "ask": "Does this purchase serve the stated brief?",
+      "context_uri": null,
+      "context_digest": null,
+      "requires_artifact": true,
+      "on_breach": {"tier": 1}
+    },
+    {
+      "id": "invoice-match",
+      "type": "judgment",
+      "when": {"category_in": ["services", "contractor", "other"]},
+      "ask": "Does this payment correspond to a deliverable that was actually received?",
+      "context_uri": null,
+      "context_digest": null,
+      "requires_artifact": true,
+      "on_breach": {"tier": 1}
+    },
+    {
+      "id": "structuring",
+      "type": "judgment",
+      "when": {"spend_count_gte": {"count": 3, "seconds": 3600}},
+      "ask": "Are these separate purchases, or one purchase split across payments to stay under the per-spend cap?",
+      "context_uri": null,
+      "context_digest": null,
+      "requires_artifact": false,
+      "on_breach": {"tier": 2}
+    }
+  ]
+}
