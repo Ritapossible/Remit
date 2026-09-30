@@ -78,11 +78,9 @@ from one that is not there, so it now has a direct test.
 **Exit criterion — met.** 149 tests green, 20 of 20 mutants killed, contract
 builds reproducibly.
 
-## Phase 3 — On chain `[~]`
+## Phase 3 — On chain: Studio `[x]`
 
 Deploy is not the milestone. **Transactions are the milestone.**
-
-### Studio `[x]`
 
 - [x] Guard deployed and mandate registered
 - [x] All demo scenarios executed as real transactions, **0 failed checks**
@@ -92,39 +90,57 @@ Deploy is not the milestone. **Transactions are the milestone.**
 
 | | |
 | --- | --- |
-| Guard (walkthrough) | `0x2805897041eC33Bd04fFc0E7Ea5A879463bfE5bF` |
-| Guard (structuring) | `0xfc04A6FD61878C1707fcb120723c3Af424976676` |
-| Transactions | 8 + 5 |
+| Reference guard | `0xA7299Ccb90Ce06C1047cb28253b205037E7e1364` |
+| Walkthrough transactions | 8 |
 | Failed checks | 0 |
 
-### Testnet Asimov / Bradbury `[ ]` — blocked on funding
+## Phase 4 — Product: web app, docs, roadmap `[~]`
 
-Both hostnames resolve to the same chain (id 4221) and the RPC is reachable.
-The contract, the mandate (`mandates/demo-asimov.json`, wider windows for
-slower finality) and the deploy path are ready; the accounts hold 0 GEN and the
-network exposes no programmatic faucet, so this needs testnet GEN from the
-portal. `node deploy/testnet_status.mjs` reports readiness.
+- [x] Web app on Studio: mandate, docket, case view, request a spend, new guard
+- [x] `preview_spend` view, so the app predicts the path a spend will take by
+      running the contract's own classifier rather than a copy of it
+- [x] Studio burner for wallet-free trials; MetaMask on both networks
+- [x] Parity check: UI enums and mandate validator against the Python engine
+- [x] Adjudication stability measured: 8 of 8 consecutive trials reached consensus
+- [x] Docs: getting started, concepts, mandate format, integration, threat model,
+      GenVM field notes
+- [ ] Browser end-to-end run of the full flow on Studio, in CI
+- [ ] Hosted build published from `main`
 
-## Phase 4 — Docket and shadow mode
-`[ ]`
+**Exit criterion.** A newcomer can go from the landing page to a jury verdict on
+their own guard without reading source code.
 
-- [ ] `max_tier = 0` path: every case recorded, nothing refused
-- [ ] Public case view: rule, verdict, reason, tier, whether authority was used
-- [ ] Undetermined cases counted as undetermined, never as a win for either side
-- [ ] Frontend: mandate authoring, spend feed, case detail, docket
+## Phase 5 — Testnet `[ ]`
 
-**Exit criterion.** A principal can run Remit for a week at tier 0 and read a
-false-positive rate off the docket.
+- [ ] Reference guard deployed on Testnet Asimov / Bradbury
+- [ ] Walkthrough and structuring scenarios re-run there, 0 failed checks
+- [ ] Receipt timings recorded, so the app's waits are set from measurement
 
-## Phase 5 — Hardening `[ ]`
+## Phase 6 — Hardening `[ ]`
 
-- [ ] Injection corpus fixture and the T4 suite
-- [ ] Appeal-path integration tests (bind on accept, reverse on appeal, verify
-      escrow made the reversal free)
-- [ ] Isolation test: a held case on instance A does not delay instance B
-- [ ] README transaction links verified end to end by script
+- [ ] Injection corpus fixture and the T4 suite against the live prompt
+- [ ] Appeal path: bind on accept, reverse on appeal, confirm the reversal is free
+- [ ] Isolation test: a held case on guard A does not delay guard B
+- [ ] Direct-mode contract tests with `mock_llm`, `mock_web`, `warp` (Python 3.12)
 
----
+## Beyond v1
+
+Not scheduled. Listed so the direction is visible and nobody mistakes it for
+something already built.
+
+- **Bonded challenges.** Let anyone contest a settled spend within the clawback
+  window. The bond curve, decay and settlement are already implemented and
+  tested in the engine; the contract entrypoint is not.
+- **Tier 2 and 3 enforcement.** Freeze the agent pending principal review; slash
+  a standing bond. Today these tiers are recorded as severity only.
+- **Reference treasury.** A GenLayer contract that holds funds and pays only on
+  `authorization_of(...) == "authorized"` — the rail, as code.
+- **Guard factory and index.** Deploy and discover guards per principal.
+- **Mandate republishing.** New versions for new spends, with open cases pinned
+  to the version they were raised under.
+- **Agent SDKs.** TypeScript and Python clients so agent frameworks call
+  `request_spend` directly.
+- **Notifications.** Tell a principal when a spend is held.
 
 ## Sequencing rationale
 

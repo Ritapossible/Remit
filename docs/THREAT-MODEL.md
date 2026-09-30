@@ -15,7 +15,7 @@ not mitigated — it is hoped for.
 | --- | --- | --- |
 | **Principal** | The money. Writes the mandate. Owns the override key. | The agent to be useful without being dangerous. |
 | **Agent** | A spending key under a mandate. Posts a standing bond. | Its spends to clear. |
-| **Vendor** | Receives value on an allowed spend. | To be paid, and not to be griefed by a frivolous hold. |
+| **Vendor** | Is paid by the rail once a spend is authorized. | To be paid, and not to be griefed by a frivolous hold. |
 | **Challenger** | Posts a bond to contest a settled spend. | The reward for catching a real breach. |
 | **Validator jury** | No stake in the outcome. | Consensus. |
 
@@ -39,8 +39,14 @@ the agent unusable without the attacker ever winning a case.
   challenge within a rolling window multiplies the next bond. Honest challengers
   who are usually right pay the floor forever; a griefer prices themselves out
   in a handful of attempts.
-- A forfeited bond credits the **agent's** owed balance, not the protocol's.
-  The griefed party is the one compensated.
+- A forfeited bond compensates the **agent**, not the protocol. The griefed
+  party is the one compensated.
+
+**Status.** The bond curve, decay and settlement are implemented and tested in
+the engine (`remit_core.py`). The bonded challenge entrypoint is not yet wired
+into the deployed contract — it is on the roadmap. Until it is, only the
+deterministic triggers and the principal can open a case, so there is no
+challenge surface to grief.
 
 **Test.** `test_repeat_false_challenger_bond_escalates` — five consecutive
 losing challenges must produce a strictly increasing required bond, and the
@@ -57,9 +63,9 @@ hurting the counterparty who is waiting to be paid.
 **Profit.** Leverage in an off-chain dispute; harm to a vendor's cash flow.
 
 **Mitigation.**
-- Escrow is symmetric: while HELD, **neither** party has the value. The agent
-  cannot spend it and the vendor cannot receive it. Delay is not free to the
-  appellant, because an agent under an open case is also blocked.
+- A hold is symmetric: while HELD, the spend is authorized for **no one**. The
+  vendor is not paid and the agent's request is not honoured. Delay is not free
+  to the appellant, because an agent under an open case is also blocked.
 - The appeal bond strictly exceeds the challenge bond and is slashed if the
   original verdict stands.
 - Every HELD spend carries a hard deadline. On expiry with no resolved verdict,
@@ -198,9 +204,11 @@ account. On Studio, a transfer to a wallet debits the sender and credits the
 wallet nothing: the value is destroyed, silently, with the transaction
 ACCEPTED.
 
-**Mitigation.** **Remit never pushes value.** Every outcome credits an owed
-balance; recipients call `withdraw`. This is a hard law, recorded in `CLAUDE.md`,
-and it applies to vendor payouts, refunds, bond returns and slash proceeds alike.
+**Mitigation.** **Remit takes no custody.** It never receives value and never
+sends it: there is no payable entrypoint and no transfer primitive in the
+contract. Introspection of the live runner explained the original failure —
+the only value primitive, `ContractProxy.emit_transfer`, is a contract-to-contract
+call. A gate that holds nothing cannot destroy anything; a rail settles.
 
 **Test.** `test_no_emit_transfer_in_contract_source` — a structural test that
 greps the built contract. Phase 2. The engine is already pull-only: every
@@ -277,7 +285,7 @@ rather than invents:
 
 1. Facts are contract-read; claimants supply pointers only. (T3)
 2. Artifacts and mandates are digest-pinned and version-pinned. (T4, T5)
-3. Payouts are pull-based, always. (T8)
+3. Remit takes no custody; a rail settles. (T8)
 4. One instance per agent, factory-deployed. (T6)
 5. Bonds rise on repeat loss; the griefed party is compensated. (T1)
 6. Every hold has a deadline and a registered default. (T2)

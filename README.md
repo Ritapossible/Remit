@@ -52,14 +52,14 @@ trigger, deterministically, in that transaction.
 ```
 no reflex breach, no trigger fires   ->  SETTLED     same transaction, no jury
 reflex breach                        ->  REFUSED     same transaction, no jury
-a judgment trigger fires             ->  HELD        value escrowed, jury convened
+a judgment trigger fires             ->  HELD        authorization withheld, jury convened
                                               |
                                      jury reads the pinned rule, the facts the
                                      contract read itself, and the digest-verified
                                      artifact the agent committed at spend time
                                               |
-                                  ALLOWED  ->  vendor credited
-                                  REFUSED  ->  principal credited back
+                                  IN_REMIT      ->  authorized
+                                  OUT_OF_REMIT  ->  refused
 ```
 
 The common path never touches a jury. That is the whole reason this is usable:
@@ -77,13 +77,17 @@ file a challenge afterwards. That is forensics. The money already left.
 Remit refuses before value moves, and that one inversion buys a property the
 monitor shape cannot have:
 
-> **Escrow makes optimistic action safe.**
+> **Withholding makes optimistic action safe.**
 
 A halt-style module that acts on a provisional verdict has wrongly paused a live
-protocol if the appeal reverses it. Remit holding money in escrow on a
-provisional verdict costs nothing if the appeal reverses it — the value never
-moved in either direction. So Remit binds on **round acceptance**, not on
-finality, without taking on the risk that forces alarm-shaped designs to wait.
+protocol if the appeal reverses it. Remit withholding an authorization on a
+provisional verdict costs nothing if the appeal reverses it — no value moved in
+either direction. So Remit binds on **round acceptance**, not on finality,
+without taking on the risk that forces alarm-shaped designs to wait.
+
+Remit holds no funds at all. It decides; a rail — a treasury contract, a card
+program, an agent framework's wallet — reads `authorization_of(spend_id)` and
+settles. See `docs/ARCHITECTURE.md` §6 for why that was measured, not chosen.
 
 ## Graduated authority
 
@@ -93,8 +97,8 @@ A principal grants a maximum tier at registration. Remit can never exceed it.
 | --- | --- |
 | 0 | Record the case. Nothing is refused. (**shadow mode**) |
 | 1 | Refuse this spend. |
-| 2 | Refuse this spend, freeze the agent pending principal review. |
-| 3 | Refuse, freeze, and slash the agent's bond. |
+| 2 | Refuse, recorded at severity 2. |
+| 3 | Refuse, recorded at severity 3. |
 
 Tier 0 is the adoption ramp: Remit runs with zero authority and publishes what
 it *would* have refused. A principal grants real authority once the public case
@@ -106,8 +110,68 @@ Three rules hold at every tier:
   exclusive. A module that can permanently brick you gets adopted by nobody.
 - **Freezes expire.** Every restriction carries a TTL and lifts itself. A stuck
   court must not become a permanent outage.
-- **Remit never pushes value.** All outcomes credit an owed balance that the
-  recipient withdraws. See `docs/ARCHITECTURE.md` for the measured reason.
+- **Remit never takes custody.** It authorises; a rail settles. See
+  `docs/ARCHITECTURE.md` §6 for the measured reason.
+
+In this version tiers 2 and 3 are recorded as severity on the docket; agent
+freezing and bond slashing are on the [roadmap](PLAN.md).
+
+## Status
+
+**Running on GenLayer Studio. Testnet is next.**
+
+| | |
+| --- | --- |
+| Reference guard (Studio) | `0xA7299Ccb90Ce06C1047cb28253b205037E7e1364` |
+| On-chain walkthrough | 8 transactions, **0 failed checks** |
+| Jury consensus with pinned evidence | **8 of 8** consecutive trials |
+| Engine | 151 tests, 100% statement / 99% branch coverage |
+| Mutation | 20 mutants, 20 killed |
+
+Every scenario ran as a real transaction, and every assertion is on resulting
+state and on the consensus outcome (`result_name`) — never on a transaction
+merely being accepted:
+
+- a small allowlisted payment **settles in the same transaction**, no jury;
+- a payment to a dropped vendor is **refused by arithmetic**, no jury;
+- a 0.45 GEN purchase split into 3 × 0.15 under a 0.2 GEN per-payment cap
+  clears every threshold and is **held** by the windowed trigger;
+- adjudicating inside the response window is **refused**, so an agent cannot
+  lose for not using a window it never had;
+- validators reach `MAJORITY_AGREE` on `out_of_remit / structured_to_evade`,
+  and with a digest-pinned invoice they each fetch and verify it themselves;
+- the principal **lifts a live hold in one transaction**.
+
+See [PLAN.md](PLAN.md) for what is done and what isn't.
+
+```bash
+python3 -m pytest tests/direct        # no chain needed
+python3 tests/mutation_check.py       # every guard must be killable
+node deploy/testnet_status.mjs        # testnet readiness
+```
+
+## Web app
+
+A full product site ships with the contract, in `frontend/`:
+
+| Page | What it's for |
+| --- | --- |
+| **Product** | What Remit is, with a live case read from the reference guard |
+| **App** | Read a guard's mandate and docket, open cases, request spends, create guards |
+| **Docs** | Getting started, concepts, integration, mandate format, threat model, GenVM field notes — rendered from `docs/` |
+| **Roadmap** | Generated from `PLAN.md`, so it can't claim progress the plan doesn't record |
+
+On Studio you can try everything without a wallet: **Studio burner** creates a
+key in your browser and funds it from Studio's faucet. On the testnet, connect
+MetaMask.
+
+```bash
+cd frontend
+npm install
+npm run dev          # http://localhost:5173
+npm run parity       # UI enums and mandate validator vs. the Python engine
+npm run build
+```
 
 ## Repository layout
 
@@ -115,51 +179,17 @@ Three rules hold at every tier:
 contracts/          Intelligent Contract sources (built, not hand-edited)
   remit_core.py     deterministic engine — pure Python, no chain, no LLM
   remit_prompts.py  prompt construction, isolated and separately testable
-  contract_shell.py the chain layer: storage, entrypoints, consensus blocks
-tests/direct/       in-memory tests, no server (genlayer-test direct mode)
-tests/integration/  end-to-end against Studio / testnet
-deploy/             deployment and on-chain walkthrough scripts
-docs/
-  THREAT-MODEL.md   written first — the interface falls out of it
-  ARCHITECTURE.md   the full design and its measured constraints
-  MANDATE-FORMAT.md the rule schema principals author
-PLAN.md             phased build plan and current status
+  contract_shell.py the chain layer: storage, entrypoints, consensus block
+  build/remit.py    the exact artifact deployed (committed, so it can be checked)
+frontend/           the web app, docs site and roadmap (Vite + React + genlayer-js)
+tests/direct/       engine tests and structural tests on the built contract
+tests/mutation_check.py   every guard must have a test that fails without it
+deploy/             deployment, on-chain walkthroughs, testnet readiness
+docs/               the documentation the site renders
+mandates/           standard rules and example mandates
+PLAN.md             phased plan — the roadmap page is generated from it
 CLAUDE.md           project memory: hard constraints, conventions, commands
-```
-
-## Status
-
-**Phases 1 and 2 complete. Running on GenLayer Studio.**
-
-| | |
-| --- | --- |
-| Engine | 149 tests, 100% statement / 99% branch coverage |
-| Mutation | 20 mutants, 20 killed, 0 survived |
-| Studio guard | [`0x2805897041eC33Bd04fFc0E7Ea5A879463bfE5bF`](https://genlayer-explorer.vercel.app) |
-| On-chain scenarios | all pass, **0 failed checks** |
-
-Every scenario below ran as a real transaction and every assertion is on
-resulting state, never on a transaction being accepted:
-
-- a small allowlisted payment **settles in the same transaction**, no jury;
-- a payment to a dropped vendor is **refused by arithmetic**, no jury;
-- a 0.45 GEN purchase split into 3 x 0.15 under a 0.2 GEN per-payment cap
-  clears every threshold and is **held** by the windowed trigger — and a
-  refused payment correctly does not count toward that window;
-- adjudicating inside the response window is **refused**, so an agent cannot
-  lose for not using a window it never had;
-- with the invoice committed, validators fetch it, hash-check it against the
-  pinned digest, and reach `MAJORITY_AGREE` on
-  `out_of_remit / structured_to_evade`;
-- the principal **lifts a live hold in one transaction**.
-
-Testnet Asimov/Bradbury is prepared but not yet deployed: the accounts hold no
-GEN and the network exposes no programmatic faucet. See [PLAN.md](PLAN.md).
-
-```bash
-python3 -m pytest tests/direct        # 149 tests, no chain needed
-python3 tests/mutation_check.py       # every guard must be killable
-node deploy/testnet_status.mjs        # testnet readiness
+.github/workflows/  CI on every push; site published from main
 ```
 
 ## Built with

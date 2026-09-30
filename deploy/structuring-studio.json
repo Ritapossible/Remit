@@ -1,34 +1,34 @@
 {
-  "address": "0xfc04A6FD61878C1707fcb120723c3Af424976676",
-  "deploy": "0x047de0a27244e6b3f6e64b901d23287f5a83c86ae014f2471b8e36f370e162e2",
+  "address": "0xdAC66F00fA647A2ba69c54fB2416e6202c4e4ca1",
+  "deploy": "0x7df6b6517eea49f9a76d7af9cfab7eec11ef35e96d0571d4376979e68b31ead6",
   "txs": [
     {
       "label": "split#0",
-      "hash": "0x745db47262ac1f88f3f4170e13a107e904cf4cee78e95c88747ea6ba97dfd648",
+      "hash": "0x64bdb13d8dc0498934bdc20371caec605dd14a1d338029ea1ce78782386e0706",
       "result": "MAJORITY_AGREE",
       "leader": "return"
     },
     {
       "label": "split#1",
-      "hash": "0xcf174c26a520bbff787a49c5d69e059cb9bd6227b719ca85a3acab922e9d8c1a",
+      "hash": "0xd2381ed3c65edef98d4be64b24b0524c75980bacc39a050964f9cf7414a22076",
       "result": "MAJORITY_AGREE",
       "leader": "return"
     },
     {
       "label": "split#2",
-      "hash": "0x525c35b65c5a038d4354b463d78fc94218977733627153acc3aba5390a312514",
+      "hash": "0xe2392b2d1473f4c37153d2d20097db2da0e6043abd085fe71873c6563e88a023",
       "result": "MAJORITY_AGREE",
       "leader": "return"
     },
     {
       "label": "commit_artifact",
-      "hash": "0x7f36183c2f56b12fa31cf01c2ddc5366a5de6aa0d11e019030f1c1c41bd660ae",
+      "hash": "0x62bf33fccb21fae6615b5683487ebbdfd7e5d8d950e8b3f0f24a647a18ab10bb",
       "result": "MAJORITY_AGREE",
       "leader": "return"
     },
     {
       "label": "adjudicate",
-      "hash": "0xd2a66507b7e9ce065daa3b2d075ff7478170974ed0d693ffb5e218acd6dd4c27",
+      "hash": "0xb5f190921f2ce7e8667b1473db6bc7382558ac67ecb41a56e8ec78f156931682",
       "result": "MAJORITY_AGREE",
       "leader": "return"
     }
@@ -38,17 +38,17 @@
     "amount": 150000000000000000,
     "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
     "category": "media",
-    "at": 1790784585,
+    "at": 1790786753,
     "state": "refused",
     "rules": [
       "structuring"
     ],
     "memo_uri": "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/invoice-INV-88.json",
     "memo_digest": "e83ccceb6239c4efc1563792e85169a90aeb4dac19223ab20b34de8d2f5eb18e",
-    "held_at": 1790784585,
+    "held_at": 1790786753,
     "verdict": "out_of_remit",
     "reason": "structured_to_evade",
-    "confidence": 95,
+    "confidence": 99,
     "artifact": "verified",
     "outcome": "refused",
     "tier": 2,

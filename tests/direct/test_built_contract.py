@@ -224,3 +224,37 @@ def test_as_dict_coerces_a_wrapper_object(built):
     fn = fn[: fn.index("\ndef _parse_verdict")]
     assert "not isinstance(data, (dict, str))" in fn
     assert "data = str(data)" in fn
+
+
+def _method(built, name):
+    start = built.index("    def %s(" % name)
+    nxt = built.find("\n    @gl.public", start + 1)
+    nxt2 = built.find("\n    def ", start + 1)
+    ends = [e for e in (nxt, nxt2) if e != -1]
+    return built[start : min(ends)] if ends else built[start:]
+
+
+def test_preview_spend_is_a_view_on_the_real_classifier(built):
+    """The preview exists so a UI can say "this will be held for a jury" before
+    anyone signs. It is only trustworthy if it is the contract's own decision
+    path — a reimplementation elsewhere would drift — and only safe if it is a
+    view that cannot write."""
+    decorator = built[: built.index("    def preview_spend(")].rstrip().splitlines()[-1].strip()
+    assert decorator == "@gl.public.view"
+    body = _method(built, "preview_spend")
+    assert "self._classify(" in body and "self._history()" in body
+    assert "self.s_" not in body.replace("self.s_", "", 0) or "] =" not in body, "preview must not write"
+    assert "spend_count =" not in body
+
+
+def test_vendor_entries_is_the_last_storage_field(built):
+    """Storage layout is position-sensitive; new fields are appended, never
+    inserted."""
+    cls = built[built.index("class RemitGuard(gl.Contract):") : built.index("    def __init__(self, agent: str")]
+    fields = [l.split(":")[0].strip() for l in cls.splitlines() if re.match(r"^    [a-z_]+: ", l)]
+    assert fields[-1] == "vendor_entries"
+
+
+def test_claim_reaches_the_summary_view(built):
+    summary = built[built.index("def _summarise("):]
+    assert '"claim": self.s_claim[key]' in summary

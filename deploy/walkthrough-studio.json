@@ -1,51 +1,51 @@
 {
-  "address": "0x2805897041eC33Bd04fFc0E7Ea5A879463bfE5bF",
+  "address": "0xA7299Ccb90Ce06C1047cb28253b205037E7e1364",
   "txs": [
     {
       "label": "spend#0",
-      "hash": "0x66e81a1997506022305fc902b9ba81e659415df2db7a7829ea7e45a759de2f9a",
+      "hash": "0xc75f1a3a0bb75a0aaac3449a866eee194f6ead4efadf68481672322bccfc1856",
       "leader": "return",
       "consensus": "MAJORITY_AGREE"
     },
     {
       "label": "spend#1",
-      "hash": "0x6bf9dc53c765847d1b2d5741e4bea054d135d940e9d1dde040564de7d542314c",
+      "hash": "0xdd68efcdac478f8544d4b113a559eaf3212e3a5fed9f56a7e655cd91ad583568",
       "leader": "return",
       "consensus": "MAJORITY_AGREE"
     },
     {
       "label": "spend#2",
-      "hash": "0x4f80287031eaaa17d3639ad2b7bb414fe9053651ef3ef9a00cfa79833a0b29d6",
+      "hash": "0xa8041e1543c83a301863b46d88134b6c5d85ed95f9dbc146696ec2aa48c58c48",
       "leader": "return",
       "consensus": "MAJORITY_AGREE"
     },
     {
       "label": "spend#3",
-      "hash": "0xbdb6a4a82597fc4d9d2064029ce66953a0084cc4204581d20cff062eb00d6b67",
+      "hash": "0x6f689cf0768f9d362a86559c5625f31ade726d70008444db9de1571916a6f3db",
       "leader": "return",
       "consensus": "MAJORITY_AGREE"
     },
     {
       "label": "adjudicate-early",
-      "hash": "0x6406dccdf05c177dc7a638439e33cb59851fd6a855db49611fa1131381318a43",
+      "hash": "0x7a1cccbeafa4c68356c5942e62cdbc037b1d9f1b006c6f6513d679af6d9ed938",
       "leader": "contract_error",
       "consensus": "MAJORITY_AGREE"
     },
     {
       "label": "adjudicate",
-      "hash": "0x53302ce70d68e59a4110395c8bb9e34523626ffce02127097b28342595f19d4a",
+      "hash": "0xf047901cda6b23f970f7d96b4285c96e59ba0adacd108938459b8ff07ce05663",
       "leader": "return",
       "consensus": "MAJORITY_AGREE"
     },
     {
       "label": "spend#4",
-      "hash": "0xe9ba3d159b34a024422391fd16f9cc44e85150517f36e0d61d7591cb561e6726",
+      "hash": "0x736f3f3df47e9633a728c8316ae780574b541754ddb850dea6f03c593c306354",
       "leader": "return",
       "consensus": "MAJORITY_AGREE"
     },
     {
       "label": "override_release",
-      "hash": "0xcabaa0012218ac7d858f006bbac8d55ee5c154f2e3cb7ad7ca922f8d7f73f6b1",
+      "hash": "0x14df4b107a9f3d8a6d93b7dbd18a4e127556f30964ed0b2c4279329de73ee73c",
       "leader": "return",
       "consensus": "MAJORITY_AGREE"
     }
@@ -56,11 +56,12 @@
       "amount": 50000000000000000,
       "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
       "category": "media",
-      "at": 1790784765,
+      "at": 1790787043,
       "state": "settled",
       "rules": [],
       "memo_uri": "",
       "memo_digest": "",
+      "claim": "stock photo for the Q4 banner",
       "held_at": 0,
       "verdict": "",
       "reason": "",
@@ -76,13 +77,14 @@
       "amount": 50000000000000000,
       "recipient": "0x00000000000000000000000000000000000000b1",
       "category": "media",
-      "at": 1790784803,
+      "at": 1790787079,
       "state": "refused",
       "rules": [
         "allowlist"
       ],
       "memo_uri": "",
       "memo_digest": "",
+      "claim": "agency retainer",
       "held_at": 0,
       "verdict": "",
       "reason": "",
@@ -98,11 +100,12 @@
       "amount": 150000000000000000,
       "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
       "category": "media",
-      "at": 1790784841,
+      "at": 1790787115,
       "state": "settled",
       "rules": [],
       "memo_uri": "",
       "memo_digest": "",
+      "claim": "campaign asset 1",
       "held_at": 0,
       "verdict": "",
       "reason": "",
@@ -118,17 +121,18 @@
       "amount": 150000000000000000,
       "recipient": "0xef359811497c724ef1942c6c079c64c07d87952d",
       "category": "media",
-      "at": 1790784879,
+      "at": 1790787153,
       "state": "refused",
       "rules": [
         "structuring"
       ],
       "memo_uri": "",
       "memo_digest": "",
-      "held_at": 1790784879,
+      "claim": "campaign asset 2",
+      "held_at": 1790787153,
       "verdict": "out_of_remit",
       "reason": "structured_to_evade",
-      "confidence": 90,
+      "confidence": 88,
       "artifact": "absent",
       "outcome": "refused",
       "tier": 2,
@@ -140,14 +144,15 @@
       "amount": 150000000000000000,
       "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
       "category": "media",
-      "at": 1790785193,
+      "at": 1790787404,
       "state": "settled",
       "rules": [
         "structuring"
       ],
       "memo_uri": "",
       "memo_digest": "",
-      "held_at": 1790785193,
+      "claim": "campaign asset 3",
+      "held_at": 1790787404,
       "verdict": "",
       "reason": "principal_override",
       "confidence": 0,

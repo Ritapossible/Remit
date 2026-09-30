@@ -10,10 +10,16 @@ export function accountFor(role) {
   return createAccount(key);
 }
 
+// The SDK's testnetAsimov config points at a plain-HTTP raw IP. The public
+// HTTPS gateways (rpc-asimov / rpc-bradbury, same chain 4221) are what a
+// browser and a reviewer can actually reach, so they are used everywhere.
+export const ENDPOINTS = { asimov: "https://rpc-asimov.genlayer.com" };
+
 export function clientFor(network, role) {
   const chain = CHAINS[network];
   if (!chain) throw new Error(`unknown network ${network}`);
-  return createClient({ chain, account: accountFor(role) });
+  const endpoint = ENDPOINTS[network];
+  return createClient({ chain, account: accountFor(role), ...(endpoint ? { endpoint } : {}) });
 }
 
 // Transient RPC failures are common on both networks; a retry loop keeps a

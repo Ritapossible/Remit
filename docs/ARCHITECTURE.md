@@ -38,8 +38,13 @@ it.
 
 ## 2. Spend lifecycle
 
+Remit holds no funds. The agent **declares** a spend; Remit decides whether it
+is authorized; a settlement rail — a treasury contract, a payment processor, an
+agent framework's wallet — reads that decision and moves the money. See §6 for
+why, which was established by introspecting the live runtime rather than chosen.
+
 ```
-                       spend(amount, to, category, memo_uri, memo_digest)
+            request_spend(recipient, amount, category, memo_uri, memo_digest, claim)
                                         |
                         +---------------+---------------+
                         |   DETERMINISTIC, in this tx   |
@@ -52,43 +57,51 @@ it.
    reflex breach   no trigger fires              a trigger fires
         |               |                               |
      REFUSED         SETTLED                          HELD
-   no jury         no jury                       value escrowed
-   principal       vendor credited                      |
-   retains         (owed balance)          +------------+------------+
-                        |                  |  NON-DETERMINISTIC      |
-                challengeable within       |  gl.vm.run_nondet       |
-                the claw-back window       |  leader + validator     |
-                (T7 forensic tail)         +------------+------------+
+     no jury         no jury                 authorization withheld
                                                         |
-                                           IN_REMIT / OUT_OF_REMIT / UNDETERMINED
+                                           +------------+------------+
+                                           |  NON-DETERMINISTIC      |
+                                           |  gl.vm.run_nondet       |
+                                           |  leader + validators    |
+                                           +------------+------------+
+                                                        |
+                                      IN_REMIT / OUT_OF_REMIT / UNDETERMINED
                                                         |
                                     +-------------------+-------------------+
                                     |                   |                   |
-                                 ALLOWED            REFUSED            deadline
-                              vendor credited   principal credited   registered default
+                                AUTHORIZED           REFUSED          at the deadline:
+                                                                     registered default
 ```
 
-Note what the terminal states have in common: **every one of them credits an
-owed balance.** Nothing is pushed. See §6.
+Every terminal state is a value of `authorization_of(spend_id)`:
+`authorized`, `refused`, or — while held — `pending`. That single view is the
+whole integration surface for a rail.
 
-## 3. Why escrow makes optimistic action safe
+`preview_spend(recipient, amount, category)` runs the same classifier as a free
+view, so a client can say *"this will be held for a jury"* before anything is
+signed. It is the contract's own code path, so the prediction cannot drift from
+the decision the way a reimplementation in a frontend would.
+
+## 3. Why withholding makes optimistic action safe
 
 Remit binds on **round acceptance**, not on finality. An alarm-shaped design
 cannot safely do this — acting provisionally means having paused a live protocol
 that an appeal may say should never have been paused, and the outage is real
 whichever way the appeal goes.
 
-Remit's provisional action is *holding value in escrow*. If the appeal reverses
-the verdict, the value never moved in either direction and the reversal costs
-nothing but time. The escrow absorbs the provisionality.
+Remit's provisional action is *withholding an authorization*. If an appeal
+reverses the verdict, no value moved in either direction and the reversal costs
+nothing but time.
 
 This is the strongest structural argument for the gate framing over the alarm
 framing, and it is the reason Remit can act at consensus speed rather than
 finality speed.
 
 Consequence for implementation: **`ACCEPTED` is not success.** A round that
-accepts a refusal has succeeded as consensus and failed as a spend. Outcomes are
-judged on resulting **state**, never on the absence of an exception.
+accepts a refusal has succeeded as consensus and failed as a spend. And the
+leader's own status reads `return` even when validators disagree and the change
+is rolled back — only `result_name` says whether anything happened. Outcomes
+are judged on resulting **state**, never on the absence of an exception.
 
 ## 4. Rule types
 
@@ -152,44 +165,46 @@ An `UNDETERMINED` verdict is not a breach. **Unproven is not guilty** — it
 resolves to the registered default, and the case is recorded as undetermined so
 the docket does not silently count it as a win for either side.
 
-## 6. Payouts are pull-based. Always.
+## 6. Remit takes no custody
 
-Measured on a live network in prior work in this codebase's lineage:
+This was forced by measurement, and it is the better design for it.
 
-> `emit_transfer` credits a **contract**. It does not credit an externally
-> owned account. A transfer to a wallet debits the sender and credits the wallet
-> nothing. The value is destroyed and the transaction is ACCEPTED.
+Introspecting the pinned runner on Studio showed that `gl.advanced` exposes only
+`emit_raw_event`, `gl_call` and `user_error_immediate`; `gl.public` exposes only
+`view` and `write`, with **no `payable`**; and the only way to move value is
+`ContractProxy.emit_transfer`, reached through `gl.get_contract_at(address)`.
+That is a **contract-to-contract** call — which explains a failure measured in
+earlier work in this lineage, where value sent to an externally owned account
+through it was debited from the sender, credited to nobody, and the transaction
+still reported ACCEPTED.
 
-Therefore every terminal state credits `owed[address]`, and recipients call
-`withdraw()`. Vendor payouts, principal refunds, bond returns, slash proceeds —
-all of them.
+A gate that holds nothing cannot destroy anything. So Remit decides and a rail
+settles:
 
-A second, harder lesson from the same lineage governs the withdrawal maths:
+- a GenLayer-native treasury reads `authorization_of` synchronously through
+  `gl.get_contract_at(remit).view()` before it moves funds, or
+- an off-chain rail (a card program, a payment API, an agent framework's
+  wallet) reads the same view over RPC.
 
-> Resolve entitlement on **equality**, never on an inequality.
-> `held >= committed` restored an already-delivered payout when a residue was
-> present, and a claimant ended up holding 1.8 for a 0.925 entitlement.
-> `held == committed` is correct.
-
-Both are hard laws in `CLAUDE.md`, and both have structural tests, because
-neither is visible in a code review and neither fails an integration test.
+The engine still resolves amounts on **equality**, never on an inequality —
+`held >= committed` once restored an already-delivered payout when a residue was
+present — and returns credit ledgers whose sums are checked exactly. Those
+functions are the basis for the bonded challenge path on the roadmap.
 
 ## 7. Deployment topology
 
 ```
-RemitFactory
-  |
-  +-- deploy(agent, mandate_uri, mandate_digest, max_tier, defaults)
-        |
-        +-- RemitGuard  (one instance per agent)
-              storage:  mandate pin + version, reflex state, spend log,
-                        open cases, owed balances, agent standing, bonds
+RemitGuard  (one instance per agent)
+  constructor(agent, mandate_json, max_tier, shadow)
+  storage:    mandate pin + version, defaults, typed rules, vendor lists,
+              spend ledger, cases, verdicts
 ```
 
-One instance per agent is the T6 mitigation and it is structural. There is no
-shared-instance deployment path, because a shared instance would let one noisy
-agent stall every other principal through serial execution and appeal-driven
-recomputation.
+One instance per agent is the T6 mitigation and it is structural: transactions
+on one Intelligent Contract execute serially, so a shared instance would let
+one noisy agent stall every other principal. The deployer is the principal.
+Today each guard is deployed directly (the app's *New guard* page does this); a
+factory that deploys and indexes guards is on the roadmap.
 
 ## 8. Build pipeline
 

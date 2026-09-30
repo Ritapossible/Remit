@@ -83,6 +83,11 @@ class RemitGuard(gl.Contract):
     s_outcome: TreeMap[u256, str]
     s_tier: TreeMap[u256, u256]
 
+    # "listname|0xaddress", in registration order. Membership is asked through
+    # vendor_member; this exists so anyone can read who an agent may pay.
+    # Appended last: storage layout is position-sensitive.
+    vendor_entries: DynArray[str]
+
     # ----------------------------------------------------------------- init
 
     def __init__(self, agent: str, mandate_json: str, max_tier: int, shadow: bool):
@@ -109,7 +114,9 @@ class RemitGuard(gl.Contract):
 
         for list_name in mandate.get("vendor_lists", {}):
             for member in mandate["vendor_lists"][list_name]:
-                self.vendor_member[str(list_name) + "|" + normalize_address(member)] = True
+                entry = str(list_name) + "|" + normalize_address(member)
+                self.vendor_member[entry] = True
+                self.vendor_entries.append(entry)
 
         for rule in mandate["rules"]:
             rule_id = str(rule["id"])
@@ -631,9 +638,42 @@ class RemitGuard(gl.Contract):
                 "mandate_version": int(self.mandate_version),
                 "defaults": self._defaults(),
                 "rules": rules,
+                "vendor_lists": self._vendor_lists(),
                 "spend_count": int(self.spend_count),
             }
         )
+
+    @gl.public.view
+    def preview_spend(self, recipient: str, amount: int, category: str) -> str:
+        """Dry-run the gate: what WOULD happen to this spend right now.
+
+        Runs the same ``_classify`` the real spend runs, against the same
+        history, so a client can tell a user "this will be held for a jury"
+        before they sign anything. It is a view, so it costs nothing and
+        changes nothing — and because it is the contract's own code path, the
+        prediction cannot drift from the decision the way a reimplementation
+        in the frontend would.
+        """
+        value = int(amount)
+        if value <= 0:
+            return json.dumps({"state": "invalid", "rules": [], "reason": "amount must be positive"})
+        candidate = Spend(
+            amount=value,
+            recipient=normalize_address(recipient),
+            category=str(category),
+            at=self._now(),
+        )
+        state, fired = self._classify(candidate, self._history())
+        return json.dumps({"state": state, "rules": [str(r) for r in fired], "reason": ""})
+
+    def _vendor_lists(self) -> dict:
+        out = {}
+        for entry in self.vendor_entries:
+            name, _, addr = str(entry).partition("|")
+            if name not in out:
+                out[name] = []
+            out[name].append(addr)
+        return out
 
     def _summarise(self, index: int) -> dict:
         key = u256(int(index))
@@ -654,6 +694,9 @@ class RemitGuard(gl.Contract):
             "rules": [r for r in self.s_rules[key].split(",") if r != ""],
             "memo_uri": self.s_memo_uri[key],
             "memo_digest": self.s_memo_digest[key],
+            # The agent's own account of the spend. Shown to readers exactly as
+            # it is shown to the jury: labelled untrusted, never as fact.
+            "claim": self.s_claim[key],
             "held_at": int(self.s_held_at[key]),
             "verdict": self.s_verdict[key],
             "reason": self.s_reason[key],
