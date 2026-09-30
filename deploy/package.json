@@ -1,0 +1,9 @@
+{
+  "name": "remit-deploy",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "genlayer-js": "^0.15.0",
+    "viem": "^2.21.0"
+  }
+}

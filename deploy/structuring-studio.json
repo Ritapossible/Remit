@@ -1,0 +1,52 @@
+{
+  "address": "0x2bE2b7c86a0ADfd2185c6Ad4f34fCA75cb27328E",
+  "deploy": "0xefecbf4eb47499b79626032ace28e860b7e8303e572de0f653a309ccdabfcd50",
+  "txs": [
+    {
+      "label": "split#0",
+      "hash": "0x9066a345e2968838ef191e08334b393ed891b73e0c5b6c72e2d1c901d6c84784",
+      "result": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "label": "split#1",
+      "hash": "0x99ee6b7a8618412bd1d249d6a92c41c1ade48832443f7c736283c2ad25c1e238",
+      "result": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "label": "split#2",
+      "hash": "0x9d08a596ca0577cb3a1cdacee0def651fdbda6b97005d837255fba124568cd61",
+      "result": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "label": "adjudicate",
+      "hash": "0x2623b3e4959e7480bea02f59ac6845bec253f4e9ce3169e34788ff7f9367eae6",
+      "result": "MAJORITY_DISAGREE",
+      "leader": "return"
+    }
+  ],
+  "final": {
+    "id": 2,
+    "amount": 150000000000000000,
+    "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
+    "category": "media",
+    "at": 1790763823,
+    "state": "held",
+    "rules": [
+      "structuring"
+    ],
+    "memo_uri": "",
+    "memo_digest": "",
+    "held_at": 1790763823,
+    "verdict": "",
+    "reason": "",
+    "confidence": 0,
+    "artifact": "",
+    "outcome": "",
+    "tier": 0,
+    "authorization": "pending",
+    "shadow": false
+  }
+}

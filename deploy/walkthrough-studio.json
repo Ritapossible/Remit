@@ -1,0 +1,153 @@
+{
+  "address": "0x175646B708e95f1568B65F2242Be267dD95879E0",
+  "txs": [
+    {
+      "label": "spend#0",
+      "hash": "0x775dd7c5126fcccfa886868a6944faf08094bf07e9b2e0b3eeb146a408556473",
+      "status": "return"
+    },
+    {
+      "label": "spend#1",
+      "hash": "0x62ba27d50e9f773f0051ffa46a31b0bd48061974688074330ae6aeec8b968ba6",
+      "status": "return"
+    },
+    {
+      "label": "spend#2",
+      "hash": "0xcd57460d61ee5a03080f2db2d55a882f8edb8efa407c17278c6f7534825b9c35",
+      "status": "return"
+    },
+    {
+      "label": "spend#3",
+      "hash": "0x2b57491375b1c26ece1231d6e739ce7be71a06cbdab18b817d93ba8625d89fc4",
+      "status": "return"
+    },
+    {
+      "label": "adjudicate-early",
+      "hash": "0x4c6011961c2eb5c9a436146ed60b0422053b7e9653d2dee0d2798e51079b95e1",
+      "status": "contract_error"
+    },
+    {
+      "label": "adjudicate",
+      "hash": "0xda48e21f5650b873525edb749ab8d72babe620da0c25786d584a0baede154dff",
+      "status": "return"
+    },
+    {
+      "label": "spend#4",
+      "hash": "0x21595db12464a89483dc66ec61e9a38d4a50ac1224d1d42b44044a0be97171b8",
+      "status": "return"
+    },
+    {
+      "label": "override_release",
+      "hash": "0x2d50ff7862d6bfe6e67431d4d1c912b17252c86fca4042bde64b24b51383314e",
+      "status": "return"
+    }
+  ],
+  "docket": [
+    {
+      "id": 0,
+      "amount": 50000000000000000,
+      "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
+      "category": "media",
+      "at": 1790763205,
+      "state": "settled",
+      "rules": [],
+      "memo_uri": "",
+      "memo_digest": "",
+      "held_at": 0,
+      "verdict": "",
+      "reason": "",
+      "confidence": 0,
+      "artifact": "",
+      "outcome": "allowed",
+      "tier": 0,
+      "authorization": "authorized",
+      "shadow": false
+    },
+    {
+      "id": 1,
+      "amount": 50000000000000000,
+      "recipient": "0x00000000000000000000000000000000000000b1",
+      "category": "media",
+      "at": 1790763243,
+      "state": "refused",
+      "rules": [
+        "allowlist"
+      ],
+      "memo_uri": "",
+      "memo_digest": "",
+      "held_at": 0,
+      "verdict": "",
+      "reason": "",
+      "confidence": 0,
+      "artifact": "",
+      "outcome": "refused",
+      "tier": 1,
+      "authorization": "refused",
+      "shadow": false
+    },
+    {
+      "id": 2,
+      "amount": 150000000000000000,
+      "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
+      "category": "media",
+      "at": 1790763282,
+      "state": "settled",
+      "rules": [],
+      "memo_uri": "",
+      "memo_digest": "",
+      "held_at": 0,
+      "verdict": "",
+      "reason": "",
+      "confidence": 0,
+      "artifact": "",
+      "outcome": "allowed",
+      "tier": 0,
+      "authorization": "authorized",
+      "shadow": false
+    },
+    {
+      "id": 3,
+      "amount": 150000000000000000,
+      "recipient": "0xef359811497c724ef1942c6c079c64c07d87952d",
+      "category": "media",
+      "at": 1790763319,
+      "state": "held",
+      "rules": [
+        "structuring"
+      ],
+      "memo_uri": "",
+      "memo_digest": "",
+      "held_at": 1790763319,
+      "verdict": "",
+      "reason": "",
+      "confidence": 0,
+      "artifact": "",
+      "outcome": "",
+      "tier": 0,
+      "authorization": "pending",
+      "shadow": false
+    },
+    {
+      "id": 4,
+      "amount": 150000000000000000,
+      "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
+      "category": "media",
+      "at": 1790763562,
+      "state": "settled",
+      "rules": [
+        "structuring"
+      ],
+      "memo_uri": "",
+      "memo_digest": "",
+      "held_at": 1790763562,
+      "verdict": "",
+      "reason": "principal_override",
+      "confidence": 0,
+      "artifact": "absent",
+      "outcome": "allowed",
+      "tier": 0,
+      "authorization": "authorized",
+      "shadow": false
+    }
+  ]
+}

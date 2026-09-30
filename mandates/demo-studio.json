@@ -1,0 +1,66 @@
+{
+  "remit_mandate_version": 1,
+  "version": 1,
+  "currency": "ATTO_GEN",
+  "defaults": {
+    "on_deadline": "refund",
+    "on_undetermined": "refund",
+    "response_window_seconds": 60,
+    "hold_deadline_seconds": 3600,
+    "clawback_window_seconds": 604800
+  },
+  "vendor_lists": {
+    "vendors": [
+      "0x3F55971f7fd2594A90871Db489fBb82f1DB4d747",
+      "0xeF359811497c724Ef1942c6C079c64C07d87952D"
+    ],
+    "dropped": [
+      "0x00000000000000000000000000000000000000b1"
+    ]
+  },
+  "rules": [
+    {
+      "id": "per-spend",
+      "type": "reflex",
+      "check": {
+        "amount_lte": 200000000000000000
+      }
+    },
+    {
+      "id": "daily-cap",
+      "type": "reflex",
+      "check": {
+        "daily_total_lte": 500000000000000000
+      }
+    },
+    {
+      "id": "allowlist",
+      "type": "reflex",
+      "check": {
+        "recipient_in": "vendors"
+      }
+    },
+    {
+      "id": "not-dropped",
+      "type": "reflex",
+      "check": {
+        "recipient_not_in": "dropped"
+      }
+    },
+    {
+      "id": "structuring",
+      "type": "judgment",
+      "when": {
+        "spend_count_gte": {
+          "count": 3,
+          "seconds": 3600
+        }
+      },
+      "ask": "Are these separate purchases, or one purchase split across several payments to stay under the per-payment cap?",
+      "requires_artifact": false,
+      "on_breach": {
+        "tier": 2
+      }
+    }
+  ]
+}

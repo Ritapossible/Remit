@@ -1,0 +1,10 @@
+{
+  "studio": {
+    "address": "0x175646B708e95f1568B65F2242Be267dD95879E0",
+    "deploy_tx": "0x16e145ee2579da7b2b451a5ec4958bfca8f890df4da435b8a929b7b6e7af15ec",
+    "agent": "0x8aA26Fa51a68c583C467463e93db0EBc10f7D509",
+    "max_tier": 2,
+    "shadow": false,
+    "at": "2026-09-30T10:13:24.482Z"
+  }
+}

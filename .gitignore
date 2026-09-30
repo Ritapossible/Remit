@@ -33,3 +33,13 @@ deployments.local.json
 .coverage
 .coverage.*
 htmlcov/
+
+# Deploy working files
+deploy/node_modules/
+deploy/last_receipt.json
+deploy/probe_surface.json
+deploy/probe_contract.py
+deploy/bisect*.mjs
+deploy/probe*.mjs
+deploy/try_file.mjs
+deploy/mkprefix.py

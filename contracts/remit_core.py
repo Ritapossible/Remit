@@ -419,13 +419,16 @@ def resolve_hold(*, verdict, artifact, requires_artifact, defaults, deadline_rea
 
 
 def settle_hold(*, escrow, committed, outcome, vendor, principal):
-    """Credit owed balances for a resolved hold.
+    """Resolve a hold into a credit ledger.
 
-    Hard law 1: value is never pushed. This returns credits to be added to owed
-    balances, which recipients withdraw. ``emit_transfer`` credits a contract
-    and destroys value sent to an EOA.
+    Hard law 1: Remit never takes custody and never moves value. This returns
+    who is owed what; a settlement rail acts on it. The proxy transfer
+    primitive in the runner is a contract-to-contract call, which is precisely
+    why value routed through it to an externally owned account is destroyed —
+    a gate that holds nothing cannot destroy anything.
 
-    Hard law 2: the escrow must equal the committed amount exactly.
+    Hard law 2: the amounts must match exactly. An inequality here is satisfied
+    by two different states, so it is the wrong comparison.
     """
     escrow = _require_int(escrow, "escrow")
     committed = _require_int(committed, "committed")
