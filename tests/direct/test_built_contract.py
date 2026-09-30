@@ -109,16 +109,17 @@ def test_validator_checks_evidence_exactly_and_judgement_for_defensibility(built
     after = built.index("gl.vm.run_nondet")
     body = built[validator:after]
     assert 'str(_theirs.get("artifact", "")) != _state' in body, "evidence not compared exactly"
-    assert "build_defensibility_prompt" in body, "judgement not independently reviewed"
-    assert "_is_defensible(" in body
+    assert "build_verdict_prompt" in body, "validator does not re-answer the question"
+    assert '_mine["verdict"] == _verdict' in body, "verdicts not compared"
+    assert "VERDICT_UNDETERMINED" in body, "an unsure validator must not veto"
     assert "confidence" not in body, "confidence must not enter the comparison"
 
 
-def test_an_unreadable_validator_review_is_a_disagreement(built):
-    """Failing closed: an unparseable review must not wave a verdict through."""
-    fn = built[built.index("def _is_defensible("):]
-    fn = fn[: fn.index("\ndef _parse_verdict")]
-    assert fn.count("return False") >= 3
+def test_an_unreadable_llm_response_is_undetermined_not_a_guess(built):
+    """Anything unparseable resolves to UNDETERMINED, which falls to the
+    registered default. It is never coerced into a verdict."""
+    fn = built[built.index("def _parse_verdict(raw) -> dict:"):]
+    assert "verdict = VERDICT_UNDETERMINED" in fn
 
 
 # --- the runner pin -------------------------------------------------------
@@ -174,3 +175,52 @@ def test_every_engine_state_reaches_the_summary_view(built):
     summary = built[built.index("def _summarise("):]
     for key in ("verdict", "reason", "confidence", "artifact", "outcome", "tier", "authorization"):
         assert '"%s"' % key in summary, "summary view is missing %r" % key
+
+
+def test_closure_captures_are_plain_python(built):
+    """Values captured by the consensus closures must be coerced.
+
+    The leader runs in-process and tolerates a storage-backed value. The
+    validator is sandboxed and its closure is pickled, where a storage proxy
+    does not survive — measured on Studio, where the leader returned a correct
+    verdict and every validator disagreed, deterministically, with no error
+    anywhere in the receipt. Nothing about that failure points at the cause,
+    which is why it is a test rather than a comment.
+    """
+    start = built.index("    def adjudicate(self, spend_id: int) -> None:")
+    body = built[start : built.index("def leader()", start)]
+    for name in ("memo_uri", "memo_digest", "ask", "claim"):
+        assert "%s = str(" % name in body, "%s is captured without coercion" % name
+    assert "facts = [str(f) for f in facts]" in body
+    assert "rule_context = [str(c) for c in" in body
+
+
+def test_consensus_payloads_are_decoded_until_they_are_dicts(built):
+    """A leader's return value reaches the validator JSON-encoded, so one
+    ``json.loads`` yields a string. Calling ``.get`` on it raises inside the
+    closure, and that error counts as a disagreement — which is how a correct
+    verdict came to be rejected by every validator, deterministically, with
+    nothing in the receipt pointing at the cause.
+    """
+    assert "def _as_dict(value) -> dict:" in built
+    validator = built.index("def validator(")
+    after = built.index("gl.vm.run_nondet")
+    body = built[validator:after]
+    assert "_as_dict(leader_result)" in body
+    assert "json.loads(leader_result)" not in body, "single decode is not enough"
+
+
+def test_as_dict_coerces_a_wrapper_object(built):
+    """A leader's value reaches the validator as a wrapper object, not a str.
+
+    Established on Studio with a per-predicate consensus readout: each probe
+    method returned one boolean and agree/disagree was the bit.
+    ``isinstance(x, str)`` came back false while ``"verified" in str(x)`` came
+    back true. A decoder that gives up on anything not already dict/bytes/str
+    therefore sees nothing, and every validator disagrees with a correct
+    verdict and no error anywhere in the receipt.
+    """
+    fn = built[built.index("def _as_dict(value) -> dict:"):]
+    fn = fn[: fn.index("\ndef _parse_verdict")]
+    assert "not isinstance(data, (dict, str))" in fn
+    assert "data = str(data)" in fn

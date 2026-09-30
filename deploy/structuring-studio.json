@@ -1,29 +1,35 @@
 {
-  "address": "0x2bE2b7c86a0ADfd2185c6Ad4f34fCA75cb27328E",
-  "deploy": "0xefecbf4eb47499b79626032ace28e860b7e8303e572de0f653a309ccdabfcd50",
+  "address": "0xfc04A6FD61878C1707fcb120723c3Af424976676",
+  "deploy": "0x047de0a27244e6b3f6e64b901d23287f5a83c86ae014f2471b8e36f370e162e2",
   "txs": [
     {
       "label": "split#0",
-      "hash": "0x9066a345e2968838ef191e08334b393ed891b73e0c5b6c72e2d1c901d6c84784",
+      "hash": "0x745db47262ac1f88f3f4170e13a107e904cf4cee78e95c88747ea6ba97dfd648",
       "result": "MAJORITY_AGREE",
       "leader": "return"
     },
     {
       "label": "split#1",
-      "hash": "0x99ee6b7a8618412bd1d249d6a92c41c1ade48832443f7c736283c2ad25c1e238",
+      "hash": "0xcf174c26a520bbff787a49c5d69e059cb9bd6227b719ca85a3acab922e9d8c1a",
       "result": "MAJORITY_AGREE",
       "leader": "return"
     },
     {
       "label": "split#2",
-      "hash": "0x9d08a596ca0577cb3a1cdacee0def651fdbda6b97005d837255fba124568cd61",
+      "hash": "0x525c35b65c5a038d4354b463d78fc94218977733627153acc3aba5390a312514",
+      "result": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "label": "commit_artifact",
+      "hash": "0x7f36183c2f56b12fa31cf01c2ddc5366a5de6aa0d11e019030f1c1c41bd660ae",
       "result": "MAJORITY_AGREE",
       "leader": "return"
     },
     {
       "label": "adjudicate",
-      "hash": "0x2623b3e4959e7480bea02f59ac6845bec253f4e9ce3169e34788ff7f9367eae6",
-      "result": "MAJORITY_DISAGREE",
+      "hash": "0xd2a66507b7e9ce065daa3b2d075ff7478170974ed0d693ffb5e218acd6dd4c27",
+      "result": "MAJORITY_AGREE",
       "leader": "return"
     }
   ],
@@ -32,21 +38,21 @@
     "amount": 150000000000000000,
     "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
     "category": "media",
-    "at": 1790763823,
-    "state": "held",
+    "at": 1790784585,
+    "state": "refused",
     "rules": [
       "structuring"
     ],
-    "memo_uri": "",
-    "memo_digest": "",
-    "held_at": 1790763823,
-    "verdict": "",
-    "reason": "",
-    "confidence": 0,
-    "artifact": "",
-    "outcome": "",
-    "tier": 0,
-    "authorization": "pending",
+    "memo_uri": "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/invoice-INV-88.json",
+    "memo_digest": "e83ccceb6239c4efc1563792e85169a90aeb4dac19223ab20b34de8d2f5eb18e",
+    "held_at": 1790784585,
+    "verdict": "out_of_remit",
+    "reason": "structured_to_evade",
+    "confidence": 95,
+    "artifact": "verified",
+    "outcome": "refused",
+    "tier": 2,
+    "authorization": "refused",
     "shadow": false
   }
 }

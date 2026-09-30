@@ -23,9 +23,13 @@ async function send(client, functionName, args, label) {
     client.writeContract({ address, functionName, args, value: 0n }), 4);
   const r = await retry(`${label} receipt`, () =>
     client.waitForTransactionReceipt({ hash, status: "FINALIZED", retries: 300, interval: 2500 }), 4);
+  // The leader's own status reads "return" even when the validators disagree
+  // and the state change is rolled back. result_name is the consensus outcome
+  // and is the only one that says whether anything actually happened.
   const st = r?.consensus_data?.leader_receipt?.[0]?.result?.status ?? "?";
-  txs.push({ label, hash, status: st });
-  return { hash, st };
+  const consensus = r?.result_name ?? "?";
+  txs.push({ label, hash, leader: st, consensus });
+  return { hash, st, consensus };
 }
 
 async function spendOf(id) {
@@ -91,7 +95,7 @@ console.log("\n[5] adjudicate — the jury answers what no threshold can");
 const adj = await send(principal, "adjudicate", [3], "adjudicate");
 s = await spendOf(3);
 console.log(`    verdict=${s.verdict} reason=${s.reason} confidence=${s.confidence} artifact=${s.artifact}`);
-check("consensus reached (not rolled back)", adj.st, "return");
+check("consensus reached (not rolled back)", adj.consensus, "MAJORITY_AGREE");
 check("a verdict was recorded", s.verdict !== "", true);
 check("case resolved", ["settled", "refused"].includes(s.state), true);
 check("authorization decided", ["authorized", "refused"].includes(s.authorization), true);

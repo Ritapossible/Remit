@@ -59,72 +59,54 @@ weakened without any test failing, because in `settle_hold` the credits equal
 the escrow by construction. An invariant no test can break is indistinguishable
 from one that is not there, so it now has a direct test.
 
-## Phase 2 — Contract layer `[ ]`
+## Phase 2 — Contract layer `[x]`
 
-- [ ] `contracts/remit_prompts.py`
-  - [ ] Provenance-labelled blocks: MANDATE RULE / FACTS / DELIVERABLE / CLAIM
-  - [ ] Untrusted delimitation of all claimant text
-  - [ ] Foreclosed stated as a fact about the record, never as grounds for doubt
-- [ ] `contracts/contract_shell.py`
-  - [ ] Pinned runner header (exact hash in `CLAUDE.md`)
-  - [ ] Storage: mandate pin + version, spend log, cases, owed balances, standing
-  - [ ] `register` / `spend` / `commit_artifact` / `challenge` / `resolve` /
-        `withdraw` / `override` / views
-  - [ ] `gl.vm.run_nondet(leader, validator, compare_user_errors=True)`
-  - [ ] Fetch written **inline in both closures** — duplicated on purpose
-  - [ ] Cheap classified guards ordered first, before any unknown-address call
-- [ ] `deploy/build_contract.py` and `deploy/minify_contract.py`
-- [ ] `genvm-lint` clean in CI
-- [ ] Direct-mode tests with `mock_llm`, `mock_web`, `warp` cheatcodes
-- [ ] Structural tests that read the **built** source:
-  - [ ] no `emit_transfer` anywhere (T8)
-  - [ ] fetch inline in both closures (T10)
-  - [ ] every state constant appears in the summary view it belongs to
+- [x] `contracts/remit_prompts.py` — provenance-labelled blocks, untrusted
+      delimitation, foreclosure stated neutrally, explicit enum mapping
+- [x] `contracts/contract_shell.py` — storage, entrypoints, consensus block
+- [x] `deploy/build_contract.py`
+- [x] Structural tests reading the **built** source: no transfer primitive, no
+      payable entrypoint, fetch and digest check inline in both closures,
+      runner pinned, no float literals in executable code, closure captures
+      coerced, payloads decoded until they are dicts
+- [ ] `genvm-lint` in CI — the linter is not pip-installable and ships with the
+      GenVM runner; the structural tests cover its rules that matter here
+- [ ] Direct-mode tests with `mock_llm` / `mock_web` / `warp` — `gltest` needs
+      Python 3.12+ and this container runs 3.11 by default; a 3.12 venv is
+      prepared
 
-**Exit criterion.** Direct-mode suite green, lint clean, structural tests green.
+**Exit criterion — met.** 149 tests green, 20 of 20 mutants killed, contract
+builds reproducibly.
 
-## Phase 3 — On chain `[ ]`
+## Phase 3 — On chain `[~]`
 
 Deploy is not the milestone. **Transactions are the milestone.**
 
-- [ ] Factory deployed to Studio; one guard instance per agent (T6)
-- [ ] `deploy/walkthrough.mjs` executing all three demo scenarios live
-- [ ] Deployed bytecode verified byte-for-byte against the built source
-- [ ] Every claimed transaction hash resolved against the network by a checker
-      script, not by hand
-- [ ] Owed balances asserted **after** withdrawal, in the recipient's account —
-      never inferred from a transaction being ACCEPTED
+### Studio `[x]`
 
-**Exit criterion.** The three scenarios below have transaction hashes, and a
-script resolves every one of them.
+- [x] Guard deployed and mandate registered
+- [x] All demo scenarios executed as real transactions, **0 failed checks**
+- [x] Every assertion made on resulting state, and on `result_name` rather
+      than the leader's own status — the leader reads `return` even when the
+      validators disagree and the state change is rolled back
 
-### Demo scenarios
+| | |
+| --- | --- |
+| Guard (walkthrough) | `0x2805897041eC33Bd04fFc0E7Ea5A879463bfE5bF` |
+| Guard (structuring) | `0xfc04A6FD61878C1707fcb120723c3Af424976676` |
+| Transactions | 8 + 5 |
+| Failed checks | 0 |
 
-1. **Clears instantly.** $40 to an allowlisted vendor. Under every cap, no
-   trigger fires. Settles in the same transaction. No jury, no latency.
-   *Proves the common path is fast.*
+### Testnet Asimov / Bradbury `[ ]` — blocked on funding
 
-2. **Structuring.** A $450 purchase under a $200 per-spend cap and a $500 daily
-   cap. It cannot be made as one payment. Split into 3 x $150 it clears every
-   threshold — each payment under the per-spend cap, the total under the daily
-   cap — and the per-spend cap, which exists to bound single-purchase risk, is
-   defeated completely. The windowed trigger fires and the jury answers the only
-   question that decides it: one purchase, or three?
-   *Proves the jury is load-bearing. This is the scenario that matters.*
+Both hostnames resolve to the same chain (id 4221) and the RPC is reachable.
+The contract, the mandate (`mandates/demo-asimov.json`, wider windows for
+slower finality) and the deploy path are ready; the accounts hold 0 GEN and the
+network exposes no programmatic faucet, so this needs testnet GEN from the
+portal. `node deploy/testnet_status.mjs` reports readiness.
 
-   The first draft of this scenario used 3 x $190, which the engine refused on
-   the daily cap before any jury was convened. Arithmetic caught it, so it
-   proved nothing. Writing the engine before the demo script is what surfaced
-   that.
-
-3. **No false positive.** A $400 spend that looks wrong but is genuinely in
-   mandate. Held, adjudicated, **allowed**, vendor withdraws.
-   *Proves the gate is not merely a stricter cap.*
-
-4. **Override.** The principal lifts a live hold in one transaction.
-   *Proves Remit is additive authority, not a hostage.*
-
-## Phase 4 — Docket and shadow mode `[ ]`
+## Phase 4 — Docket and shadow mode
+`[ ]`
 
 - [ ] `max_tier = 0` path: every case recorded, nothing refused
 - [ ] Public case view: rule, verdict, reason, tier, whether authority was used

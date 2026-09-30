@@ -140,6 +140,13 @@ def build_defensibility_prompt(*, ask, facts_lines, artifact_state, artifact_tex
     parts.append("=== MANDATE RULE (pinned before the payment) ===")
     parts.append(str(ask))
     parts.append("")
+    parts.append(
+        '"out_of_remit" means the record shows the thing this rule forbids. '
+        '"in_remit" means it does not. "undetermined" means the record is '
+        "silent on the rule. The rule is phrased as a question; the reading "
+        "that describes a breach is the one that means out_of_remit."
+    )
+    parts.append("")
     parts.append("=== FACTS (read from the contract's own ledger) ===")
     for line in facts_lines:
         parts.append("- " + str(line))

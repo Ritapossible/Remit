@@ -358,8 +358,14 @@ class RemitGuard(gl.Contract):
         now = self._now()
         held_at = int(self.s_held_at[key])
         window = int(self.d_response_window)
-        memo_uri = self.s_memo_uri[key]
-        memo_digest = self.s_memo_digest[key]
+        # Coerce every value captured by the consensus closures to a plain
+        # Python type. The leader runs in-process and tolerates a storage-
+        # backed value; the validator is sandboxed and its closure is pickled,
+        # where a storage proxy does not survive. Measured on Studio: without
+        # these casts the leader returned a correct verdict and every validator
+        # disagreed, deterministically, with no error anywhere in the receipt.
+        memo_uri = str(self.s_memo_uri[key])
+        memo_digest = str(self.s_memo_digest[key])
 
         if memo_uri == "":
             # T9: a party that has not yet had its response window cannot lose
@@ -373,16 +379,16 @@ class RemitGuard(gl.Contract):
         fired = [r for r in self.s_rules[key].split(",") if r != ""]
         if not fired:
             raise Exception("[EXPECTED] held spend has no fired rule")
-        rule_id = fired[0]
-        ask = self.rule_ask[rule_id]
+        rule_id = str(fired[0])
+        ask = str(self.rule_ask[rule_id])
         needs_artifact = self._needs_artifact(key)
 
         window_seconds = int(self.rule_b[rule_id]) or 3600
         history = self._history()
         candidate = Spend(
             amount=int(self.s_amount[key]),
-            recipient=self.s_recipient[key],
-            category=self.s_category[key],
+            recipient=str(self.s_recipient[key]),
+            category=str(self.s_category[key]),
             at=int(self.s_at[key]),
         )
         prior = [h for h in history if h.at < candidate.at]
@@ -402,8 +408,9 @@ class RemitGuard(gl.Contract):
             daily_total=window_total(candidate, prior, DAY_SECONDS, candidate.at),
             rule_id=rule_id,
         )
-        claim = self.s_claim[key]
-        rule_context = self._rule_context()
+        claim = str(self.s_claim[key])
+        facts = [str(f) for f in facts]
+        rule_context = [str(c) for c in self._rule_context()]
 
         def leader() -> str:
             _state = ARTIFACT_ABSENT
@@ -451,9 +458,8 @@ class RemitGuard(gl.Contract):
                         _text = _raw.decode("utf-8", "replace")[:3000]
                 except Exception:
                     _state = ARTIFACT_UNVERIFIED
-            try:
-                _theirs = json.loads(leader_result)
-            except Exception:
+            _theirs = _as_dict(leader_result)
+            if not _theirs:
                 return False
 
             # The deterministic half is compared EXACTLY. This validator
@@ -466,30 +472,40 @@ class RemitGuard(gl.Contract):
             if _verdict not in VERDICTS:
                 return False
 
-            # The judgement is checked for defensibility against evidence this
-            # validator verified itself. Five validators run five different
-            # models; demanding an identical judgement makes consensus fail on
-            # exactly the questions this product exists to answer. Confidence
-            # and reason text never enter the comparison.
-            _review = gl.nondet.exec_prompt(
-                build_defensibility_prompt(
-                    ask=ask,
-                    facts_lines=facts,
-                    artifact_state=_state,
-                    artifact_text=_text,
-                    leader_verdict=_verdict,
+            # The judgement: this validator answers the SAME structured
+            # question, from evidence it fetched and hash-checked itself.
+            #
+            # Asking a validator to grade someone else's answer instead was
+            # measured on Studio and is not stable: models split roughly evenly
+            # on "is this defensible?", which fails consensus on exactly the
+            # questions this product exists to answer. Re-answering a narrow,
+            # well-specified question is far more determinate than grading a
+            # verdict.
+            _mine = _parse_verdict(
+                gl.nondet.exec_prompt(
+                    build_verdict_prompt(
+                        ask=ask,
+                        facts_lines=facts,
+                        artifact_state=_state,
+                        artifact_text=_text,
+                        claim_text=claim,
+                        rule_context=rule_context,
+                    )
                 )
             )
-            return _is_defensible(_review)
+            if _mine["verdict"] == _verdict:
+                return True
+            # A validator that is itself unsure does not get to veto a
+            # colleague who reached a definite answer on the same record. Two
+            # validators reaching opposite DEFINITE answers is a real
+            # disagreement, and that is what the appeal path is for.
+            return _mine["verdict"] == VERDICT_UNDETERMINED
 
         raw = gl.vm.run_nondet(leader, validator, compare_user_errors=True)
-        result = _parse_verdict(raw)
-        artifact = ARTIFACT_ABSENT
-        try:
-            decoded = json.loads(raw if isinstance(raw, str) else str(raw))
-            if isinstance(decoded, dict) and decoded.get("artifact"):
-                artifact = str(decoded["artifact"])
-        except Exception:
+        decoded = _as_dict(raw)
+        result = _parse_verdict(decoded)
+        artifact = str(decoded.get("artifact", ARTIFACT_ABSENT))
+        if artifact not in ARTIFACT_STATES:
             artifact = ARTIFACT_UNVERIFIED
 
         self.s_verdict[key] = result["verdict"]
@@ -690,6 +706,44 @@ def _is_defensible(raw) -> bool:
     return False
 
 
+def _as_dict(value) -> dict:
+    """Decode a consensus payload into a dict, however it arrives.
+
+    A leader's return value reaches the validator JSON-encoded, so a single
+    ``json.loads`` yields a *string* rather than an object. Calling ``.get`` on
+    that raises, the validator closure errors, and the error counts as a
+    disagreement — which is how a correct verdict came to be rejected by every
+    validator with nothing in the receipt pointing at the cause.
+
+    So decode until it is a dict, and return an empty dict rather than raising.
+    """
+    data = value
+    if isinstance(data, (bytes, bytearray)):
+        data = data.decode("utf-8", "replace")
+    elif not isinstance(data, (dict, str)):
+        # A leader's value does not arrive as a plain str. Measured on Studio
+        # with a per-predicate consensus readout: isinstance(x, str) is False,
+        # yet "verified" in str(x) is True — the payload is reachable only
+        # through str(). Returning {} for anything unrecognised is what made a
+        # correct verdict look like unanimous disagreement.
+        data = str(data)
+    for _ in range(4):
+        if isinstance(data, dict):
+            return data
+        if not isinstance(data, str):
+            return {}
+        text = data.strip()
+        start = text.find("{")
+        end = text.rfind("}")
+        if start >= 0 and end > start and not text.startswith('"'):
+            text = text[start : end + 1]
+        try:
+            data = json.loads(text)
+        except Exception:
+            return {}
+    return data if isinstance(data, dict) else {}
+
+
 def _parse_verdict(raw) -> dict:
     """Defensive parsing of an LLM response.
 
@@ -699,21 +753,7 @@ def _parse_verdict(raw) -> dict:
     UNDETERMINED, which resolves to the registered default rather than to a
     guess.
     """
-    data = raw
-    if isinstance(data, (bytes, bytearray)):
-        data = data.decode("utf-8", "replace")
-    if isinstance(data, str):
-        text = data.strip()
-        start = text.find("{")
-        end = text.rfind("}")
-        if start >= 0 and end > start:
-            text = text[start : end + 1]
-        try:
-            data = json.loads(text)
-        except Exception:
-            data = {}
-    if not isinstance(data, dict):
-        data = {}
+    data = _as_dict(raw)
 
     verdict = ""
     for alias in ("verdict", "answer", "decision", "result", "label"):

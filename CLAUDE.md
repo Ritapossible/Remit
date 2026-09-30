@@ -80,7 +80,106 @@ returned `0.875` as a string and `0.000` as a `CalldataAddress`.
 `_lookup_key()` accepts `str | Address` and raises on anything else. Never
 return a falsy default from a lookup.
 
-### 8. Mutation-test every guard
+### 8. The runner header must be followed immediately by code
+
+Any comment line between `# { "Depends": ... }` and the first statement makes
+the deploy fail with `contract_error` on **every** validator, empty stderr, no
+error code, no description. Nothing in the receipt points at it.
+
+The generated-file banner therefore sits *after* the imports. This cost a full
+binary search over the module to find.
+
+> Test: `test_runner_is_pinned_to_the_documented_hash` plus the build's own
+> preamble ordering.
+
+### 9. There is no transfer primitive on `gl.advanced`
+
+Introspected on the live runner: `gl.advanced` has only `emit_raw_event`,
+`gl_call`, `user_error_immediate`. `gl.public` has only `view` and `write` —
+**no `payable`**. `gl.wasi` has only `get_balance` / `get_self_balance`, both
+read-only.
+
+The one way to move value is `ContractProxy.emit_transfer(*, value, on=...)`,
+reached through `gl.get_contract_at(addr)`. It is a **contract-to-contract**
+call, which is exactly why value routed through it to an externally owned
+account is destroyed.
+
+Remit therefore takes no custody at all. A gate that holds nothing cannot
+destroy anything.
+
+> Test: `test_no_emit_transfer_in_contract_source`, `test_no_payable_entrypoint`
+
+### 10. A leader's value reaches the validator as a wrapper object
+
+Not a `str`, not a `dict`. Established with a per-predicate consensus readout —
+each probe method returned one boolean and agree/disagree was the bit:
+
+| probe | result |
+| --- | --- |
+| `isinstance(x, str)` | disagree — it is **not** a string |
+| `len(str(x)) > 0` | agree |
+| `"verified" in str(x)` | agree — the payload **is** in `str(x)` |
+
+A decoder that gives up on anything not already `dict`/`bytes`/`str` sees
+nothing, returns `{}`, and the validator rejects a correct verdict. Every
+validator disagrees, deterministically, with no error anywhere in the receipt.
+
+Decode with `_as_dict`: coerce via `str()`, then `json.loads` repeatedly until
+it is a dict (the payload is double-encoded).
+
+> Test: `test_as_dict_coerces_a_wrapper_object`
+
+### 11. `result_name` is the consensus outcome, not `leader_receipt[0].result.status`
+
+The leader's own status reads `return` even when the validators disagree and
+the state change is rolled back. Only `result_name` (`MAJORITY_AGREE` vs
+`MAJORITY_DISAGREE`) says whether anything actually happened. A walkthrough that
+checks the leader's status will report success on a transaction that changed
+nothing — this is hard law 3 wearing a disguise.
+
+### 12. The validator re-answers the question; it does not grade the answer
+
+Asking a validator "is the leader's verdict defensible?" was measured on Studio
+and is **not stable**: models split roughly evenly, so consensus fails on
+exactly the questions the product exists to answer. The receipts show five
+different models per transaction.
+
+Re-answering a narrow, well-specified question is far more determinate. The
+split is:
+
+- **deterministic evidence** (the artifact's hash-checked state) — compared
+  **exactly**; the validator fetched it itself, so a leader cannot lie about it;
+- **the judgement** — the validator answers the same question from its own
+  evidence, and agrees if the verdicts match, or if its own answer is
+  `undetermined` (a validator that is itself unsure does not veto a colleague
+  who reached a definite answer; two opposite *definite* answers is a real
+  disagreement, which is what appeals are for).
+
+Neither half may be dropped: exact-only cannot reach consensus,
+defensibility-only lets a leader assert any evidence it likes.
+
+### 13. Coerce storage reads before capturing them in a closure
+
+The leader runs in-process and tolerates a storage-backed value. The validator
+is sandboxed and its closure is pickled. Cast every captured value with `str()`
+/ `int()` / a list comprehension first.
+
+> Test: `test_closure_captures_are_plain_python`
+
+### 14. Aggregates hide shape
+
+A jury given only totals returned an incoherent verdict and the other
+validators correctly refused it. Facts must carry the **sequence** — each prior
+payment, its amount, recipient and age — not just the sums.
+
+### 15. State the enum mapping in every prompt
+
+A rule phrased as a question ("are these separate purchases, or one purchase
+split?") does not tell a model which reading means `out_of_remit`. Both the
+answering prompt and any review prompt must say so explicitly. Omitting it from
+one of the two was worth three validator disagreements.
+
+### 16. Mutation-test every guard
 
 For each guard, there must be a test that **fails when the guard is removed**.
 A guard with no such test is decoration. This is how #7 was caught.
@@ -133,6 +232,8 @@ network defect. Check guard ordering before blaming the network.
   path — a shared instance reintroduces head-of-line blocking (T6).
 - **Keys never enter the repository.** Deployment keys live outside the working
   tree, `chmod 600`. `*.key` and `keys/` are in `.gitignore`.
+- **The clock is `datetime.datetime.now()`.** GenVM makes it deterministic;
+  `gltest`'s `warp` cheatcode patches it. There is no `gl.block.timestamp`.
 - **Update the README when an address changes.** A README naming a stale
   contract is a defect, and a script verifies every transaction hash in it.
 

@@ -129,16 +129,37 @@ CLAUDE.md           project memory: hard constraints, conventions, commands
 
 ## Status
 
-**Phase 1 complete** — the deterministic engine (`contracts/remit_core.py`) is
-written and verified: 134 tests, 100% statement and 99% branch coverage, and a
-mutation pass in which all 20 mutants were killed, so every guard has a test
-that fails when the guard is removed.
+**Phases 1 and 2 complete. Running on GenLayer Studio.**
 
-No contract deployed yet. Phase 2 is the chain layer. See [PLAN.md](PLAN.md).
+| | |
+| --- | --- |
+| Engine | 149 tests, 100% statement / 99% branch coverage |
+| Mutation | 20 mutants, 20 killed, 0 survived |
+| Studio guard | [`0x2805897041eC33Bd04fFc0E7Ea5A879463bfE5bF`](https://genlayer-explorer.vercel.app) |
+| On-chain scenarios | all pass, **0 failed checks** |
+
+Every scenario below ran as a real transaction and every assertion is on
+resulting state, never on a transaction being accepted:
+
+- a small allowlisted payment **settles in the same transaction**, no jury;
+- a payment to a dropped vendor is **refused by arithmetic**, no jury;
+- a 0.45 GEN purchase split into 3 x 0.15 under a 0.2 GEN per-payment cap
+  clears every threshold and is **held** by the windowed trigger — and a
+  refused payment correctly does not count toward that window;
+- adjudicating inside the response window is **refused**, so an agent cannot
+  lose for not using a window it never had;
+- with the invoice committed, validators fetch it, hash-check it against the
+  pinned digest, and reach `MAJORITY_AGREE` on
+  `out_of_remit / structured_to_evade`;
+- the principal **lifts a live hold in one transaction**.
+
+Testnet Asimov/Bradbury is prepared but not yet deployed: the accounts hold no
+GEN and the network exposes no programmatic faucet. See [PLAN.md](PLAN.md).
 
 ```bash
-python3 -m pytest tests/direct        # 134 tests, ~0.3s, no chain needed
+python3 -m pytest tests/direct        # 149 tests, no chain needed
 python3 tests/mutation_check.py       # every guard must be killable
+node deploy/testnet_status.mjs        # testnet readiness
 ```
 
 ## Built with

@@ -8,7 +8,8 @@ venv/
 .ruff_cache/
 
 # Build artifacts
-contracts/build/
+# contracts/build/ is committed: it is the exact artifact deployed, so a
+# reviewer can verify deployed bytecode against source without a build step.
 *.min.py
 
 # Node / frontend

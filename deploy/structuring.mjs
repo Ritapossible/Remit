@@ -55,19 +55,31 @@ check("third payment held", s.state, "held");
 check("trigger", JSON.stringify(s.rules), '["structuring"]');
 check("authorization withheld", s.authorization, "pending");
 
-console.log("\n  waiting out the 60s response window (T9)...");
-await sleep(65000);
+// The agent commits the invoice: a document the validators retrieve and
+// hash-check themselves. Without it the question rests on inference alone, and
+// a validator reviewing "structured to evade" on inference correctly answers
+// that it is not proven — unproven is not guilty. This is the mechanism that
+// makes the judgement determinate.
+const INVOICE_URL = "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/invoice-INV-88.json";
+const INVOICE_DIGEST = "e83ccceb6239c4efc1563792e85169a90aeb4dac19223ab20b34de8d2f5eb18e";
+
+console.log("\ncommitting the invoice (digest-pinned, validator-retrievable):");
+await send(agent, "commit_artifact", [2, INVOICE_URL, INVOICE_DIGEST], "commit_artifact");
+s = await spendOf(2);
+check("artifact committed", s.memo_digest, INVOICE_DIGEST);
+check("still held pending adjudication", s.state, "held");
 
 console.log("\nadjudicating:");
 const adj = await send(principal, "adjudicate", [2], "adjudicate");
 console.log(`  consensus: ${adj.result}`);
 const eq = adj.receipt?.consensus_data?.leader_receipt?.[0]?.eq_outputs;
-if (eq) console.log("  leader said:", JSON.stringify(eq).slice(0, 260));
+if (eq) console.log("  leader said:", JSON.stringify(eq).slice(0, 300));
 console.log("  votes:", (adj.receipt?.consensus_data?.validators ?? []).map(v => v.vote).join(", "));
 
 s = await spendOf(2);
 console.log(`  verdict=${s.verdict} reason=${s.reason} confidence=${s.confidence} artifact=${s.artifact}`);
 check("consensus reached", adj.result, "MAJORITY_AGREE");
+check("validators verified the artifact", s.artifact, "verified");
 check("verdict recorded", s.verdict !== "", true);
 check("case resolved", ["settled", "refused"].includes(s.state), true);
 
