@@ -7,7 +7,7 @@ import { NETWORKS, type NetworkId } from "./networks";
 //  - A Studio burner: a key generated in this browser and funded from Studio's
 //    faucet. It exists so anyone can try the full flow in under a minute
 //    without a wallet. It is never offered on the testnet, and it is stored in
-//    localStorage in plain text — which is acceptable only because Studio GEN
+//    localStorage in plain text - which is acceptable only because Studio GEN
 //    has no value.
 
 export type Wallet =
@@ -108,7 +108,7 @@ export async function balanceOf(network: NetworkId, address: string): Promise<bi
   return BigInt((await rpc(NETWORKS[network].rpc, "eth_getBalance", [address, "latest"])) ?? "0x0");
 }
 
-/** Studio only. The amount travels as a raw JSON integer — a hex or string
+/** Studio only. The amount travels as a raw JSON integer - a hex or string
  *  amount is rejected by sim_fundAccount. */
 export async function fundOnStudio(address: string, gen = 5): Promise<void> {
   const body = `{"jsonrpc":"2.0","id":${Date.now()},"method":"sim_fundAccount","params":["${address}",${BigInt(gen) * 10n ** 18n}]}`;

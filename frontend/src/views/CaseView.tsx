@@ -179,7 +179,7 @@ function VerdictCard({ spend }: { spend: SpendView }) {
         </div>
         <dl className="kv small">
           <dt>Reason</dt>
-          <dd className="mono">{spend.reason || "—"}</dd>
+          <dd className="mono">{spend.reason || "-"}</dd>
           <dt>Evidence</dt>
           <dd>
             <Badge kind={spend.artifact || "absent"} />
@@ -196,7 +196,7 @@ function VerdictCard({ spend }: { spend: SpendView }) {
       <p className="small muted" style={{ marginBottom: 0 }}>
         {spend.artifact === "verified" || spend.artifact === "unverified"
           ? "Every validator fetched the evidence and checked its digest itself, then answered the same question independently."
-          : "No evidence was committed, so validators answered from the rule and the payment history the contract recorded — each independently."}{" "}
+          : "No evidence was committed, so validators answered from the rule and the payment history the contract recorded - each independently."}{" "}
         Confidence is the leader's and never entered the comparison.
       </p>
     </div>
@@ -211,7 +211,7 @@ function ArtifactCard({ spend }: { spend: SpendView }) {
     try {
       const { digest, bytes } = await digestOfUrl(spend.memo_uri);
       const ok = digest === spend.memo_digest.toLowerCase();
-      setCheck({ busy: false, ok, result: ok ? `Matches — ${bytes} bytes hash to the pinned digest.` : `Does not match. Served bytes hash to ${digest.slice(0, 16)}….` });
+      setCheck({ busy: false, ok, result: ok ? `Matches - ${bytes} bytes hash to the pinned digest.` : `Does not match. Served bytes hash to ${digest.slice(0, 16)}….` });
     } catch (e) {
       setCheck({ busy: false, ok: false, result: explainError(e) });
     }

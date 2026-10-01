@@ -37,7 +37,7 @@ export function Docket() {
         <div>
           <h1 className="page-title">Docket</h1>
           <p className="lede" style={{ marginBottom: 16 }}>
-            Every spend and how it was decided — including the ones that never needed a jury. This is the public
+            Every spend and how it was decided - including the ones that never needed a jury. This is the public
             record a principal reads before granting real authority.
           </p>
         </div>

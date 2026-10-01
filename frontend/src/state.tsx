@@ -71,7 +71,7 @@ const Ctx = createContext<AppState | null>(null);
 function readQuery(): { net?: NetworkId; guard?: string } {
   const q = new URLSearchParams(window.location.search);
   const net = q.get("net");
-  return { net: net === "studio" || net === "asimov" ? net : undefined, guard: q.get("guard") ?? undefined };
+  return { net: net === "studio" || net === "bradbury" ? net : undefined, guard: q.get("guard") ?? undefined };
 }
 
 function writeQuery(net: NetworkId, guard: string) {

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import plan from "../../../PLAN.md?raw";
 import { inline, REPO_URL } from "../lib/docs";
 
-// Generated from PLAN.md — the plan the project is actually built from — so the
+// Generated from PLAN.md - the plan the project is actually built from - so the
 // roadmap cannot claim progress the plan does not record.
 
 type Status = "done" | "progress" | "planned";
@@ -23,7 +23,7 @@ function parse(md: string) {
 
   for (const raw of lines) {
     const line = raw.replace(/\s+$/, "");
-    const ph = line.match(/^## (Phase \d+) — (.+?) `\[(x|~| )\]`$/);
+    const ph = line.match(/^## (Phase \d+) - (.+?) `\[(x|~| )\]`$/);
     if (ph) {
       phases.push({ label: ph[1], title: ph[2], status: ph[3] === "x" ? "done" : ph[3] === "~" ? "progress" : "planned", items: [] });
       section = "phase";
@@ -85,7 +85,7 @@ export function Roadmap() {
       </h1>
       <p className="lede">
         Generated from <span className="mono">PLAN.md</span>, the plan Remit is built from. A phase is done when a test or
-        a transaction proves it — not when the code exists.
+        a transaction proves it - not when the code exists.
       </p>
 
       <div className="stats" style={{ margin: "36px 0 44px" }}>
@@ -152,7 +152,7 @@ export function Roadmap() {
         Beyond <em>v1</em>
       </h2>
       <p className="lede" style={{ marginBottom: 28 }}>
-        Not scheduled. Listed so the direction is visible — and so nobody mistakes any of it for something already built.
+        Not scheduled. Listed so the direction is visible - and so nobody mistakes any of it for something already built.
       </p>
       <div className="grid-2">
         {beyond.map((b) => (

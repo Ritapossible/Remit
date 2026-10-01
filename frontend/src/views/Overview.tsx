@@ -21,6 +21,13 @@ export function Overview() {
           go to a jury of GenLayer validators.
         </p>
         {mandateError && <div className="notice bad">{mandateError}</div>}
+        {!guard && !def && (
+          <div className="notice warn" style={{ marginTop: 16 }}>
+            There's no Remit guard on {NETWORKS[network].label} yet - testnet deployment is the next milestone on the{" "}
+            <a href={href({ name: "roadmap" })}>roadmap</a>. Switch to GenLayer Studio to see the reference guard and
+            try the full flow.
+          </div>
+        )}
         {!guard && (
           <div className="row" style={{ marginTop: 16 }}>
             {def && (
@@ -52,12 +59,12 @@ export function Overview() {
       <h1 className="page-title">This agent spends under a written mandate.</h1>
       <p className="lede">
         Every payment is checked against the rules below before it is authorized. Arithmetic decides in the same
-        transaction. A jury is convened only when a judgment rule's trigger fires — and it answers one question.
+        transaction. A jury is convened only when a judgment rule's trigger fires - and it answers one question.
       </p>
 
       <div className="stats">
         <div className="stat feature-stat">
-          <div className="v">{docket ? (total ? `${Math.round((noJury / total) * 100)}%` : "—") : "…"}</div>
+          <div className="v">{docket ? (total ? `${Math.round((noJury / total) * 100)}%` : "-") : "…"}</div>
           <div className="k">decided without a jury</div>
         </div>
         <div className="stat">
@@ -98,7 +105,7 @@ export function Overview() {
           </header>
           <p className="blurb">
             Convened only when the trigger fires. Validators read the rule, the facts the contract recorded, and any
-            evidence the agent committed — then answer one question.
+            evidence the agent committed - then answer one question.
           </p>
           {judgment.map((r) => (
             <RuleRow key={r.id} r={r} />
@@ -141,7 +148,7 @@ export function Overview() {
             <dd>
               {mandate.max_tier}{" "}
               <span className="muted small">
-                — the most authority granted. In this version any tier ≥ 1 refuses the spend; the tier is recorded as
+                - the most authority granted. In this version any tier ≥ 1 refuses the spend; the tier is recorded as
                 severity on the docket.
               </span>
             </dd>
@@ -171,7 +178,7 @@ export function Overview() {
             <dt>If undetermined</dt>
             <dd>
               {d.on_undetermined === "refund" ? "refuse" : "release"}{" "}
-              <span className="muted small">unproven is not guilty — the principal chose this default</span>
+              <span className="muted small">unproven is not guilty - the principal chose this default</span>
             </dd>
             <dt>At the deadline</dt>
             <dd>{d.on_deadline === "refund" ? "refuse" : "release"}</dd>

@@ -428,7 +428,7 @@ def settle_hold(*, escrow, committed, outcome, vendor, principal):
     Hard law 1: Remit never takes custody and never moves value. This returns
     who is owed what; a settlement rail acts on it. The proxy transfer
     primitive in the runner is a contract-to-contract call, which is precisely
-    why value routed through it to an externally owned account is destroyed —
+    why value routed through it to an externally owned account is destroyed -
     a gate that holds nothing cannot destroy anything.
 
     Hard law 2: the amounts must match exactly. An inequality here is satisfied
@@ -555,14 +555,14 @@ def validate_mandate(mandate, *, stored_version, max_tier):
     if not isinstance(mandate, dict):
         return ["mandate: expected an object"]
 
-    # 1 — version must strictly increase (T5).
+    # 1 - version must strictly increase (T5).
     version = mandate.get("version")
     if isinstance(version, bool) or not isinstance(version, int):
         bad("version: expected int")
     elif version <= stored_version:
         bad("version: %r does not exceed stored version %r" % (version, stored_version))
 
-    # 5 — every default is mandatory. An unstated default is a decision
+    # 5 - every default is mandatory. An unstated default is a decision
     # nobody made.
     defaults = mandate.get("defaults")
     if not isinstance(defaults, dict):
@@ -619,7 +619,7 @@ def validate_mandate(mandate, *, stored_version, max_tier):
         rule_id = rule.get("id")
         if not isinstance(rule_id, str) or rule_id == "":
             bad("%s.id: expected a non-empty string" % where)
-        elif rule_id in seen:  # 2 — no duplicate ids
+        elif rule_id in seen:  # 2 - no duplicate ids
             bad("%s.id: duplicate rule id %r" % (where, rule_id))
         else:
             seen.add(rule_id)
@@ -631,8 +631,8 @@ def validate_mandate(mandate, *, stored_version, max_tier):
 
         key = "check" if rule_type == RULE_REFLEX else "when"
         try:
-            # 3 — predicates must be inside the v1 vocabulary, and
-            # 7 — operands must be non-negative ints where ints are expected.
+            # 3 - predicates must be inside the v1 vocabulary, and
+            # 7 - operands must be non-negative ints where ints are expected.
             name, operand = sole_predicate(rule.get(key), "%s.%s" % (where, key))
             if name not in PREDICATES:
                 bad("%s.%s: predicate %r is outside the v1 vocabulary" % (where, key, name))
@@ -643,7 +643,7 @@ def validate_mandate(mandate, *, stored_version, max_tier):
             elif name in PREDICATES_WINDOW_COUNT:
                 _window_operand(operand, "count", "%s.%s.%s" % (where, key, name))
             elif name in PREDICATES_LIST_NAME:
-                # 4 — a referenced vendor list must be defined.
+                # 4 - a referenced vendor list must be defined.
                 list_name = _require_str(operand, "%s.%s" % (where, key))
                 if list_name not in vendor_lists:
                     bad("%s.%s: vendor list %r is not defined" % (where, key, list_name))
@@ -661,7 +661,7 @@ def validate_mandate(mandate, *, stored_version, max_tier):
                 bad("%s.on_breach: expected an object with 'tier'" % where)
             else:
                 try:
-                    # 6 — a rule may not request more authority than granted.
+                    # 6 - a rule may not request more authority than granted.
                     tier = _require_int(on_breach["tier"], "%s.on_breach.tier" % where)
                     if tier > max_tier:
                         bad(
@@ -803,7 +803,7 @@ def build_verdict_prompt(
     parts.append("")
     parts.append(
         'Use "undetermined" only when the facts above are genuinely silent on '
-        "the rule — not merely because no artifact was supplied, and not "
+        "the rule - not merely because no artifact was supplied, and not "
         "because the question is a judgement call. Judgement is what you are "
         "here for. If the facts show the pattern the rule describes, say so."
     )
@@ -815,7 +815,7 @@ def build_defensibility_prompt(*, ask, facts_lines, artifact_state, artifact_tex
 
     Five validators run five different models. Demanding that independently
     prompted models return an identical judgement makes consensus fail on
-    exactly the questions this product exists to answer — measured on Studio,
+    exactly the questions this product exists to answer - measured on Studio,
     where a leader's "undetermined" drew three disagreements and the state
     change was rolled back.
 
@@ -859,7 +859,7 @@ def build_defensibility_prompt(*, ask, facts_lines, artifact_state, artifact_tex
     parts.append(
         "You are not being asked whether you would have written the same "
         "answer. You are being asked whether that answer is defensible on this "
-        "record — whether a careful reader applying this rule to these facts "
+        "record - whether a careful reader applying this rule to these facts "
         "could reach it. Reject it only if the record contradicts it."
     )
     parts.append("")
@@ -1307,7 +1307,7 @@ class RemitGuard(gl.Contract):
             if memo_uri != "":
                 _state = ARTIFACT_UNVERIFIED
                 try:
-                    # INLINE fetch — do not factor this into a helper.
+                    # INLINE fetch - do not factor this into a helper.
                     _resp = gl.nondet.web.get(memo_uri)
                     _raw = _resp.body
                     if isinstance(_raw, str):
@@ -1337,7 +1337,7 @@ class RemitGuard(gl.Contract):
             if memo_uri != "":
                 _state = ARTIFACT_UNVERIFIED
                 try:
-                    # INLINE fetch again — the duplication is deliberate.
+                    # INLINE fetch again - the duplication is deliberate.
                     _resp = gl.nondet.web.get(memo_uri)
                     _raw = _resp.body
                     if isinstance(_raw, str):
@@ -1532,7 +1532,7 @@ class RemitGuard(gl.Contract):
         Runs the same ``_classify`` the real spend runs, against the same
         history, so a client can tell a user "this will be held for a jury"
         before they sign anything. It is a view, so it costs nothing and
-        changes nothing — and because it is the contract's own code path, the
+        changes nothing - and because it is the contract's own code path, the
         prediction cannot drift from the decision the way a reimplementation
         in the frontend would.
         """
@@ -1637,7 +1637,7 @@ def _as_dict(value) -> dict:
     A leader's return value reaches the validator JSON-encoded, so a single
     ``json.loads`` yields a *string* rather than an object. Calling ``.get`` on
     that raises, the validator closure errors, and the error counts as a
-    disagreement — which is how a correct verdict came to be rejected by every
+    disagreement - which is how a correct verdict came to be rejected by every
     validator with nothing in the receipt pointing at the cause.
 
     So decode until it is a dict, and return an empty dict rather than raising.
@@ -1648,7 +1648,7 @@ def _as_dict(value) -> dict:
     elif not isinstance(data, (dict, str)):
         # A leader's value does not arrive as a plain str. Measured on Studio
         # with a per-predicate consensus readout: isinstance(x, str) is False,
-        # yet "verified" in str(x) is True — the payload is reachable only
+        # yet "verified" in str(x) is True - the payload is reachable only
         # through str(). Returning {} for anything unrecognised is what made a
         # correct verdict look like unanimous disagreement.
         data = str(data)

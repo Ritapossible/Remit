@@ -45,7 +45,7 @@ export function Home() {
             </h1>
             <p className="lede">
               Code can enforce a budget. It can’t enforce a brief. Remit checks every payment an AI agent asks to
-              make — arithmetic in the same transaction, and a jury of GenLayer validators only for the questions code
+              make - arithmetic in the same transaction, and a jury of GenLayer validators only for the questions code
               can’t answer.
             </p>
             <div className="btn-stack" style={{ marginTop: 32 }}>
@@ -68,7 +68,7 @@ export function Home() {
         </h2>
         <p className="lede" style={{ marginBottom: 32 }}>
           A per-payment cap exists to bound the risk of a single purchase. Split the purchase and every payment is
-          legal — the numbers pass at every threshold. Only a reading of intent against a written mandate catches it.
+          legal - the numbers pass at every threshold. Only a reading of intent against a written mandate catches it.
         </p>
         <div className="compare">
           <div className="col">
@@ -108,7 +108,7 @@ export function Home() {
             <div className="n">ii.</div>
             <h3>Most spends clear instantly</h3>
             <p>
-              Every request is checked in the same transaction. If no trigger fires, it’s authorized on the spot — no
+              Every request is checked in the same transaction. If no trigger fires, it’s authorized on the spot - no
               jury, no wait. If a limit is broken, it’s refused just as fast.
             </p>
           </div>
@@ -117,7 +117,7 @@ export function Home() {
             <h3>The rest go to a jury</h3>
             <p>
               When a trigger fires, authorization is withheld and GenLayer validators each answer the rule’s question
-              independently — from the ledger and from evidence pinned by its digest.
+              independently - from the ledger and from evidence pinned by its digest.
             </p>
           </div>
         </div>
@@ -131,7 +131,7 @@ export function Home() {
           <div className="features">
             <Feature icon={<Pin />} title="Evidence pinned by digest">
               An agent commits the invoice or order by its sha256. Every validator fetches it and checks the hash
-              itself — a document that changed is marked unverified, never trusted.
+              itself - a document that changed is marked unverified, never trusted.
             </Feature>
             <Feature icon={<Vault />} title="Holds no funds">
               Remit decides; your treasury or payment rail pays. A gate that holds nothing can’t lose anything, and a
@@ -164,7 +164,7 @@ export function Home() {
         <h2 className="h2">From the docs</h2>
         <div className="cards" style={{ marginTop: 28 }}>
           <DocCard slug="getting-started" art="flag" title="From zero to a jury verdict in five minutes" text="Create a guard with a Studio burner and walk a split purchase to a decision." />
-          <DocCard slug="integration" art="rail" title="Connecting a settlement rail" text="One view, three answers — and how to read a receipt so you never pay on a rolled-back decision." />
+          <DocCard slug="integration" art="rail" title="Connecting a settlement rail" text="One view, three answers - and how to read a receipt so you never pay on a rolled-back decision." />
           <DocCard slug="genvm-notes" art="blocks" title="Building on GenVM: field notes" text="What we measured on Studio that no error message will tell you." />
         </div>
       </section>
@@ -218,7 +218,7 @@ function LiveCase({ data, failed }: { data: ReturnType<typeof useReference>["dat
       <div className="device" role="figure" aria-label="A case from the reference guard">
         <div className="top">
           <span>{view ? <span className="live">Live · GenLayer Studio</span> : failed ? "Reference case" : "Reading the chain…"}</span>
-          <span className="mono">case #{view?.decided?.id ?? "—"}</span>
+          <span className="mono">case #{view?.decided?.id ?? "-"}</span>
         </div>
         <div className="amt">
           {whole}
@@ -266,7 +266,7 @@ function Proof({ data }: { data: ReturnType<typeof useReference>["data"] }) {
       </h2>
       <div className="stats" style={{ marginTop: 28 }}>
         <div className="stat feature-stat">
-          <div className="v">{data ? (docket.length ? `${Math.round((noJury / docket.length) * 100)}%` : "—") : "…"}</div>
+          <div className="v">{data ? (docket.length ? `${Math.round((noJury / docket.length) * 100)}%` : "-") : "…"}</div>
           <div className="k">of reference spends decided without a jury · live</div>
         </div>
         <div className="stat">
@@ -275,7 +275,7 @@ function Proof({ data }: { data: ReturnType<typeof useReference>["data"] }) {
         </div>
         <div className="stat">
           <div className="v">20/20</div>
-          <div className="k">mutants killed — every guard has a test that fails without it</div>
+          <div className="k">mutants killed - every guard has a test that fails without it</div>
         </div>
         <div className="stat">
           <div className="v">0</div>
@@ -320,13 +320,13 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
     a: (
       <p>
         Caps stop one large payment. They can’t tell whether three small ones are a single purchase split to get
-        under the cap — every number passes. Remit keeps caps for what they’re good at and sends only that kind of
+        under the cap - every number passes. Remit keeps caps for what they’re good at and sends only that kind of
         question to a jury.
       </p>
     ),
   },
   {
-    q: "Who decides a held payment — and can the agent talk its way past them?",
+    q: "Who decides a held payment - and can the agent talk its way past them?",
     a: (
       <>
         <p>
@@ -344,7 +344,7 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
     q: "What if the jury is slow, unsure, or wrong?",
     a: (
       <p>
-        Every hold has a deadline and a default you chose. “Undetermined” falls to that default — unproven is not
+        Every hold has a deadline and a default you chose. “Undetermined” falls to that default - unproven is not
         guilty. The principal can release or refuse any held spend at any time. And shadow mode lets you watch the
         docket before granting authority at all.
       </p>
@@ -354,7 +354,7 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
     q: "Is it live?",
     a: (
       <p>
-        Yes, on GenLayer Studio, where the full flow runs end to end. The testnet deployment is the next milestone —
+        Yes, on GenLayer Studio, where the full flow runs end to end. The testnet deployment is the next milestone -
         see the <a href={href({ name: "roadmap" })}>roadmap</a> for what’s done, what’s next, and what isn’t built yet.
       </p>
     ),

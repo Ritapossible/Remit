@@ -8,15 +8,26 @@ anyone building an Intelligent Contract, not only for Remit.
 
 **The runner header must be followed immediately by code.** Any comment line
 between `# { "Depends": "py-genlayer:…" }` and the first statement fails the
-deploy with `contract_error` on every validator — empty stderr, no error code,
+deploy with `contract_error` on every validator - empty stderr, no error code,
 no description. Put banners after the imports.
 
 **Pin the runner.** Networks reject `py-genlayer:test`, `:latest` and
 unversioned aliases. Remit pins the hash published by the `genlayer-dev` skill
 at [skills.genlayer.com](https://skills.genlayer.com).
 
-**Size was not the problem.** Contracts up to 56 KB of executable code
-deployed cleanly on Studio.
+**Size is not a problem on Studio, and is the whole problem on Bradbury.**
+Studio deployed 70 KB contracts without complaint. Bradbury caps a single
+transaction at **2^24 gas** (16M accepted, 17M refused, measured), and a deploy
+costs about **765 gas per byte** of code plus ~2.25M fixed - so roughly 19 KB of
+code and constructor arguments is the ceiling. Stripping docstrings, comments,
+unreachable functions and indentation took Remit from 70 KB to 36 KB; past that,
+the only sound move is to split the contract.
+
+**Use genlayer-js 1.1.8 or later for the testnet.** 0.15 hardcoded `gas: 21000`
+on every GenLayer transaction (Studio ignores gas, so it never showed there),
+pointed the testnet at a plain-HTTP raw IP, and used a retired consensus
+contract. Every testnet write failed: first "intrinsic gas too low", then, with
+gas fixed, "Transaction not processed by consensus".
 
 ## What the runtime actually exposes
 
@@ -24,19 +35,19 @@ Introspected on the pinned runner:
 
 | Namespace | Members |
 | --- | --- |
-| `gl.public` | `view`, `write` — no `payable` |
+| `gl.public` | `view`, `write` - no `payable` |
 | `gl.advanced` | `emit_raw_event`, `gl_call`, `user_error_immediate` |
 | `gl.wasi` | `get_balance`, `get_self_balance`, `gl_call`, `storage_read`, `storage_write` |
 | `gl.ContractProxy` | `address`, `balance`, `emit`, `emit_transfer`, `view` |
 
 The only way to move value is `ContractProxy.emit_transfer`, a
-contract-to-contract call — which is why value sent through it to a wallet is
+contract-to-contract call - which is why value sent through it to a wallet is
 destroyed. The clock is `datetime.datetime.now()`; GenVM makes it
 deterministic.
 
 ## Consensus
 
-**A leader's return value reaches the validator as a wrapper object** — not a
+**A leader's return value reaches the validator as a wrapper object** - not a
 `str`, not a `dict`. `isinstance(x, str)` is false while `"verified" in str(x)`
 is true, and the payload is JSON-encoded twice. A decoder that returns `{}` for
 anything unrecognised makes every validator reject a correct answer. Coerce with
@@ -76,7 +87,7 @@ not tell a model which reading means *breach*. Omitting the mapping from one of
 two prompts cost three disagreements.
 
 **Give facts shape, not just totals.** A jury given only aggregates returned an
-incoherent answer. Include the sequence — each prior payment, its amount,
+incoherent answer. Include the sequence - each prior payment, its amount,
 recipient and age.
 
 **Evidence makes judgement determinate.** On inference alone, reviewers
@@ -85,12 +96,15 @@ the same question reached agreement in 8 of 8 consecutive trials.
 
 ## Networks
 
-| | Studio | Testnet Asimov / Bradbury |
+| | Studio | Testnet Bradbury |
 | --- | --- | --- |
-| Chain id | 61999 | 4221 — both hostnames, one chain |
-| RPC | `https://studio.genlayer.com/api` | `https://rpc-asimov.genlayer.com` |
-| Faucet | `sim_fundAccount(address, wei)` — wei as a raw JSON integer | none programmatic |
-| Refusal detail | `exit_code 1` only | — |
+| Chain id | 61999 | 4221 (shared with Asimov; different consensus contract) |
+| SDK chain | `studionet` | `testnetBradbury` |
+| RPC | `https://studio.genlayer.com/api` | `https://rpc-bradbury.genlayer.com` |
+| Faucet | `sim_fundAccount(address, wei)` - wei as a raw JSON integer | none programmatic |
+| Per-transaction gas cap | not enforced | 2^24 |
+| Deploy cost | - | ~765 gas per byte + ~2.25M |
+| Refusal detail | `exit_code 1` only | `txExecutionResultName` |
+| Consensus result field | `result_name: MAJORITY_AGREE` | `resultName: AGREE` |
 
-The SDK's built-in testnet endpoint is plain HTTP to a raw IP. Browsers served
-over HTTPS refuse it; override the endpoint.
+A minimal contract reached acceptance on Bradbury in 14 seconds.

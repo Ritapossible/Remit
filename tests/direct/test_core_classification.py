@@ -71,7 +71,7 @@ def test_split_spends_under_cap_fire_the_structuring_trigger():
     the daily cap. The per-spend cap exists to bound single-purchase risk and
     the split defeats it completely.
 
-    No arithmetic catches this, at any threshold — the numbers are all legal.
+    No arithmetic catches this, at any threshold - the numbers are all legal.
     The windowed trigger convenes a jury on the only question that decides it:
     was that one purchase or three?
     """

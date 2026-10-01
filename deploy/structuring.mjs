@@ -2,9 +2,9 @@
 //
 // Mixing an unrelated purchase into the window makes the record genuinely
 // ambiguous, and a jury is right to be unsure. A clean window is not stagecraft
-// — it is the scenario the rule describes.
+// - it is the scenario the rule describes.
 import fs from "node:fs";
-import { clientFor, accountFor, retry } from "./lib.mjs";
+import { clientFor, accountFor, retry, outcome, WAIT } from "./lib.mjs";
 
 const network = process.argv[2] || "studio";
 const code = fs.readFileSync("../contracts/build/remit.py");
@@ -27,16 +27,17 @@ function check(label, actual, expected) {
 const hash = await retry("deploy", () =>
   principal.deployContract({ code, args: [agentAddr, mandate, 2, false], leaderOnly: false }), 5);
 const dr = await retry("receipt", () =>
-  principal.waitForTransactionReceipt({ hash, status: "FINALIZED", retries: 300, interval: 3000 }), 5);
-const address = dr?.data?.contract_address ?? dr?.contract_address;
+  principal.waitForTransactionReceipt({ hash, status: WAIT, retries: 300, interval: 3000 }), 5);
+const address = outcome(dr).address;
 console.log(`fresh guard ${address}\n  deploy ${hash}\n`);
 
 async function send(client, fn, args, label) {
   const h = await retry(label, () => client.writeContract({ address, functionName: fn, args, value: 0n }), 4);
   const r = await retry(`${label} receipt`, () =>
-    client.waitForTransactionReceipt({ hash: h, status: "FINALIZED", retries: 300, interval: 2500 }), 4);
-  txs.push({ label, hash: h, result: r?.result_name, leader: r?.consensus_data?.leader_receipt?.[0]?.result?.status });
-  return { hash: h, result: r?.result_name, leaderStatus: r?.consensus_data?.leader_receipt?.[0]?.result?.status, receipt: r };
+    client.waitForTransactionReceipt({ hash: h, status: WAIT, retries: 300, interval: 2500 }), 4);
+  const o = outcome(r);
+  txs.push({ label, hash: h, result: o.consensus, leader: o.leader });
+  return { hash: h, result: o.consensus, agreed: o.agreed, leaderStatus: o.leader, receipt: r };
 }
 const spendOf = async (id) => {
   const raw = await retry("get_spend", () => principal.readContract({ address, functionName: "get_spend", args: [id] }), 4);
@@ -58,7 +59,7 @@ check("authorization withheld", s.authorization, "pending");
 // The agent commits the invoice: a document the validators retrieve and
 // hash-check themselves. Without it the question rests on inference alone, and
 // a validator reviewing "structured to evade" on inference correctly answers
-// that it is not proven — unproven is not guilty. This is the mechanism that
+// that it is not proven - unproven is not guilty. This is the mechanism that
 // makes the judgement determinate.
 const INVOICE_URL = "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/invoice-INV-88.json";
 const INVOICE_DIGEST = "e83ccceb6239c4efc1563792e85169a90aeb4dac19223ab20b34de8d2f5eb18e";
@@ -72,13 +73,13 @@ check("still held pending adjudication", s.state, "held");
 console.log("\nadjudicating:");
 const adj = await send(principal, "adjudicate", [2], "adjudicate");
 console.log(`  consensus: ${adj.result}`);
-const eq = adj.receipt?.consensus_data?.leader_receipt?.[0]?.eq_outputs;
+const eq = adj.receipt?.consensus_data?.leader_receipt?.[0]?.eq_outputs ?? adj.receipt?.eqBlocksOutputs;
 if (eq) console.log("  leader said:", JSON.stringify(eq).slice(0, 300));
-console.log("  votes:", (adj.receipt?.consensus_data?.validators ?? []).map(v => v.vote).join(", "));
+console.log("  votes:", (adj.receipt?.consensus_data?.validators?.map(v => v.vote) ?? adj.receipt?.lastRound?.validatorVotesName ?? []).join(", "));
 
 s = await spendOf(2);
 console.log(`  verdict=${s.verdict} reason=${s.reason} confidence=${s.confidence} artifact=${s.artifact}`);
-check("consensus reached", adj.result, "MAJORITY_AGREE");
+check(`consensus reached (${adj.result})`, adj.agreed, true);
 check("validators verified the artifact", s.artifact, "verified");
 check("verdict recorded", s.verdict !== "", true);
 check("case resolved", ["settled", "refused"].includes(s.state), true);

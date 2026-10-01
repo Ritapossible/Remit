@@ -1,4 +1,4 @@
-# Remit — Architecture
+# Remit - Architecture
 
 Read [THREAT-MODEL.md](THREAT-MODEL.md) first. Everything here is a consequence
 of something there.
@@ -10,14 +10,14 @@ of something there.
 A gate must decide, deterministically, whether a given spend needs a jury.
 Getting this wrong sinks the product, so the rejected options are recorded.
 
-**Rejected — jury on every spend.** Conceptually clean, unusable in practice.
+**Rejected - jury on every spend.** Conceptually clean, unusable in practice.
 Every purchase would wait on a consensus round. The gate would be slower than
 the human approval it replaces.
 
-**Rejected — jury decides whether a jury is needed.** Circular. The contract
+**Rejected - jury decides whether a jury is needed.** Circular. The contract
 cannot know a judgment rule is implicated without already applying judgment.
 
-**Chosen — principal-authored deterministic triggers.** Each judgment rule
+**Chosen - principal-authored deterministic triggers.** Each judgment rule
 carries a `when` trigger: a deterministic predicate over facts the contract
 already holds. The trigger decides; the jury answers.
 
@@ -31,7 +31,7 @@ already holds. The trigger decides; the jury answers.
 }
 ```
 
-This is non-circular, cheap, and — the part that matters commercially — it is a
+This is non-circular, cheap, and - the part that matters commercially - it is a
 **dial the principal controls**. Tighten triggers for more safety and more
 latency; loosen them for speed. Remit does not choose the trade-off. It exposes
 it.
@@ -39,8 +39,8 @@ it.
 ## 2. Spend lifecycle
 
 Remit holds no funds. The agent **declares** a spend; Remit decides whether it
-is authorized; a settlement rail — a treasury contract, a payment processor, an
-agent framework's wallet — reads that decision and moves the money. See §6 for
+is authorized; a settlement rail - a treasury contract, a payment processor, an
+agent framework's wallet - reads that decision and moves the money. See §6 for
 why, which was established by introspecting the live runtime rather than chosen.
 
 ```
@@ -74,7 +74,7 @@ why, which was established by introspecting the live runtime rather than chosen.
 ```
 
 Every terminal state is a value of `authorization_of(spend_id)`:
-`authorized`, `refused`, or — while held — `pending`. That single view is the
+`authorized`, `refused`, or - while held - `pending`. That single view is the
 whole integration surface for a rail.
 
 `preview_spend(recipient, amount, category)` runs the same classifier as a free
@@ -85,7 +85,7 @@ the decision the way a reimplementation in a frontend would.
 ## 3. Why withholding makes optimistic action safe
 
 Remit binds on **round acceptance**, not on finality. An alarm-shaped design
-cannot safely do this — acting provisionally means having paused a live protocol
+cannot safely do this - acting provisionally means having paused a live protocol
 that an appeal may say should never have been paused, and the outage is real
 whichever way the appeal goes.
 
@@ -100,7 +100,7 @@ finality speed.
 Consequence for implementation: **`ACCEPTED` is not success.** A round that
 accepts a refusal has succeeded as consensus and failed as a spend. And the
 leader's own status reads `return` even when validators disagree and the change
-is rolled back — only `result_name` says whether anything happened. Outcomes
+is rolled back - only `result_name` says whether anything happened. Outcomes
 are judged on resulting **state**, never on the absence of an exception.
 
 ## 4. Rule types
@@ -134,7 +134,7 @@ ones code provably cannot express:
 | `structuring` | Are these separate purchases, or one purchase split under the cap? |
 
 `structuring` is the T7 mitigation and the demo's centrepiece. Its trigger is
-windowed and deterministic — *N spends to related recipients within T* — so it
+windowed and deterministic - *N spends to related recipients within T* - so it
 cannot be evaded by shrinking amounts.
 
 ## 5. What the jury sees
@@ -161,7 +161,7 @@ Compared under the equivalence principle on the **enum and reason code**. Never
 on prose. This is both the injection ceiling (T4) and what makes validator
 agreement achievable at all (T10).
 
-An `UNDETERMINED` verdict is not a breach. **Unproven is not guilty** — it
+An `UNDETERMINED` verdict is not a breach. **Unproven is not guilty** - it
 resolves to the registered default, and the case is recorded as undetermined so
 the docket does not silently count it as a win for either side.
 
@@ -173,7 +173,7 @@ Introspecting the pinned runner on Studio showed that `gl.advanced` exposes only
 `emit_raw_event`, `gl_call` and `user_error_immediate`; `gl.public` exposes only
 `view` and `write`, with **no `payable`**; and the only way to move value is
 `ContractProxy.emit_transfer`, reached through `gl.get_contract_at(address)`.
-That is a **contract-to-contract** call — which explains a failure measured in
+That is a **contract-to-contract** call - which explains a failure measured in
 earlier work in this lineage, where value sent to an externally owned account
 through it was debited from the sender, credited to nobody, and the transaction
 still reported ACCEPTED.
@@ -186,9 +186,9 @@ settles:
 - an off-chain rail (a card program, a payment API, an agent framework's
   wallet) reads the same view over RPC.
 
-The engine still resolves amounts on **equality**, never on an inequality —
+The engine still resolves amounts on **equality**, never on an inequality -
 `held >= committed` once restored an already-delivered payout when a residue was
-present — and returns credit ledgers whose sums are checked exactly. Those
+present - and returns credit ledgers whose sums are checked exactly. Those
 functions are the basis for the bonded challenge path on the roadmap.
 
 ## 7. Deployment topology
@@ -208,7 +208,7 @@ factory that deploys and indexes guards is on the roadmap.
 
 ## 8. Build pipeline
 
-Splitting the source and building the deployable artifact is not ceremony — the
+Splitting the source and building the deployable artifact is not ceremony - the
 deterministic engine must be testable without a chain, and the deployed contract
 must be minified to fit pubdata limits on testnet.
 
@@ -245,7 +245,7 @@ numbers now live in tests, so changing a constant without changing a test is
 not possible.
 
 ~~1. **Bond denomination.**~~ **Answered in Phase 1.** A fraction of the spend
-   with a floor: `max(floor, amount * 1000 / 10000)` — 10% of what is at risk,
+   with a floor: `max(floor, amount * 1000 / 10000)` - 10% of what is at risk,
    never less than the floor. A flat bond makes a large spend cheap to grief; a
    pure fraction makes a small spend uneconomic to challenge at all. The floor
    prices attention, the fraction scales with exposure. Fixed by
@@ -260,7 +260,7 @@ not possible.
    days rather than banned. Fixed by `tests/direct/test_core_bonds.py`.
 
 3. **Mandate hosting.** IPFS, or any HTTPS URI with a digest? The digest makes
-   the host untrusted, so HTTPS is defensible — but availability becomes a
+   the host untrusted, so HTTPS is defensible - but availability becomes a
    liveness dependency. Leaning: any URI, digest-pinned, with the registered
    default resolving the case if it is unreachable.
 4. **Multi-rule cases.** If two judgment triggers fire on one spend, is that one

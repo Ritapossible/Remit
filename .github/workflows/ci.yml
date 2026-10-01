@@ -16,7 +16,7 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - name: Direct tests (engine + structural tests on the built contract)
         run: python -m pytest tests/direct
-      - name: Mutation check — every guard must be killable
+      - name: Mutation check - every guard must be killable
         run: python tests/mutation_check.py
       - name: Committed contract matches its sources
         # The frontend bundles contracts/build/remit.py. If it is stale, the site

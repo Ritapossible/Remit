@@ -5,8 +5,8 @@
   "defaults": {
     "on_deadline": "refund",
     "on_undetermined": "refund",
-    "response_window_seconds": 300,
-    "hold_deadline_seconds": 86400,
+    "response_window_seconds": 60,
+    "hold_deadline_seconds": 3600,
     "clawback_window_seconds": 604800
   },
   "vendor_lists": {

@@ -158,7 +158,7 @@ def main():
 
     baseline = run_suite()
     if baseline.returncode != 0:
-        print("BASELINE SUITE IS RED — fix that before mutation testing.")
+        print("BASELINE SUITE IS RED - fix that before mutation testing.")
         print(baseline.stdout[-3000:])
         return 2
 
@@ -187,7 +187,7 @@ def main():
 
     restored = run_suite()
     if restored.returncode != 0:
-        print("RESTORE FAILED — contracts/remit_core.py may be damaged.")
+        print("RESTORE FAILED - contracts/remit_core.py may be damaged.")
         return 3
 
     print("mutants killed   : %d" % len(killed))

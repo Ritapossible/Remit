@@ -58,11 +58,13 @@ export const Eye = () => (
   </svg>
 );
 
-/** Remit mark: navy tile, paper R, and the cyan notched ribbon at the corner. */
+/** Remit mark: the agent (cyan dot) inside its remit (white boundary), on navy.
+ *  Three primitives, so it stays legible down to a 16px favicon. Source files
+ *  live in public/brand/. */
 export const Mark = ({ size = 34 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 34 34" aria-hidden="true">
-    <rect width="34" height="34" rx="9" fill="#03222e" />
-    <path d="M10 25V9h8.2c3.4 0 5.6 1.9 5.6 4.9 0 2.4-1.4 4.1-3.7 4.7L25 25h-3.9l-4.7-6H13.4v6zm3.4-9.1H18c1.5 0 2.4-.8 2.4-2s-.9-2-2.4-2h-4.6z" fill="#fff" />
-    <path d="M24 0h10v10z" fill="#0bbcd4" />
+  <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
+    <rect width="48" height="48" rx="12" fill="#03222e" />
+    <rect x="12.5" y="12.5" width="23" height="23" rx="6" fill="none" stroke="#ffffff" strokeWidth="3.5" />
+    <circle cx="24" cy="24" r="4.6" fill="#0bbcd4" />
   </svg>
 );

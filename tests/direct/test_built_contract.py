@@ -35,8 +35,8 @@ def built():
 def test_no_emit_transfer_in_contract_source(built):
     """Remit takes no custody, so it can never destroy value.
 
-    ``emit_transfer`` is a method on ``ContractProxy`` — a contract-to-contract
-    primitive — which is exactly why value sent through it to an externally
+    ``emit_transfer`` is a method on ``ContractProxy`` - a contract-to-contract
+    primitive - which is exactly why value sent through it to an externally
     owned account is destroyed. A reviewer cannot see this and a passing
     integration test will not reveal it.
     """
@@ -98,7 +98,7 @@ def test_validator_checks_evidence_exactly_and_judgement_for_defensibility(built
     itself, so a leader cannot lie about the evidence. The judgement is checked
     for defensibility, because five validators run five different models and
     demanding an identical judgement makes consensus fail on exactly the
-    questions this product exists to answer — measured on Studio, where a
+    questions this product exists to answer - measured on Studio, where a
     leader's verdict drew three disagreements and the state change was rolled
     back.
 
@@ -182,7 +182,7 @@ def test_closure_captures_are_plain_python(built):
 
     The leader runs in-process and tolerates a storage-backed value. The
     validator is sandboxed and its closure is pickled, where a storage proxy
-    does not survive — measured on Studio, where the leader returned a correct
+    does not survive - measured on Studio, where the leader returned a correct
     verdict and every validator disagreed, deterministically, with no error
     anywhere in the receipt. Nothing about that failure points at the cause,
     which is why it is a test rather than a comment.
@@ -198,7 +198,7 @@ def test_closure_captures_are_plain_python(built):
 def test_consensus_payloads_are_decoded_until_they_are_dicts(built):
     """A leader's return value reaches the validator JSON-encoded, so one
     ``json.loads`` yields a string. Calling ``.get`` on it raises inside the
-    closure, and that error counts as a disagreement — which is how a correct
+    closure, and that error counts as a disagreement - which is how a correct
     verdict came to be rejected by every validator, deterministically, with
     nothing in the receipt pointing at the cause.
     """
@@ -237,7 +237,7 @@ def _method(built, name):
 def test_preview_spend_is_a_view_on_the_real_classifier(built):
     """The preview exists so a UI can say "this will be held for a jury" before
     anyone signs. It is only trustworthy if it is the contract's own decision
-    path — a reimplementation elsewhere would drift — and only safe if it is a
+    path - a reimplementation elsewhere would drift - and only safe if it is a
     view that cannot write."""
     decorator = built[: built.index("    def preview_spend(")].rstrip().splitlines()[-1].strip()
     assert decorator == "@gl.public.view"

@@ -7,7 +7,7 @@ prepends the pinned runner header and inlines ``remit_core`` and
 **Remit holds no funds.** It authorises; a rail settles. This was forced by a
 measured constraint and is the better design for it: introspection of the live
 runner (see ``docs/ARCHITECTURE.md`` §11) shows the only value-movement
-primitive is ``ContractProxy.emit_transfer``, a contract-to-contract call —
+primitive is ``ContractProxy.emit_transfer``, a contract-to-contract call -
 which is exactly why value sent to an externally owned account is destroyed. A
 gate that never takes custody cannot destroy anything, and a provisional
 refusal that an appeal reverses costs nothing because no value ever moved.
@@ -425,7 +425,7 @@ class RemitGuard(gl.Contract):
             if memo_uri != "":
                 _state = ARTIFACT_UNVERIFIED
                 try:
-                    # INLINE fetch — do not factor this into a helper.
+                    # INLINE fetch - do not factor this into a helper.
                     _resp = gl.nondet.web.get(memo_uri)
                     _raw = _resp.body
                     if isinstance(_raw, str):
@@ -455,7 +455,7 @@ class RemitGuard(gl.Contract):
             if memo_uri != "":
                 _state = ARTIFACT_UNVERIFIED
                 try:
-                    # INLINE fetch again — the duplication is deliberate.
+                    # INLINE fetch again - the duplication is deliberate.
                     _resp = gl.nondet.web.get(memo_uri)
                     _raw = _resp.body
                     if isinstance(_raw, str):
@@ -650,7 +650,7 @@ class RemitGuard(gl.Contract):
         Runs the same ``_classify`` the real spend runs, against the same
         history, so a client can tell a user "this will be held for a jury"
         before they sign anything. It is a view, so it costs nothing and
-        changes nothing — and because it is the contract's own code path, the
+        changes nothing - and because it is the contract's own code path, the
         prediction cannot drift from the decision the way a reimplementation
         in the frontend would.
         """
@@ -755,7 +755,7 @@ def _as_dict(value) -> dict:
     A leader's return value reaches the validator JSON-encoded, so a single
     ``json.loads`` yields a *string* rather than an object. Calling ``.get`` on
     that raises, the validator closure errors, and the error counts as a
-    disagreement — which is how a correct verdict came to be rejected by every
+    disagreement - which is how a correct verdict came to be rejected by every
     validator with nothing in the receipt pointing at the cause.
 
     So decode until it is a dict, and return an empty dict rather than raising.
@@ -766,7 +766,7 @@ def _as_dict(value) -> dict:
     elif not isinstance(data, (dict, str)):
         # A leader's value does not arrive as a plain str. Measured on Studio
         # with a per-predicate consensus readout: isinstance(x, str) is False,
-        # yet "verified" in str(x) is True — the payload is reachable only
+        # yet "verified" in str(x) is True - the payload is reachable only
         # through str(). Returning {} for anything unrecognised is what made a
         # correct verdict look like unanimous disagreement.
         data = str(data)

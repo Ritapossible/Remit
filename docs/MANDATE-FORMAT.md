@@ -64,7 +64,7 @@ Deterministic. Evaluated in the spend transaction. No jury, no latency.
 {"id": "not-dropped", "type": "reflex", "check": {"recipient_not_in": "dropped"}}
 ```
 
-Supported predicates in v1 — deliberately small, because every predicate is
+Supported predicates in v1 - deliberately small, because every predicate is
 surface area and an unevaluable one is worse than a missing one:
 
 | Predicate | Operand |
@@ -88,7 +88,7 @@ worse than a missing one.
 
 `daily_total_*` is a **rolling 86400-second window**, not a calendar day. This
 avoids a timezone, which a mandate has no way to carry unambiguously. All
-windows are half-open — `(now - seconds, now]` — and include the spend being
+windows are half-open - `(now - seconds, now]` - and include the spend being
 evaluated.
 
 ## Judgment rules
@@ -121,13 +121,13 @@ Natural-language. One boolean question. Convened only when `when` fires.
 Shipped in `mandates/standard.json` because they recur and because each is
 provably outside what code can evaluate.
 
-**`brief-alignment`** — does this serve the stated purpose? Needs a
+**`brief-alignment`** - does this serve the stated purpose? Needs a
 `context_uri` pointing at the brief.
 
-**`invoice-match`** — does this payment correspond to something delivered?
+**`invoice-match`** - does this payment correspond to something delivered?
 `requires_artifact: true`; the artifact is the invoice or receipt.
 
-**`structuring`** — are these separate purchases, or one purchase split to stay
+**`structuring`** - are these separate purchases, or one purchase split to stay
 under the cap? Its trigger is windowed and deterministic, so shrinking
 individual amounts does not evade it:
 
@@ -146,7 +146,7 @@ cannot answer it at any threshold.
 
 ## Validation at registration
 
-A mandate is rejected — loudly, never with a falsy default — if:
+A mandate is rejected - loudly, never with a falsy default - if:
 
 1. `version` does not strictly exceed the stored version.
 2. Any rule `id` is duplicated.

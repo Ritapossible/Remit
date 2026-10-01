@@ -1,6 +1,6 @@
 // Reports whether the testnet deploy can proceed, and why not if it cannot.
 import { accountFor } from "./lib.mjs";
-const rpc = "https://rpc-asimov.genlayer.com";
+const rpc = "https://rpc-bradbury.genlayer.com";
 for (const role of ["principal", "agent"]) {
   const a = accountFor(role).address;
   const r = await fetch(rpc, { method: "POST", headers: { "Content-Type": "application/json" },

@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { clientFor, accountFor, retry } from "./lib.mjs";
+import { clientFor, accountFor, retry, outcome, WAIT } from "./lib.mjs";
 
 const network = process.argv[2] || "studio";
 const shadow = process.argv.includes("--shadow");
@@ -21,12 +21,12 @@ const hash = await retry("deploy", () =>
 console.log("\ndeploy tx:", hash);
 
 const receipt = await retry("receipt", () =>
-  client.waitForTransactionReceipt({ hash, status: "FINALIZED", retries: 300, interval: 3000 }), 5);
-const address = receipt?.data?.contract_address ?? receipt?.contract_address;
+  client.waitForTransactionReceipt({ hash, status: WAIT, retries: 300, interval: 3000 }), 5);
+const address = outcome(receipt).address;
 console.log("status:", receipt?.status, "address:", address);
 
 if (!address) {
-  console.log("DEPLOY FAILED — receipt follows:");
+  console.log("DEPLOY FAILED - receipt follows:");
   console.log(JSON.stringify(receipt, null, 2).slice(0, 3000));
   process.exit(1);
 }

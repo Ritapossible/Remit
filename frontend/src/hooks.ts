@@ -15,7 +15,7 @@ export function useDocket(autoMs = 0) {
       setDocket(await readDocket(client, guard));
       setError("");
     } catch (e) {
-      setError("Could not read the docket. The gateway may be busy — try refreshing.");
+      setError("Could not read the docket. The gateway may be busy - try refreshing.");
       console.warn(e);
     } finally {
       setLoading(false);
@@ -36,7 +36,7 @@ export function useDocket(autoMs = 0) {
   return { docket, error, loading, reload };
 }
 
-/** Seconds since the epoch, ticking. For countdowns only — the contract's own
+/** Seconds since the epoch, ticking. For countdowns only - the contract's own
  *  clock is authoritative, and the UI says "about" where it matters. */
 export function useNow(tickMs = 1000) {
   const [now, setNow] = useState(() => Date.now() / 1000);

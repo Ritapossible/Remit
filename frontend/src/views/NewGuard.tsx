@@ -10,8 +10,8 @@ import { NETWORKS } from "../chain/networks";
 const DEMO_VENDORS = ["0x3F55971f7fd2594A90871Db489fBb82f1DB4d747", "0xeF359811497c724Ef1942c6C079c64C07d87952D"];
 
 const TEMPLATES = {
-  campaign: { label: "Campaign spend — catches split purchases", make: campaignTemplate },
-  contractor: { label: "Contractor payouts — invoice must match delivery", make: contractorTemplate },
+  campaign: { label: "Campaign spend - catches split purchases", make: campaignTemplate },
+  contractor: { label: "Contractor payouts - invoice must match delivery", make: contractorTemplate },
 } as const;
 
 export function NewGuard() {
@@ -61,6 +61,14 @@ export function NewGuard() {
         pinned at deployment and cannot be edited under an open case.
       </p>
 
+      {!NETWORKS[network].deployable && (
+        <div className="notice warn" style={{ marginBottom: 16 }}>
+          Guards can't be deployed on {NETWORKS[network].label} yet. Bradbury caps a transaction at 2^24 gas, and the
+          current contract is larger than that allows - splitting it into a shared engine and a small per-agent guard
+          is the next milestone on the <a href={href({ name: "roadmap" })}>roadmap</a>. Switch to Studio to try the
+          full flow now.
+        </div>
+      )}
       <div className="case-grid">
         <div className="card">
           <div style={{ display: "grid", gap: 14 }}>
@@ -96,17 +104,17 @@ export function NewGuard() {
               <label className="field">
                 Max authority tier
                 <select value={maxTier} onChange={(e) => setMaxTier(Number(e.target.value))}>
-                  <option value={0}>0 — record only</option>
-                  <option value={1}>1 — refuse the spend</option>
-                  <option value={2}>2 — refuse, severity 2</option>
-                  <option value={3}>3 — refuse, severity 3</option>
+                  <option value={0}>0 - record only</option>
+                  <option value={1}>1 - refuse the spend</option>
+                  <option value={2}>2 - refuse, severity 2</option>
+                  <option value={3}>3 - refuse, severity 3</option>
                 </select>
               </label>
             </div>
 
             <label className="row small" style={{ gap: 8 }}>
               <input type="checkbox" checked={shadow} onChange={(e) => setShadow(e.target.checked)} />
-              Shadow mode — record every case on the docket, but never withhold authorization
+              Shadow mode - record every case on the docket, but never withhold authorization
             </label>
 
             <label className="field">
@@ -118,7 +126,7 @@ export function NewGuard() {
             </label>
 
             <div>
-              <button className="btn primary" disabled={!valid || pending || wallet.kind === "none"} onClick={deploy}>
+              <button className="btn primary" disabled={!valid || pending || wallet.kind === "none" || !NETWORKS[network].deployable} onClick={deploy}>
                 {pending ? <Spinner /> : null} Deploy guard on {NETWORKS[network].short}
               </button>
               {wallet.kind === "none" && <span className="hint" style={{ marginLeft: 10 }}>Connect a wallet first.</span>}

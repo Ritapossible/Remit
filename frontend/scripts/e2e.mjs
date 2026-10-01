@@ -4,7 +4,7 @@
 // Neither proves a person can use it. This clicks through the product the way
 // a reviewer would: read a mandate, open a jury-decided case, verify its
 // evidence, then create a guard with a Studio burner and walk a split purchase
-// all the way to a verdict — with the T9 window guard observed on the way.
+// all the way to a verdict - with the T9 window guard observed on the way.
 //
 // Usage: node scripts/e2e.mjs <reference-guard> [baseUrl]
 import { chromium } from "playwright";
@@ -19,7 +19,7 @@ const INVOICE = "https://raw.githubusercontent.com/Ritapossible/Remit/main/examp
 let failures = 0;
 const check = (label, ok, detail = "") => {
   if (!ok) failures++;
-  console.log(`  ${ok ? "ok  " : "FAIL"} ${label}${detail ? ` — ${detail}` : ""}`);
+  console.log(`  ${ok ? "ok  " : "FAIL"} ${label}${detail ? ` - ${detail}` : ""}`);
 };
 
 const browser = await chromium.launch({
@@ -115,7 +115,7 @@ async function spend(amount, claim, expect) {
   await waitText(expect.result, 300000);
 }
 
-console.log("\n[flow] three payments of 0.15 GEN — one 0.45 purchase, split");
+console.log("\n[flow] three payments of 0.15 GEN - one 0.45 purchase, split");
 await spend("0.15", "invoice INV-88, part 1 of 3", { preview: "Authorized instantly", result: "authorized." });
 check("payment 1 authorized in the same transaction", true);
 await spend("0.15", "invoice INV-88, part 2 of 3", { preview: "Authorized instantly", result: "authorized." });

@@ -1,8 +1,8 @@
 # Integration
 
 Remit authorizes; something else pays. This page is for whoever builds that
-something else — a treasury contract, a payment service, or an agent
-framework's wallet — and for agents that call Remit directly.
+something else - a treasury contract, a payment service, or an agent
+framework's wallet - and for agents that call Remit directly.
 
 ## The one call a rail needs
 
@@ -36,9 +36,12 @@ const status = await client.readContract({
 });
 ```
 
-On the testnet, pass `endpoint: "https://rpc-asimov.genlayer.com"`. The SDK's
-built-in testnet endpoint is plain HTTP to a raw IP, which a browser served over
-HTTPS will refuse.
+Use **genlayer-js 1.1.8 or later**, and name the network explicitly
+(`studionet`, `testnetBradbury`). Version 0.15 shipped a plain-HTTP testnet
+endpoint, a retired consensus contract and a hardcoded 21000 gas limit, so every
+testnet write failed. Asimov and Bradbury share chain id 4221 but route through
+different consensus contracts, so the chain id alone does not identify the
+network.
 
 ## Contract reference
 
@@ -69,30 +72,37 @@ the deployment fail.
 | Method | Returns |
 | --- | --- |
 | `authorization_of(spend_id)` | `"authorized"`, `"refused"` or `"pending"`. |
-| `preview_spend(recipient, amount, category)` | JSON `{state, rules}` — what `request_spend` would do right now. Runs the same classifier; costs nothing. |
+| `preview_spend(recipient, amount, category)` | JSON `{state, rules}` - what `request_spend` would do right now. Runs the same classifier; costs nothing. |
 | `get_spend(spend_id)` | JSON summary of one spend, including verdict, reason, evidence state and the agent's claim. |
 | `docket()` | JSON list of every spend. |
 | `mandate_info()` | JSON: principal, agent, tier, mode, defaults, typed rules, vendor lists. |
 
 Views return JSON text rendered by Python, so integers are exact in the text.
-Amounts in atto-GEN exceed 2^53 — parse them as big integers, not as JavaScript
+Amounts in atto-GEN exceed 2^53 - parse them as big integers, not as JavaScript
 numbers.
 
 ## Reading outcomes correctly
 
-A write can be accepted by the network and still change nothing. Read
-`result_name` on the receipt, not the leader's own status:
+A write can be accepted by the network and still change nothing. Read the
+consensus outcome, not the leader's own status. The two networks spell it
+differently:
 
-| `result_name` | Leader status | Meaning |
+| | Studio | Bradbury (SDK 1.1.8) |
 | --- | --- | --- |
-| `MAJORITY_AGREE` | `return` | Applied. |
-| `MAJORITY_AGREE` | `contract_error` | The contract refused; validators agreed. Nothing changed. |
-| `MAJORITY_DISAGREE` | anything | No consensus. Rolled back. Safe to retry. |
+| Consensus outcome | `result_name: MAJORITY_AGREE` | `resultName: AGREE` |
+| Leader execution | `leader_receipt[0].result.status: return` | `txExecutionResultName: FINISHED_WITH_RETURN` |
+| New contract address | `data.contract_address` | `txDataDecoded.contractAddress` |
+
+| Consensus | Leader | Meaning |
+| --- | --- | --- |
+| agreed | returned normally | Applied. |
+| agreed | error | The contract refused; validators agreed. Nothing changed. |
+| disagreed | anything | No consensus. Rolled back. Safe to retry. |
 
 The leader's status reads `return` even when validators disagree and the change
 is rolled back. Code that checks it will report success on a transaction that
 did nothing.
 
-Refusals carry no reason string on chain — the receipt says only
+Refusals carry no reason string on chain - the receipt says only
 `exit_code 1`. Use `preview_spend` and the documented guards to explain a
 refusal before sending, rather than after.

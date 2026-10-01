@@ -25,7 +25,7 @@ PARTS = ["remit_core.py", "remit_prompts.py", "contract_shell.py"]
 
 # The runner header must be followed IMMEDIATELY by code. Any comment line
 # between it and the first statement makes the deploy fail with an empty-stderr
-# contract_error on every validator — measured on Studio, see CLAUDE.md. The
+# contract_error on every validator - measured on Studio, see CLAUDE.md. The
 # "generated file" banner therefore sits *after* the imports, not before them.
 PREAMBLE = '''# { "Depends": "%s" }
 from genlayer import *

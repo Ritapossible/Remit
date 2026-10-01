@@ -1,0 +1,11 @@
+import fs from "node:fs";
+import { clientFor, retry } from "./lib.mjs";
+const c = clientFor(process.argv[3] ?? "bradbury", "principal");
+const code = fs.readFileSync(process.argv[2]);
+const t0 = Date.now();
+const hash = await retry("deploy", () => c.deployContract({ code, args: [], leaderOnly: false }), 3);
+console.log("deploy tx", hash);
+const r = await c.waitForTransactionReceipt({ hash, status: "ACCEPTED", retries: 360, interval: 5000 });
+const secs = Math.round((Date.now() - t0) / 1000);
+console.log("accepted after", secs, "s | result", r?.result_name, "| leader", r?.consensus_data?.leader_receipt?.[0]?.result?.status, "| address", r?.data?.contract_address ?? r?.recipient);
+fs.writeFileSync("/tmp/probe_receipt.json", JSON.stringify(r, (k, v) => (typeof v === "bigint" ? v.toString() : v), 2));

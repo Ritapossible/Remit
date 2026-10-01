@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "genlayer-js": "^0.15.0",
+    "genlayer-js": "^1.1.8",
     "viem": "^2.21.0"
   }
 }

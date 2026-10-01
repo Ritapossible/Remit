@@ -121,7 +121,7 @@ export function RequestSpend() {
     <>
       <h1 className="page-title">Request a spend</h1>
       <p className="lede">
-        The agent declares a payment. Remit decides whether to authorize it — and a preview, run by the contract
+        The agent declares a payment. Remit decides whether to authorize it - and a preview, run by the contract
         itself, shows which path it will take before anything is signed.
       </p>
 
@@ -142,7 +142,7 @@ export function RequestSpend() {
                 <select value={members.some((m) => m.addr === recipient) ? recipient : ""} onChange={(e) => setRecipient(e.target.value)}>
                   {members.map((m) => (
                     <option key={m.list + m.addr} value={m.addr}>
-                      {m.addr} — on “{m.list}”
+                      {m.addr} - on “{m.list}”
                     </option>
                   ))}
                   <option value="">Another address…</option>
@@ -163,7 +163,7 @@ export function RequestSpend() {
               </label>
             </div>
             <label className="field">
-              Evidence URL <span className="hint">optional — an invoice or order the jury can retrieve</span>
+              Evidence URL <span className="hint">optional - an invoice or order the jury can retrieve</span>
               <div className="row">
                 <input
                   style={{ flex: 1 }}
@@ -181,7 +181,7 @@ export function RequestSpend() {
               {digest && <span className="hint mono" style={{ overflowWrap: "anywhere" }}>sha256 {digest}</span>}
             </label>
             <label className="field">
-              Note to the jury <span className="hint">shown to validators as untrusted — it cannot override the mandate</span>
+              Note to the jury <span className="hint">shown to validators as untrusted - it cannot override the mandate</span>
               <input value={claim} onChange={(e) => setClaim(e.target.value)} placeholder="e.g. invoice INV-88, part 3 of 3" />
             </label>
             <div>
@@ -236,7 +236,7 @@ function PreviewResult({ preview, amount }: { preview: Preview; amount: bigint |
         <Badge kind="settled">Authorized instantly</Badge>
         <p>
           {amount !== null && <Gen atto={amount} />} clears every arithmetic limit and no judgment trigger fires. It
-          would be authorized in the same transaction — no jury, no wait.
+          would be authorized in the same transaction - no jury, no wait.
         </p>
       </>
     );
@@ -262,7 +262,7 @@ function PreviewResult({ preview, amount }: { preview: Preview; amount: bigint |
       {rules.map((r) => (
         <div key={r!.id} style={{ marginBottom: 10 }}>
           <div className="small muted">
-            {r!.id} — because {describePredicate(r!, true)}
+            {r!.id} - because {describePredicate(r!, true)}
           </div>
           <div className="serif" style={{ fontSize: 18, lineHeight: 1.35 }}>
             “{r!.ask}”

@@ -36,7 +36,7 @@ export function Gen({ atto, unit = true }: { atto: string | bigint | number; uni
 
 export function Addr({ value, label }: { value?: string; label?: string }) {
   const [copied, setCopied] = useState(false);
-  if (!value) return <span className="muted">—</span>;
+  if (!value) return <span className="muted">-</span>;
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(value);
@@ -47,7 +47,7 @@ export function Addr({ value, label }: { value?: string; label?: string }) {
     }
   };
   return (
-    <button type="button" className="btn ghost sm mono" style={{ padding: "0 2px" }} title={`${value} — click to copy`} onClick={copy}>
+    <button type="button" className="btn ghost sm mono" style={{ padding: "0 2px" }} title={`${value} - click to copy`} onClick={copy}>
       {copied ? "copied" : shortAddr(value)}
       {label ? <span className="muted"> · {label}</span> : null}
     </button>
@@ -113,7 +113,7 @@ export function TxLine({
       {outcome && !outcome.agreed && (
         <div className="notice warn">
           <strong>No consensus</strong> (<span className="mono">{outcome.consensus}</span>). The validators did not
-          agree, so the change was rolled back and nothing is recorded. It is safe to try again — a different
+          agree, so the change was rolled back and nothing is recorded. It is safe to try again - a different
           validator set may be drawn.
         </div>
       )}
@@ -129,6 +129,6 @@ export function explainError(e: unknown): string {
   const msg = String((e as { shortMessage?: string; message?: string })?.shortMessage ?? (e as Error)?.message ?? e);
   if (/user (rejected|denied)/i.test(msg)) return "You declined the request in your wallet.";
   if (/insufficient funds/i.test(msg)) return "This account has no GEN to pay for the transaction.";
-  if (/not valid JSON|DOCTYPE/i.test(msg)) return "The network gateway returned an error page. This is usually momentary — try again.";
+  if (/not valid JSON|DOCTYPE/i.test(msg)) return "The network gateway returned an error page. This is usually momentary - try again.";
   return msg.length > 220 ? `${msg.slice(0, 220)}…` : msg;
 }

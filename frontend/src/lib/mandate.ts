@@ -209,7 +209,7 @@ export function mandateNotices(m: Json): string[] {
   const judgments = rules.filter((r) => isObj(r) && r.type === "judgment");
   return judgments.length
     ? []
-    : ["This mandate has no judgment rules. Every rule in it is arithmetic a plain smart contract would evaluate faster and cheaper — Remit will register it, but it isn't buying you anything."];
+    : ["This mandate has no judgment rules. Every rule in it is arithmetic a plain smart contract would evaluate faster and cheaper - Remit will register it, but it isn't buying you anything."];
 }
 
 // -------------------------------------------------------------- templates

@@ -90,14 +90,32 @@ export async function previewSpend(
   return parseLossless<Preview>(raw);
 }
 
+/**
+ * Two receipt shapes exist in the wild, and they spell the same facts
+ * differently:
+ *
+ *   Studio (older gateway)   result_name: MAJORITY_AGREE
+ *                            consensus_data.leader_receipt[0].result.status: return
+ *   Bradbury (SDK 1.1.8)     resultName: AGREE
+ *                            txExecutionResultName: FINISHED_WITH_RETURN
+ *
+ * Both are read here, so nothing else in the app has to know. Left unhandled,
+ * every Bradbury transaction would read as "no consensus".
+ */
 function interpret(hash: string, receipt: unknown): TxOutcome {
   const r = receipt as {
     result_name?: string;
+    resultName?: string;
+    txExecutionResultName?: string;
     data?: { contract_address?: string };
+    txDataDecoded?: { contractAddress?: string };
     consensus_data?: { leader_receipt?: { result?: { status?: string } }[] };
   };
-  const consensus = r?.result_name ?? "UNKNOWN";
-  const leaderStatus = r?.consensus_data?.leader_receipt?.[0]?.result?.status ?? "unknown";
+  const consensus = r?.result_name ?? r?.resultName ?? "UNKNOWN";
+  const exec = r?.txExecutionResultName ?? "";
+  const leaderStatus =
+    r?.consensus_data?.leader_receipt?.[0]?.result?.status ??
+    (/RETURN/.test(exec) ? "return" : /ERROR|ROLLBACK/.test(exec) ? "contract_error" : exec || "unknown");
   const agreed = /AGREE/.test(consensus) && !/DISAGREE/.test(consensus);
   return {
     hash,
@@ -106,7 +124,7 @@ function interpret(hash: string, receipt: unknown): TxOutcome {
     agreed,
     applied: agreed && leaderStatus === "return",
     refused: agreed && leaderStatus === "contract_error",
-    address: r?.data?.contract_address,
+    address: r?.data?.contract_address ?? r?.txDataDecoded?.contractAddress,
   };
 }
 

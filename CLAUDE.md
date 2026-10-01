@@ -1,4 +1,4 @@
-# CLAUDE.md — Remit project memory
+# CLAUDE.md - Remit project memory
 
 Read this before writing contract code. Most entries here were **measured on a
 live network**, not inferred from documentation, and several describe failures
@@ -6,11 +6,11 @@ that are invisible in code review and that a passing integration test will not
 reveal.
 
 Canonical references, in this order:
-1. [docs.genlayer.com](https://docs.genlayer.com) — protocol and SDK
+1. [docs.genlayer.com](https://docs.genlayer.com) - protocol and SDK
 2. [skills.genlayer.com](https://skills.genlayer.com) → `genlayerlabs/skills`,
    plugin `genlayer-dev` (`write-contract`, `genvm-lint`, `direct-tests`,
    `integration-tests`, `genlayer-cli`) and `genlayer-docs`
-3. [genlayer.com](https://genlayer.com) — positioning and ecosystem
+3. [genlayer.com](https://genlayer.com) - positioning and ecosystem
 
 ---
 
@@ -26,7 +26,7 @@ owned account. Measured on Studio: the sender is debited, the wallet is credited
 nothing, the value is destroyed, and the transaction reports ACCEPTED.
 
 Every payout is `owed[address] += amount` plus a `withdraw()` the recipient
-calls. Vendor payouts, refunds, bond returns, slash proceeds — no exceptions.
+calls. Vendor payouts, refunds, bond returns, slash proceeds - no exceptions.
 
 > Test: `test_no_emit_transfer_in_contract_source` greps the **built** source.
 
@@ -74,7 +74,7 @@ unknown address took a path from 600s to under 9s.
 ### 7. Accept both `str` and `Address` in views, and fail loudly otherwise
 
 A `CalldataAddress` passed where a `str` key was expected returned **0** with no
-error — a check that could not fail, mistaken for evidence. The same lookup
+error - a check that could not fail, mistaken for evidence. The same lookup
 returned `0.875` as a string and `0.000` as a `CalldataAddress`.
 
 `_lookup_key()` accepts `str | Address` and raises on anything else. Never
@@ -95,7 +95,7 @@ binary search over the module to find.
 ### 9. There is no transfer primitive on `gl.advanced`
 
 Introspected on the live runner: `gl.advanced` has only `emit_raw_event`,
-`gl_call`, `user_error_immediate`. `gl.public` has only `view` and `write` —
+`gl_call`, `user_error_immediate`. `gl.public` has only `view` and `write` -
 **no `payable`**. `gl.wasi` has only `get_balance` / `get_self_balance`, both
 read-only.
 
@@ -111,14 +111,14 @@ destroy anything.
 
 ### 10. A leader's value reaches the validator as a wrapper object
 
-Not a `str`, not a `dict`. Established with a per-predicate consensus readout —
+Not a `str`, not a `dict`. Established with a per-predicate consensus readout -
 each probe method returned one boolean and agree/disagree was the bit:
 
 | probe | result |
 | --- | --- |
-| `isinstance(x, str)` | disagree — it is **not** a string |
+| `isinstance(x, str)` | disagree - it is **not** a string |
 | `len(str(x)) > 0` | agree |
-| `"verified" in str(x)` | agree — the payload **is** in `str(x)` |
+| `"verified" in str(x)` | agree - the payload **is** in `str(x)` |
 
 A decoder that gives up on anything not already `dict`/`bytes`/`str` sees
 nothing, returns `{}`, and the validator rejects a correct verdict. Every
@@ -135,7 +135,7 @@ The leader's own status reads `return` even when the validators disagree and
 the state change is rolled back. Only `result_name` (`MAJORITY_AGREE` vs
 `MAJORITY_DISAGREE`) says whether anything actually happened. A walkthrough that
 checks the leader's status will report success on a transaction that changed
-nothing — this is hard law 3 wearing a disguise.
+nothing - this is hard law 3 wearing a disguise.
 
 ### 12. The validator re-answers the question; it does not grade the answer
 
@@ -147,9 +147,9 @@ different models per transaction.
 Re-answering a narrow, well-specified question is far more determinate. The
 split is:
 
-- **deterministic evidence** (the artifact's hash-checked state) — compared
+- **deterministic evidence** (the artifact's hash-checked state) - compared
   **exactly**; the validator fetched it itself, so a leader cannot lie about it;
-- **the judgement** — the validator answers the same question from its own
+- **the judgement** - the validator answers the same question from its own
   evidence, and agrees if the verdicts match, or if its own answer is
   `undetermined` (a validator that is itself unsure does not veto a colleague
   who reached a definite answer; two opposite *definite* answers is a real
@@ -169,8 +169,8 @@ is sandboxed and its closure is pickled. Cast every captured value with `str()`
 ### 14. Aggregates hide shape
 
 A jury given only totals returned an incoherent verdict and the other
-validators correctly refused it. Facts must carry the **sequence** — each prior
-payment, its amount, recipient and age — not just the sums.
+validators correctly refused it. Facts must carry the **sequence** - each prior
+payment, its amount, recipient and age - not just the sums.
 
 ### 15. State the enum mapping in every prompt
 
@@ -207,10 +207,10 @@ A guard with no such test is decoration. This is how #7 was caught.
 
 | | Studio | Testnet |
 | --- | --- | --- |
-| Faucet | `sim_fundAccount` — address + **wei as a raw JSON integer** | n/a |
-| Reason strings | yes | no — plan for opaque refusals |
+| Faucet | `sim_fundAccount` - address + **wei as a raw JSON integer** | n/a |
+| Reason strings | yes | no - plan for opaque refusals |
 | Gas | generous | per-transaction ceiling well under the block limit; cap the proxy |
-| Pubdata | generous | limited — deploy the **minified** build |
+| Pubdata | generous | limited - deploy the **minified** build |
 | Codeless view call | hangs to the 600s leader timeout | refuses in 7–14s |
 | Rate limiting | occasional HTML gateway pages surfacing as JSON parse errors | `-32005` |
 
@@ -221,7 +221,7 @@ network defect. Check guard ordering before blaming the network.
 
 ## Conventions
 
-- **Integers only.** All amounts in the smallest unit. No floats anywhere —
+- **Integers only.** All amounts in the smallest unit. No floats anywhere -
   not in the engine, not in tests, not in fixtures.
 - **Build, do not hand-edit.** `contracts/build/` is generated. Edit
   `remit_core.py`, `remit_prompts.py` or `contract_shell.py` and rebuild.
@@ -229,7 +229,7 @@ network defect. Check guard ordering before blaming the network.
   network, calls no LLM. If a decision can be made deterministically, it lives
   there and is tested in milliseconds.
 - **One guard instance per agent.** Factory-deployed. There is no shared-instance
-  path — a shared instance reintroduces head-of-line blocking (T6).
+  path - a shared instance reintroduces head-of-line blocking (T6).
 - **Keys never enter the repository.** Deployment keys live outside the working
   tree, `chmod 600`. `*.key` and `keys/` are in `.gitignore`.
 - **The clock is `datetime.datetime.now()`.** GenVM makes it deterministic;
@@ -247,7 +247,7 @@ Pin the GenVM runner. Do not float it.
 
 This hash is carried from prior working contracts in this codebase's lineage.
 **Re-verify it against the current `genlayer-dev` skill before the first
-deployment** — pins move, and a stale pin fails at deploy time rather than at
+deployment** - pins move, and a stale pin fails at deploy time rather than at
 lint time.
 
 ## Commands
@@ -271,7 +271,7 @@ A change is done when:
 1. `genvm-lint` is clean on the built source.
 2. Direct-mode tests pass, including the structural ones.
 3. Every new guard has a test that fails when the guard is removed.
-4. If behaviour changed on chain, a **transaction hash** demonstrates it — a
+4. If behaviour changed on chain, a **transaction hash** demonstrates it - a
    deployment alone proves nothing.
 5. The README and `PLAN.md` reflect reality, including what is still broken.
 

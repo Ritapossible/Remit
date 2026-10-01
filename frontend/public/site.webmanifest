@@ -1,0 +1,14 @@
+{
+  "name": "Remit",
+  "short_name": "Remit",
+  "description": "Spending authority for AI agents, on GenLayer.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#03222e",
+  "icons": [
+    { "src": "brand/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "brand/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "brand/logo-mark.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

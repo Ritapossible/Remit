@@ -108,7 +108,7 @@ def build_verdict_prompt(
     parts.append("")
     parts.append(
         'Use "undetermined" only when the facts above are genuinely silent on '
-        "the rule — not merely because no artifact was supplied, and not "
+        "the rule - not merely because no artifact was supplied, and not "
         "because the question is a judgement call. Judgement is what you are "
         "here for. If the facts show the pattern the rule describes, say so."
     )
@@ -120,7 +120,7 @@ def build_defensibility_prompt(*, ask, facts_lines, artifact_state, artifact_tex
 
     Five validators run five different models. Demanding that independently
     prompted models return an identical judgement makes consensus fail on
-    exactly the questions this product exists to answer — measured on Studio,
+    exactly the questions this product exists to answer - measured on Studio,
     where a leader's "undetermined" drew three disagreements and the state
     change was rolled back.
 
@@ -164,7 +164,7 @@ def build_defensibility_prompt(*, ask, facts_lines, artifact_state, artifact_tex
     parts.append(
         "You are not being asked whether you would have written the same "
         "answer. You are being asked whether that answer is defensible on this "
-        "record — whether a careful reader applying this rule to these facts "
+        "record - whether a careful reader applying this rule to these facts "
         "could reach it. Reject it only if the record contradicts it."
     )
     parts.append("")

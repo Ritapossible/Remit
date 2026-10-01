@@ -41,7 +41,7 @@ def test_daily_total_includes_the_spend_being_evaluated():
 
 
 def test_window_is_half_open_so_an_edge_spend_falls_out():
-    """``(now - seconds, now]`` — a spend exactly ``seconds`` ago is outside."""
+    """``(now - seconds, now]`` - a spend exactly ``seconds`` ago is outside."""
     exactly_a_day = [spend(50000, at=T0 - core.DAY_SECONDS)]
     just_inside = [spend(50000, at=T0 - core.DAY_SECONDS + 1)]
     assert ev("daily_total_lte", 10000, spend(5000), exactly_a_day) is True

@@ -1,10 +1,10 @@
 export function shortAddr(addr: string | undefined, head = 6, tail = 4): string {
-  if (!addr) return "—";
+  if (!addr) return "-";
   return addr.length <= head + tail + 2 ? addr : `${addr.slice(0, head)}…${addr.slice(-tail)}`;
 }
 
 export function shortHash(h: string | undefined): string {
-  return h ? `${h.slice(0, 10)}…${h.slice(-6)}` : "—";
+  return h ? `${h.slice(0, 10)}…${h.slice(-6)}` : "-";
 }
 
 export function duration(seconds: number): string {

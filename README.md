@@ -1,3 +1,7 @@
+<p>
+  <img src="frontend/public/brand/logo.svg" alt="Remit" height="56" />
+</p>
+
 # Remit
 
 **Spending authority for AI agents.**
@@ -26,7 +30,7 @@ Code can enforce a budget. Code cannot enforce a brief:
 | **"These three payments are one purchase split to stay under the cap"** | **Nothing on-chain today.** |
 
 The bottom four are why people cap agent budgets at amounts too small to be
-useful. No amount of Solidity reaches them. They are not thresholds — they are
+useful. No amount of Solidity reaches them. They are not thresholds - they are
 readings of intent against a written mandate, which is exactly what GenLayer's
 Optimistic Democracy adjudicates.
 
@@ -35,7 +39,7 @@ of rule, each with the machinery it actually needs.
 
 ## The design in one screen
 
-A principal registers an agent under a **mandate** — a versioned, digest-pinned
+A principal registers an agent under a **mandate** - a versioned, digest-pinned
 ruleset. Every rule is typed.
 
 ```
@@ -81,12 +85,12 @@ monitor shape cannot have:
 
 A halt-style module that acts on a provisional verdict has wrongly paused a live
 protocol if the appeal reverses it. Remit withholding an authorization on a
-provisional verdict costs nothing if the appeal reverses it — no value moved in
+provisional verdict costs nothing if the appeal reverses it - no value moved in
 either direction. So Remit binds on **round acceptance**, not on finality,
 without taking on the risk that forces alarm-shaped designs to wait.
 
-Remit holds no funds at all. It decides; a rail — a treasury contract, a card
-program, an agent framework's wallet — reads `authorization_of(spend_id)` and
+Remit holds no funds at all. It decides; a rail - a treasury contract, a card
+program, an agent framework's wallet - reads `authorization_of(spend_id)` and
 settles. See `docs/ARCHITECTURE.md` §6 for why that was measured, not chosen.
 
 ## Graduated authority
@@ -129,7 +133,7 @@ freezing and bond slashing are on the [roadmap](PLAN.md).
 | Mutation | 20 mutants, 20 killed |
 
 Every scenario ran as a real transaction, and every assertion is on resulting
-state and on the consensus outcome (`result_name`) — never on a transaction
+state and on the consensus outcome (`result_name`) - never on a transaction
 merely being accepted:
 
 - a small allowlisted payment **settles in the same transaction**, no jury;
@@ -158,12 +162,22 @@ A full product site ships with the contract, in `frontend/`:
 | --- | --- |
 | **Product** | What Remit is, with a live case read from the reference guard |
 | **App** | Read a guard's mandate and docket, open cases, request spends, create guards |
-| **Docs** | Getting started, concepts, integration, mandate format, threat model, GenVM field notes — rendered from `docs/` |
+| **Docs** | Getting started, concepts, integration, mandate format, threat model, GenVM field notes - rendered from `docs/` |
 | **Roadmap** | Generated from `PLAN.md`, so it can't claim progress the plan doesn't record |
 
 On Studio you can try everything without a wallet: **Studio burner** creates a
 key in your browser and funds it from Studio's faucet. On the testnet, connect
 MetaMask.
+
+### Hosting on Vercel
+
+Import the repository in Vercel and keep the **Root Directory as the repository
+root**. `vercel.json` sets the install and build commands and the output folder;
+no other settings or environment variables are needed. The app reads files from
+outside `frontend/` (the deployed contract, `docs/`, `PLAN.md`), which is why it
+builds from the root.
+
+### Local development
 
 ```bash
 cd frontend
@@ -177,7 +191,7 @@ npm run build
 
 ```
 contracts/          Intelligent Contract sources (built, not hand-edited)
-  remit_core.py     deterministic engine — pure Python, no chain, no LLM
+  remit_core.py     deterministic engine - pure Python, no chain, no LLM
   remit_prompts.py  prompt construction, isolated and separately testable
   contract_shell.py the chain layer: storage, entrypoints, consensus block
   build/remit.py    the exact artifact deployed (committed, so it can be checked)
@@ -187,17 +201,17 @@ tests/mutation_check.py   every guard must have a test that fails without it
 deploy/             deployment, on-chain walkthroughs, testnet readiness
 docs/               the documentation the site renders
 mandates/           standard rules and example mandates
-PLAN.md             phased plan — the roadmap page is generated from it
+PLAN.md             phased plan - the roadmap page is generated from it
 CLAUDE.md           project memory: hard constraints, conventions, commands
 .github/workflows/  CI on every push; site published from main
 ```
 
 ## Built with
 
-- [GenLayer docs](https://docs.genlayer.com) — protocol and SDK reference
-- [GenLayer Skills](https://skills.genlayer.com) — `genlayer-dev` (contract
+- [GenLayer docs](https://docs.genlayer.com) - protocol and SDK reference
+- [GenLayer Skills](https://skills.genlayer.com) - `genlayer-dev` (contract
   authoring, `genvm-lint`, direct and integration tests) and `genlayer-docs`
-- [GenLayer Studio](https://studio.genlayer.com) — hosted development network
+- [GenLayer Studio](https://studio.genlayer.com) - hosted development network
 
 ## License
 

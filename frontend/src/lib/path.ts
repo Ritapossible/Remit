@@ -3,7 +3,7 @@ import type { MandateInfo } from "./mandate";
 
 export type Path = "none" | "reflex" | "jury" | "override" | "deadline" | "pending";
 
-/** How a spend was decided — the product's thesis in one word per row. */
+/** How a spend was decided - the product's thesis in one word per row. */
 export function pathOf(s: SpendView, m: MandateInfo | null): { path: Path; rule?: string } {
   const rule = s.rules[0];
   const kind = m?.rules.find((r) => r.id === rule)?.type;
@@ -17,7 +17,7 @@ export function pathOf(s: SpendView, m: MandateInfo | null): { path: Path; rule?
 }
 
 export const PATH_TEXT: Record<Path, string> = {
-  none: "Cleared — no rule fired",
+  none: "Cleared - no rule fired",
   reflex: "Refused by arithmetic",
   jury: "Decided by the jury",
   override: "Principal override",

@@ -4,7 +4,7 @@
 // only that consensus agreed; consensus agreeing on a refusal is a network
 // success and a spend refusal (hard law 3).
 import fs from "node:fs";
-import { clientFor, accountFor, retry } from "./lib.mjs";
+import { clientFor, accountFor, retry, outcome, WAIT } from "./lib.mjs";
 
 const network = process.argv[2] || "studio";
 const { address } = JSON.parse(fs.readFileSync("deployments.json", "utf8"))[network];
@@ -22,14 +22,12 @@ async function send(client, functionName, args, label) {
   const hash = await retry(label, () =>
     client.writeContract({ address, functionName, args, value: 0n }), 4);
   const r = await retry(`${label} receipt`, () =>
-    client.waitForTransactionReceipt({ hash, status: "FINALIZED", retries: 300, interval: 2500 }), 4);
+    client.waitForTransactionReceipt({ hash, status: WAIT, retries: 300, interval: 2500 }), 4);
   // The leader's own status reads "return" even when the validators disagree
-  // and the state change is rolled back. result_name is the consensus outcome
-  // and is the only one that says whether anything actually happened.
-  const st = r?.consensus_data?.leader_receipt?.[0]?.result?.status ?? "?";
-  const consensus = r?.result_name ?? "?";
-  txs.push({ label, hash, leader: st, consensus });
-  return { hash, st, consensus };
+  // and the state change is rolled back; outcome() reads the consensus result.
+  const o = outcome(r);
+  txs.push({ label, hash, leader: o.leader, consensus: o.consensus });
+  return { hash, st: o.leader, consensus: o.consensus, agreed: o.agreed };
 }
 
 async function spendOf(id) {
@@ -49,7 +47,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 console.log(`contract ${address} on ${network}\n`);
 
 // --- 1: clears instantly, no jury ----------------------------------------
-console.log("[1] small allowlisted spend — must settle in the same transaction");
+console.log("[1] small allowlisted spend - must settle in the same transaction");
 await send(agent, "request_spend", [vendorA, GEN(0.05), "media", "", "", "stock photo for the Q4 banner"], "spend#0");
 let s = await spendOf(0);
 check("state", s.state, "settled");
@@ -58,7 +56,7 @@ check("rules fired", JSON.stringify(s.rules), "[]");
 check("no jury convened (verdict empty)", s.verdict === "", true);
 
 // --- 2: refused in-transaction, no jury ----------------------------------
-console.log("\n[2] spend to a dropped vendor — must be refused by arithmetic");
+console.log("\n[2] spend to a dropped vendor - must be refused by arithmetic");
 await send(agent, "request_spend", [DROPPED, GEN(0.05), "media", "", "", "agency retainer"], "spend#1");
 s = await spendOf(1);
 check("state", s.state, "refused");
@@ -66,8 +64,8 @@ check("authorization", s.authorization, "refused");
 check("rule that refused it", JSON.stringify(s.rules), '["allowlist"]');
 check("no jury convened", s.verdict === "", true);
 
-// --- 3: structuring — the scenario the product exists for -----------------
-console.log("\n[3] structuring — payments that clear every threshold");
+// --- 3: structuring - the scenario the product exists for -----------------
+console.log("\n[3] structuring - payments that clear every threshold");
 await send(agent, "request_spend", [vendorA, GEN(0.15), "media", "", "", "campaign asset 1"], "spend#2");
 let e2 = await spendOf(2);
 check("spend#2 settles (2nd in window)", e2.state, "settled");
@@ -81,8 +79,8 @@ check("trigger that fired", JSON.stringify(s.rules), '["structuring"]');
 // never moved value must not count against a later one.
 check("refused spend did not count toward the window", s.rules.includes("structuring"), true);
 
-// --- 4: T9 — cannot adjudicate before the agent has had its window -------
-console.log("\n[4] T9 — adjudicating inside the response window must be refused");
+// --- 4: T9 - cannot adjudicate before the agent has had its window -------
+console.log("\n[4] T9 - adjudicating inside the response window must be refused");
 const early = await send(principal, "adjudicate", [3], "adjudicate-early");
 check("refused while foreclosed", early.st, "contract_error");
 check("still held, nothing decided", (await spendOf(3)).state, "held");
@@ -91,17 +89,17 @@ console.log("\n    waiting out the 60s response window...");
 await sleep(65000);
 
 // --- 5: the jury decides -------------------------------------------------
-console.log("\n[5] adjudicate — the jury answers what no threshold can");
+console.log("\n[5] adjudicate - the jury answers what no threshold can");
 const adj = await send(principal, "adjudicate", [3], "adjudicate");
 s = await spendOf(3);
 console.log(`    verdict=${s.verdict} reason=${s.reason} confidence=${s.confidence} artifact=${s.artifact}`);
-check("consensus reached (not rolled back)", adj.consensus, "MAJORITY_AGREE");
+check(`consensus reached (${adj.consensus})`, adj.agreed, true);
 check("a verdict was recorded", s.verdict !== "", true);
 check("case resolved", ["settled", "refused"].includes(s.state), true);
 check("authorization decided", ["authorized", "refused"].includes(s.authorization), true);
 
 // --- 6: the principal always outranks Remit ------------------------------
-console.log("\n[6] override — the principal lifts a live hold in one transaction");
+console.log("\n[6] override - the principal lifts a live hold in one transaction");
 await send(agent, "request_spend", [vendorA, GEN(0.15), "media", "", "", "campaign asset 3"], "spend#4");
 let held = await spendOf(4);
 check("spend#4 held by the trigger", held.state, "held");

@@ -424,7 +424,7 @@ def settle_hold(*, escrow, committed, outcome, vendor, principal):
     Hard law 1: Remit never takes custody and never moves value. This returns
     who is owed what; a settlement rail acts on it. The proxy transfer
     primitive in the runner is a contract-to-contract call, which is precisely
-    why value routed through it to an externally owned account is destroyed —
+    why value routed through it to an externally owned account is destroyed -
     a gate that holds nothing cannot destroy anything.
 
     Hard law 2: the amounts must match exactly. An inequality here is satisfied
@@ -551,14 +551,14 @@ def validate_mandate(mandate, *, stored_version, max_tier):
     if not isinstance(mandate, dict):
         return ["mandate: expected an object"]
 
-    # 1 — version must strictly increase (T5).
+    # 1 - version must strictly increase (T5).
     version = mandate.get("version")
     if isinstance(version, bool) or not isinstance(version, int):
         bad("version: expected int")
     elif version <= stored_version:
         bad("version: %r does not exceed stored version %r" % (version, stored_version))
 
-    # 5 — every default is mandatory. An unstated default is a decision
+    # 5 - every default is mandatory. An unstated default is a decision
     # nobody made.
     defaults = mandate.get("defaults")
     if not isinstance(defaults, dict):
@@ -615,7 +615,7 @@ def validate_mandate(mandate, *, stored_version, max_tier):
         rule_id = rule.get("id")
         if not isinstance(rule_id, str) or rule_id == "":
             bad("%s.id: expected a non-empty string" % where)
-        elif rule_id in seen:  # 2 — no duplicate ids
+        elif rule_id in seen:  # 2 - no duplicate ids
             bad("%s.id: duplicate rule id %r" % (where, rule_id))
         else:
             seen.add(rule_id)
@@ -627,8 +627,8 @@ def validate_mandate(mandate, *, stored_version, max_tier):
 
         key = "check" if rule_type == RULE_REFLEX else "when"
         try:
-            # 3 — predicates must be inside the v1 vocabulary, and
-            # 7 — operands must be non-negative ints where ints are expected.
+            # 3 - predicates must be inside the v1 vocabulary, and
+            # 7 - operands must be non-negative ints where ints are expected.
             name, operand = sole_predicate(rule.get(key), "%s.%s" % (where, key))
             if name not in PREDICATES:
                 bad("%s.%s: predicate %r is outside the v1 vocabulary" % (where, key, name))
@@ -639,7 +639,7 @@ def validate_mandate(mandate, *, stored_version, max_tier):
             elif name in PREDICATES_WINDOW_COUNT:
                 _window_operand(operand, "count", "%s.%s.%s" % (where, key, name))
             elif name in PREDICATES_LIST_NAME:
-                # 4 — a referenced vendor list must be defined.
+                # 4 - a referenced vendor list must be defined.
                 list_name = _require_str(operand, "%s.%s" % (where, key))
                 if list_name not in vendor_lists:
                     bad("%s.%s: vendor list %r is not defined" % (where, key, list_name))
@@ -657,7 +657,7 @@ def validate_mandate(mandate, *, stored_version, max_tier):
                 bad("%s.on_breach: expected an object with 'tier'" % where)
             else:
                 try:
-                    # 6 — a rule may not request more authority than granted.
+                    # 6 - a rule may not request more authority than granted.
                     tier = _require_int(on_breach["tier"], "%s.on_breach.tier" % where)
                     if tier > max_tier:
                         bad(
