@@ -1,8 +1,9 @@
 name: Publish site
 
+# The site is hosted on Vercel (vercel.json). This GitHub Pages workflow is
+# kept as an alternative and runs only when started by hand, after Pages is
+# set to "GitHub Actions" in the repository settings.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
