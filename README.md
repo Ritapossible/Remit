@@ -171,11 +171,15 @@ MetaMask.
 
 ### Hosting on Vercel
 
-Import the repository in Vercel and keep the **Root Directory as the repository
-root**. `vercel.json` sets the install and build commands and the output folder;
-no other settings or environment variables are needed. The app reads files from
-outside `frontend/` (the deployed contract, `docs/`, `PLAN.md`), which is why it
-builds from the root.
+Import the repository in Vercel and deploy. Either Root Directory works:
+
+- **Repository root** uses `vercel.json`.
+- **`frontend`** (Vercel's suggestion) uses `frontend/vercel.json`.
+
+No environment variables are needed. The app reads files outside `frontend/`
+(the deployed contract, `docs/`, `PLAN.md`). With `frontend` as the root, keep
+Vercel's "Include files outside the root directory in the Build Step" setting
+on. It is on by default.
 
 ### Local development
 
