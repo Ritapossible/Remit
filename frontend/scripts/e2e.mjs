@@ -168,11 +168,30 @@ await shot("07-case-verdict");
 
 // ----------------------------------------------------------------- mobile
 console.log("\n[layout] phone width");
+// Every page, not just the landing page: docs carry code and tables that can
+// widen a column past the screen.
+const base = BASE + "/";
+const g = `?guard=${REF}`;
+const phonePages = [
+  "#/", "#/roadmap",
+  "#/docs/getting-started", "#/docs/integration", "#/docs/architecture",
+  "#/docs/mandate-format", "#/docs/threat-model", "#/docs/genvm-notes",
+  `#/app${g}`, `#/app/docket${g}`, `#/app/case/1${g}`, `#/app/spend${g}`, `#/app/new${g}`,
+];
+for (const width of [390, 360]) {
+  await page.setViewportSize({ width, height: 844 });
+  const wide = [];
+  for (const route of phonePages) {
+    await page.goto(base + route);
+    await page.waitForTimeout(700);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    if (overflow > 1) wide.push(`${route} +${overflow}px`);
+  }
+  check(`no horizontal page scroll at ${width}px on ${phonePages.length} pages`, wide.length === 0, wide.join(", "));
+}
 await page.setViewportSize({ width: 390, height: 844 });
-await page.goto(page.url().replace(/#.*$/, "#/"));
+await page.goto(base + "#/");
 await waitText("only what you");
-const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-check("no horizontal page scroll at 390px", overflow <= 1, `${overflow}px`);
 await shot("08-mobile");
 
 check("no uncaught page errors", consoleErrors.length === 0, consoleErrors.slice(0, 2).join(" | "));
