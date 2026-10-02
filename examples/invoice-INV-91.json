@@ -1,0 +1,18 @@
+{
+  "document": "invoice",
+  "invoice_number": "INV-91",
+  "issued": "2026-10-02",
+  "vendor": "Northlight Studio",
+  "vendor_address": "0x3F55971f7fd2594A90871Db489fBb82f1DB4d747",
+  "bill_to": "Campaign agent, Remit demo principal",
+  "order_reference": "PO-5521",
+  "lines": [
+    { "description": "30-second product video, final cut with two revision rounds", "quantity": 1, "unit_price_gen": "0.30", "total_gen": "0.30" }
+  ],
+  "total_gen": "0.30",
+  "payments_received": [
+    { "amount_gen": "0.15", "note": "payment 1" },
+    { "amount_gen": "0.15", "note": "payment 2" }
+  ],
+  "balance_due_gen": "0.00"
+}

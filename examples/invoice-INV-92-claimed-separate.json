@@ -1,0 +1,21 @@
+{
+  "document": "invoices",
+  "vendor": "Northlight Studio",
+  "statement": "These are two separate, unrelated orders placed independently. Each was within budget on its own.",
+  "invoices": [
+    {
+      "invoice_number": "INV-92A",
+      "issued": "2026-10-02",
+      "order_reference": "PO-5530",
+      "lines": [{ "description": "Banner set, 6 sizes", "quantity": 1, "total_gen": "0.15" }],
+      "total_gen": "0.15"
+    },
+    {
+      "invoice_number": "INV-92B",
+      "issued": "2026-10-02",
+      "order_reference": "PO-5531",
+      "lines": [{ "description": "Banner set, 6 sizes", "quantity": 1, "total_gen": "0.15" }],
+      "total_gen": "0.15"
+    }
+  ]
+}
