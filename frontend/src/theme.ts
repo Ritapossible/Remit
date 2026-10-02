@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { appKit, themeVariablesFor } from "./chain/appkit";
 
 export type Theme = "light" | "dark";
 const KEY = "remit.theme";
@@ -21,6 +22,9 @@ export function useTheme(): [Theme, () => void] {
   });
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    // The wallet modal follows the site's theme.
+    appKit?.setThemeMode(theme);
+    appKit?.setThemeVariables(themeVariablesFor(theme));
   }, [theme]);
   const toggle = () =>
     setTheme((t) => {

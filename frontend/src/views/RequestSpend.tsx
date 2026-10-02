@@ -8,7 +8,7 @@ import { sameAddr } from "../lib/format";
 import { Addr, Badge, Empty, Gen, Spinner, TxLine, explainError } from "../components/ui";
 
 export function RequestSpend() {
-  const { client, guard, mandate, wallet, network, pollMs, reloadMandate } = useApp();
+  const { client, guard, mandate, wallet, network, pollMs, reloadMandate, canSign } = useApp();
   const members = useMemo(() => {
     const out: { list: string; addr: string }[] = [];
     for (const [list, addrs] of Object.entries(mandate?.vendor_lists ?? {})) for (const a of addrs) out.push({ list, addr: a });
@@ -185,7 +185,7 @@ export function RequestSpend() {
               <input value={claim} onChange={(e) => setClaim(e.target.value)} placeholder="e.g. invoice INV-88, part 3 of 3" />
             </label>
             <div>
-              <button className="btn primary" disabled={!isAgent || pending || !recipientOk || !!amountErr || !evidenceOk} onClick={submit}>
+              <button className="btn primary" disabled={!canSign || !isAgent || pending || !recipientOk || !!amountErr || !evidenceOk} onClick={submit}>
                 {pending ? <Spinner /> : null} Request authorization
               </button>
               {uri && !digest && <span className="hint" style={{ marginLeft: 10 }}>Pin the digest before sending.</span>}

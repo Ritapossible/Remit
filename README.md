@@ -166,8 +166,11 @@ A full product site ships with the contract, in `frontend/`:
 | **Roadmap** | Generated from `PLAN.md`, so it can't claim progress the plan doesn't record |
 
 On Studio you can try everything without a wallet: **Studio burner** creates a
-key in your browser and funds it from Studio's faucet. On the testnet, connect
-MetaMask.
+key in your browser and funds it from Studio's faucet. To use your own wallet,
+choose **Connect wallet**: [Reown AppKit](https://reown.com/appkit) lists browser
+and mobile wallets (WalletConnect). If your wallet is on another chain, the app
+asks it to switch to the network you picked, and shows a banner until it does.
+Nothing can be signed on the wrong network.
 
 ### Hosting on Vercel
 
@@ -176,7 +179,19 @@ Import the repository in Vercel and deploy. Either Root Directory works:
 - **Repository root** uses `vercel.json`.
 - **`frontend`** (Vercel's suggestion) uses `frontend/vercel.json`.
 
-No environment variables are needed. The app reads files outside `frontend/`
+Set one environment variable for wallet connection:
+
+| Variable | Value |
+| --- | --- |
+| `VITE_REOWN_PROJECT_ID` | A project ID from [dashboard.reown.com](https://dashboard.reown.com) |
+
+In the Reown dashboard, add your site's domain (for example
+`remit-v1.vercel.app`) to the project's allowed domains, or mobile wallets
+cannot connect. Redeploy after setting the variable: Vite reads it at build
+time. Without it the site still works, and **Connect wallet** falls back to a
+wallet extension in the browser (no mobile wallets).
+
+The app reads files outside `frontend/`
 (the deployed contract, `docs/`, `PLAN.md`). With `frontend` as the root, keep
 Vercel's "Include files outside the root directory in the Build Step" setting
 on. It is on by default.

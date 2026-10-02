@@ -456,3 +456,11 @@ dl.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 /* Stacked cards get a gap; cards laid out by a grid must not, or the second
    column sits lower than the first. */
 .grid-2 > .card + .card, .case-grid > .card + .card { margin-top: 0; }
+
+/* ------------------------------------------------------------ wallet */
+
+.wallet-chip { gap: 8px; padding-left: 12px; padding-right: 14px; }
+.wallet-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.wallet-chip .dot.ok { background: #22a06b; }
+.wallet-chip .dot.bad { background: var(--refused); }
+.net-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 0 0 12px; }

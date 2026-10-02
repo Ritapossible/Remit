@@ -241,7 +241,7 @@ function ArtifactCard({ spend }: { spend: SpendView }) {
 }
 
 function Actions({ spend, onChange }: { spend: SpendView; onChange: () => Promise<void> }) {
-  const { client, guard, mandate, wallet, network, pollMs } = useApp();
+  const { client, guard, mandate, wallet, network, pollMs, canSign } = useApp();
   const now = useNow();
   const [pending, setPending] = useState(false);
   const [hash, setHash] = useState<string>();
@@ -331,7 +331,7 @@ function Actions({ spend, onChange }: { spend: SpendView; onChange: () => Promis
             </button>
             <button
               className="btn sm primary"
-              disabled={pending || !isSha256Hex(digest)}
+              disabled={pending || !canSign || !isSha256Hex(digest)}
               onClick={() => run("commit_artifact", [spend.id, uri.trim(), digest], "Evidence can only be committed while the spend is held.")}
             >
               Commit
@@ -351,7 +351,7 @@ function Actions({ spend, onChange }: { spend: SpendView; onChange: () => Promis
         </div>
         <button
           className="btn primary"
-          disabled={pending || wallet.kind === "none" || windowOpen}
+          disabled={pending || !canSign || windowOpen}
           onClick={() => run("adjudicate", [spend.id], "")}
         >
           {pending ? <Spinner /> : null} Adjudicate
@@ -368,17 +368,17 @@ function Actions({ spend, onChange }: { spend: SpendView; onChange: () => Promis
         <div className="row" style={{ marginBottom: 6 }}>
           {isPrincipal && (
             <>
-              <button className="btn" disabled={pending} onClick={() => run("override_release", [spend.id], "")}>
+              <button className="btn" disabled={pending || !canSign} onClick={() => run("override_release", [spend.id], "")}>
                 Release
               </button>
-              <button className="btn danger" disabled={pending} onClick={() => run("override_refuse", [spend.id], "")}>
+              <button className="btn danger" disabled={pending || !canSign} onClick={() => run("override_refuse", [spend.id], "")}>
                 Refuse
               </button>
               <span className="small muted">principal override · your key always outranks Remit</span>
             </>
           )}
           {pastDeadline && (
-            <button className="btn" disabled={pending || wallet.kind === "none"} onClick={() => run("resolve_deadline", [spend.id], "")}>
+            <button className="btn" disabled={pending || !canSign} onClick={() => run("resolve_deadline", [spend.id], "")}>
               Resolve at deadline
             </button>
           )}

@@ -15,7 +15,7 @@ const TEMPLATES = {
 } as const;
 
 export function NewGuard() {
-  const { client, wallet, network, pollMs, setGuard } = useApp();
+  const { client, wallet, network, pollMs, setGuard, canSign } = useApp();
   const me = wallet.kind === "none" ? "" : wallet.address;
   const [agent, setAgent] = useState("");
   const [tpl, setTpl] = useState<keyof typeof TEMPLATES>("campaign");
@@ -126,10 +126,13 @@ export function NewGuard() {
             </label>
 
             <div>
-              <button className="btn primary" disabled={!valid || pending || wallet.kind === "none" || !NETWORKS[network].deployable} onClick={deploy}>
+              <button className="btn primary" disabled={!valid || pending || !canSign || !NETWORKS[network].deployable} onClick={deploy}>
                 {pending ? <Spinner /> : null} Deploy guard on {NETWORKS[network].short}
               </button>
               {wallet.kind === "none" && <span className="hint" style={{ marginLeft: 10 }}>Connect a wallet first.</span>}
+              {wallet.kind !== "none" && !canSign && (
+                <span className="hint" style={{ marginLeft: 10 }}>Switch your wallet to {NETWORKS[network].short} first.</span>
+              )}
             </div>
           </div>
           <TxLine

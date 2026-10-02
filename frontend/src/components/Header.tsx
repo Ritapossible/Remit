@@ -3,14 +3,8 @@ import { APP_ROUTES, href, useApp, type Route } from "../state";
 import { useTheme } from "../theme";
 import { Close, Mark, Menu, Moon, Sun } from "./icons";
 import { NETWORKS, type NetworkId } from "../chain/networks";
-import {
-  balanceOf,
-  connectMetaMask,
-  createBurner,
-  forgetBurner,
-  fundOnStudio,
-  hasMetaMask,
-} from "../chain/wallet";
+import { balanceOf, createBurner, forgetBurner, fundOnStudio } from "../chain/wallet";
+import { networkIdOfChain } from "../chain/appkit";
 import { Addr, Gen, Spinner, explainError } from "./ui";
 
 const APP_TABS: { route: Route; label: string }[] = [
@@ -100,12 +94,60 @@ export function AppBar() {
           <WalletControl />
         </div>
       </div>
+      <NetworkBanner />
+    </div>
+  );
+}
+
+/** Shown while a connected wallet is on a different chain than the app. Writes
+ *  stay disabled until the wallet switches, or the app moves to the wallet's
+ *  GenLayer network. */
+function NetworkBanner() {
+  const { wallet, network, setNetwork, ext, walletOnNetwork } = useApp();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  if (wallet.kind !== "wallet" || walletOnNetwork) return null;
+  const want = NETWORKS[network];
+  const other = networkIdOfChain(wallet.chainId);
+  const on = other ? NETWORKS[other].label : wallet.chainId ? `chain ${wallet.chainId}` : "another network";
+  return (
+    <div className="wrap">
+      <div className="notice warn net-banner" role="alert">
+        <span>
+          Your wallet is on <strong>{on}</strong>. Switch it to <strong>{want.label}</strong> to sign here.
+        </span>
+        <span className="row">
+          <button
+            className="btn sm primary"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setErr("");
+              try {
+                await ext.switchTo(network);
+              } catch (e) {
+                setErr(explainError(e));
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {busy ? <Spinner /> : null} Switch to {want.short}
+          </button>
+          {other && (
+            <button className="btn sm" disabled={busy} onClick={() => setNetwork(other)}>
+              Use {NETWORKS[other].short} instead
+            </button>
+          )}
+        </span>
+        {err && <span className="small" style={{ color: "var(--refused)" }}>{err}</span>}
+      </div>
     </div>
   );
 }
 
 function WalletControl() {
-  const { network, wallet, setWallet } = useApp();
+  const { network, wallet, setWallet, ext, walletOnNetwork } = useApp();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [balance, setBalance] = useState<bigint | null>(null);
@@ -136,6 +178,17 @@ function WalletControl() {
     }
   };
 
+  const connectButton = (
+    <button
+      className="btn primary"
+      disabled={busy || ext.connecting || !ext.available}
+      title={ext.available ? "" : "No wallet found in this browser"}
+      onClick={() => run(ext.connect)}
+    >
+      {ext.connecting ? <Spinner /> : null} Connect wallet
+    </button>
+  );
+
   if (wallet.kind === "none") {
     return (
       <div className="row">
@@ -155,13 +208,27 @@ function WalletControl() {
             {busy ? <Spinner /> : null} Studio burner
           </button>
         )}
+        {connectButton}
+        {err && <span className="small" style={{ color: "var(--refused)" }}>{err}</span>}
+      </div>
+    );
+  }
+
+  if (wallet.kind === "wallet") {
+    return (
+      <div className="row">
         <button
-          className="btn primary"
-          disabled={busy || !hasMetaMask()}
-          title={hasMetaMask() ? "" : "MetaMask is not installed in this browser"}
-          onClick={() => run(async () => setWallet(await connectMetaMask(network)))}
+          className="btn wallet-chip"
+          onClick={() => (ext.via === "appkit" ? run(ext.manage) : undefined)}
+          title={ext.via === "appkit" ? "Account, network and disconnect" : wallet.name}
         >
-          Connect MetaMask
+          <span className={`dot ${walletOnNetwork ? "ok" : "bad"}`} aria-hidden />
+          <span className="small muted">{wallet.name}</span>
+          <Addr value={address} />
+          {walletOnNetwork && <span className="small">{balance === null ? "…" : <Gen atto={balance} />}</span>}
+        </button>
+        <button className="btn sm ghost" onClick={() => run(ext.disconnect)}>
+          Disconnect
         </button>
         {err && <span className="small" style={{ color: "var(--refused)" }}>{err}</span>}
       </div>
@@ -170,23 +237,22 @@ function WalletControl() {
 
   return (
     <div className="row">
-      <span className="small muted">{wallet.kind === "burner" ? "Studio burner" : "MetaMask"}</span>
+      <span className="small muted">Studio burner</span>
       <Addr value={address} />
       <span className="small">{balance === null ? "…" : <Gen atto={balance} />}</span>
-      {wallet.kind === "burner" && (
-        <button className="btn sm" disabled={busy} onClick={() => run(() => fundOnStudio(address))}>
-          {busy ? <Spinner /> : "Top up"}
-        </button>
-      )}
+      <button className="btn sm" disabled={busy} onClick={() => run(() => fundOnStudio(address))}>
+        {busy ? <Spinner /> : "Top up"}
+      </button>
       <button
         className="btn sm ghost"
         onClick={() => {
-          if (wallet.kind === "burner") forgetBurner();
+          forgetBurner();
           setWallet({ kind: "none" });
         }}
       >
-        {wallet.kind === "burner" ? "Forget" : "Disconnect"}
+        Forget
       </button>
+      {connectButton}
       {err && <span className="small" style={{ color: "var(--refused)" }}>{err}</span>}
     </div>
   );

@@ -3,66 +3,73 @@ import { NETWORKS, type NetworkId } from "./networks";
 
 // Two ways to sign:
 //
-//  - MetaMask, on either network. This is how real testnet GEN is spent.
+//  - A wallet the user connects (Reown AppKit: browser extension or a mobile
+//    wallet over WalletConnect; or the browser's injected wallet when AppKit has
+//    no project ID). It signs through its own EIP-1193 provider and must be on
+//    the network the app is set to. This is how real testnet GEN is spent.
 //  - A Studio burner: a key generated in this browser and funded from Studio's
 //    faucet. It exists so anyone can try the full flow in under a minute
 //    without a wallet. It is never offered on the testnet, and it is stored in
 //    localStorage in plain text - which is acceptable only because Studio GEN
 //    has no value.
 
+export type Eip1193 = { request(args: { method: string; params?: unknown[] | object }): Promise<unknown> };
+
 export type Wallet =
   | { kind: "none" }
-  | { kind: "metamask"; address: string }
+  | { kind: "wallet"; address: string; provider: Eip1193; chainId: number; name: string }
   | { kind: "burner"; address: string; key: `0x${string}` };
 
 const BURNER_KEY = "remit.studio-burner.v1";
 
-type Eth = { request(args: { method: string; params?: unknown[] }): Promise<unknown> };
-const eth = (): Eth | undefined => (window as unknown as { ethereum?: Eth }).ethereum;
-export const hasMetaMask = () => !!eth();
+export const injected = (): (Eip1193 & { on?: Function; removeListener?: Function }) | undefined =>
+  (window as unknown as { ethereum?: Eip1193 & { on?: Function; removeListener?: Function } }).ethereum;
 
 export function makeClient(network: NetworkId, wallet: Wallet) {
   const net = NETWORKS[network];
+  if (wallet.kind === "wallet")
+    return createClient({
+      chain: net.chain,
+      endpoint: net.rpc,
+      account: wallet.address as `0x${string}`,
+      provider: wallet.provider,
+    } as Parameters<typeof createClient>[0]);
   const account =
     wallet.kind === "burner"
       ? createAccount(wallet.key)
-      : wallet.kind === "metamask"
-        ? (wallet.address as `0x${string}`)
-        : // Read-only: a throwaway account that never signs, so gen_call has a sender.
-          createAccount(generatePrivateKey());
+      : // Read-only: a throwaway account that never signs, so gen_call has a sender.
+        createAccount(generatePrivateKey());
   return createClient({ chain: net.chain, endpoint: net.rpc, account } as Parameters<typeof createClient>[0]);
 }
 
 export type Client = ReturnType<typeof makeClient>;
 
-export async function connectMetaMask(network: NetworkId): Promise<Wallet> {
-  const provider = eth();
-  if (!provider) throw new Error("MetaMask is not installed in this browser.");
+/** Ask a wallet to move to the network, adding it first if it does not know
+ *  it. Used for the injected-wallet fallback; AppKit does the same itself. */
+export async function switchProvider(provider: Eip1193, network: NetworkId): Promise<void> {
   const net = NETWORKS[network];
   const chainId = `0x${net.chain.id.toString(16)}`;
   const current = (await provider.request({ method: "eth_chainId" })) as string;
-  if (current !== chainId) {
-    try {
-      await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId }] });
-    } catch {
-      // Unknown chain: add it with the HTTPS RPC, never the SDK's plain-HTTP default.
-      await provider.request({
-        method: "wallet_addEthereumChain",
-        params: [
-          {
-            chainId,
-            chainName: net.label,
-            rpcUrls: [net.rpc],
-            nativeCurrency: net.chain.nativeCurrency,
-            blockExplorerUrls: [net.explorer],
-          },
-        ],
-      });
-    }
+  if (current?.toLowerCase() === chainId) return;
+  try {
+    await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId }] });
+  } catch (e) {
+    const code = Number((e as { code?: number })?.code ?? 0);
+    if (code === 4001) throw e; // the user said no
+    // Unknown chain: add it with the HTTPS RPC, never the SDK's plain-HTTP default.
+    await provider.request({
+      method: "wallet_addEthereumChain",
+      params: [
+        {
+          chainId,
+          chainName: net.label,
+          rpcUrls: [net.rpc],
+          nativeCurrency: net.chain.nativeCurrency,
+          blockExplorerUrls: net.explorer ? [net.explorer] : undefined,
+        },
+      ],
+    });
   }
-  const [address] = (await provider.request({ method: "eth_requestAccounts" })) as string[];
-  if (!address) throw new Error("No account was shared by MetaMask.");
-  return { kind: "metamask", address };
 }
 
 export function loadBurner(): Wallet {

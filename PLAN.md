@@ -100,6 +100,9 @@ Deploy is not the milestone. **Transactions are the milestone.**
 - [x] `preview_spend` view, so the app predicts the path a spend will take by
       running the contract's own classifier rather than a copy of it
 - [x] Studio burner for wallet-free trials; MetaMask on both networks
+- [x] Wallet connection through Reown AppKit (browser and mobile wallets);
+      the wallet is asked to switch to Studio or Bradbury, and nothing signs on
+      the wrong chain
 - [x] Parity check: UI enums and mandate validator against the Python engine
 - [x] Adjudication stability measured: 8 of 8 consecutive trials reached consensus
 - [x] Docs: getting started, concepts, mandate format, integration, threat model,

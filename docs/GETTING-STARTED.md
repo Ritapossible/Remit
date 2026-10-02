@@ -14,7 +14,10 @@ browser and funds it from Studio's faucet.
 
 A burner is for Studio only. Its GEN has no value, and the key is kept in your
 browser's local storage in plain text - never use it for anything else. On the
-testnet, connect MetaMask instead.
+testnet, choose **Connect wallet** and pick your wallet - a browser extension,
+or a mobile wallet through WalletConnect. If the wallet is on another chain, the
+app asks it to switch (adding the GenLayer network if the wallet does not know
+it yet); until it does, a banner says so and actions that sign stay disabled.
 
 ## 2. Create a guard
 
