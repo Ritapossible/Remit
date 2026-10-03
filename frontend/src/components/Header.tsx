@@ -315,6 +315,16 @@ export function GuardBar() {
         )}
       </form>
       {mandate && <span>· {roleText}</span>}
+      {mandate && !mandate.release && (
+        <div className="notice warn" style={{ flexBasis: "100%", marginTop: 8 }}>
+          This guard runs an earlier Remit release, without the court, the agent freeze or the registry.{" "}
+          {def && (
+            <button className="btn sm" type="button" onClick={() => setGuard(def)}>
+              Open the current reference guard
+            </button>
+          )}
+        </div>
+      )}
       {mandateError && <span style={{ color: "var(--refused)" }}>· {mandateError}</span>}
     </div>
   );

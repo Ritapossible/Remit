@@ -101,7 +101,9 @@ function defaultRailFor(net: NetworkId, guard: string): string {
 function writeQuery(net: NetworkId, guard: string, rail: string) {
   const q = new URLSearchParams(window.location.search);
   q.set("net", net);
-  if (guard) q.set("guard", guard);
+  // The reference guard is never written into the URL: a saved or restored
+  // link then follows the current deployment instead of pinning an old one.
+  if (guard && !sameAddr(guard, NETWORKS[net].defaultGuard)) q.set("guard", guard);
   else q.delete("guard");
   if (rail && rail !== defaultRailFor(net, guard)) q.set("rail", rail);
   else q.delete("rail");

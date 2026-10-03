@@ -91,7 +91,7 @@ Deploy is not the milestone. **Transactions are the milestone.**
 
 | | |
 | --- | --- |
-| Reference guard | `0xA7299Ccb90Ce06C1047cb28253b205037E7e1364` |
+| Reference guard (Phase 3, since superseded - current addresses in the README) | `0xA7299Ccb90Ce06C1047cb28253b205037E7e1364` |
 | Walkthrough transactions | 8 |
 | Failed checks | 0 |
 
