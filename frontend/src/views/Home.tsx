@@ -341,9 +341,9 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
         <p>
           The jury fails closed. A payment is released only if the validators who reach a definite answer agree it is
           in remit; doubt falls to the mandate’s default, which in the templates is to refuse. On Studio, invoices
-          forged to make a split look like two unrelated orders never got it released in three runs - but they did
-          create doubt: two runs ended undetermined and some validators disagreed. That is why doubt refuses rather
-          than releases.
+          forged to make a split look like two unrelated orders never got it released, on Studio or on the Bradbury
+          testnet - but they did create doubt: some runs ended undetermined and some validators disagreed. That is why
+          doubt refuses rather than releases.
         </p>
       </>
     ),

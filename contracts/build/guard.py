@@ -1237,7 +1237,14 @@ class RemitGuard(gl.Contract):
                         _text = _raw.decode("utf-8", "replace")[:3000]
                 except Exception:
                     _state = ARTIFACT_UNVERIFIED
-            _out = gl.nondet.exec_prompt(template.replace(DELIVERABLE_MARKER, build_deliverable(_state, _text, notes)))
+            # JSON mode: the model is asked for a structured answer rather than
+            # prose with JSON inside it. Measured on Bradbury: in text mode a
+            # case the jury should release came back unreadable twice, which
+            # fail-closed turns into a refusal. _parse_verdict still validates
+            # every field - JSON mode does not guarantee the schema.
+            _out = gl.nondet.exec_prompt(
+                template.replace(DELIVERABLE_MARKER, build_deliverable(_state, _text, notes)), response_format="json"
+            )
             _parsed = _parse_verdict(_out)
             _parsed["artifact"] = _state
             return json.dumps(_parsed)
@@ -1277,7 +1284,9 @@ class RemitGuard(gl.Contract):
             # to grade someone else's answer was measured on Studio and is not
             # stable; re-answering a narrow question is.
             _mine = _parse_verdict(
-                gl.nondet.exec_prompt(template.replace(DELIVERABLE_MARKER, build_deliverable(_state, _text, notes)))
+                gl.nondet.exec_prompt(
+                    template.replace(DELIVERABLE_MARKER, build_deliverable(_state, _text, notes)), response_format="json"
+                )
             )
             # Fail CLOSED (validator_agrees): a leader's refusal may stand over
             # a validator that is unsure; a leader's authorization stands only

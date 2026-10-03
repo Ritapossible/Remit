@@ -132,3 +132,21 @@ export async function readUntil(read, ok, { seconds = 300, every = 5 } = {}) {
     await new Promise((r) => setTimeout(r, every * 1000));
   }
 }
+
+/**
+ * A receipt that actually carries the consensus result. On Bradbury the SDK's
+ * wait can return a receipt whose round is still IDLE (no votes yet) for a
+ * transaction that reaches AGREE seconds later - measured on a jury
+ * transaction. Poll the transaction until its result is decided.
+ */
+export async function settledReceipt(client, hash, receipt, { seconds = 600 } = {}) {
+  let r = receipt;
+  const t0 = Date.now();
+  const undecided = (x) => ["IDLE", "UNKNOWN", ""].includes(String(outcome(x).consensus));
+  while (undecided(r)) {
+    if (Date.now() - t0 > seconds * 1000) break;
+    await new Promise((s) => setTimeout(s, 5000));
+    r = await client.getTransaction({ hash }).catch(() => r);
+  }
+  return r;
+}

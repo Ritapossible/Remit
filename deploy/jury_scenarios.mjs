@@ -9,7 +9,7 @@
 //
 //   node jury_scenarios.mjs [studio] [case ...]      REPEAT=2 to run each twice
 import fs from "node:fs";
-import { clientFor, accountFor, retry, outcome, WAIT, compactJson, readBuild, sharedContracts, readUntil } from "./lib.mjs";
+import { clientFor, accountFor, retry, outcome, WAIT, compactJson, readBuild, sharedContracts, readUntil, settledReceipt } from "./lib.mjs";
 
 const network = process.argv[2] || "studio";
 const only = process.argv.slice(3);
@@ -61,7 +61,8 @@ async function deployGuard() {
 
 async function send(client, address, fn, args, label) {
   const h = await retry(label, () => client.writeContract({ address, functionName: fn, args, value: 0n }), 4);
-  const r = await retry(`${label} receipt`, () => client.waitForTransactionReceipt({ hash: h, status: WAIT, retries: 400, interval: 3000 }), 4);
+  let r = await retry(`${label} receipt`, () => client.waitForTransactionReceipt({ hash: h, status: WAIT, retries: 400, interval: 3000 }), 4);
+  r = await settledReceipt(client, h, r);
   return { hash: h, ...outcome(r), receipt: r };
 }
 
@@ -98,7 +99,7 @@ for (const [name, c] of Object.entries(CASES)) {
       await sleep((RESPONSE_WINDOW + 10) * 1000);
     }
     const adj = await send(principal, guard, "adjudicate", [1], "adjudicate");
-    const seen = await readUntil(() => spendOf(guard, 1), (x) => x.state !== "held" || !adj.agreed);
+    const seen = await readUntil(() => spendOf(guard, 1), (x) => x.state !== "held", { seconds: adj.agreed ? 300 : 30 });
     s1 = seen.value;
     const run = {
       case: name,

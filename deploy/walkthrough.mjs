@@ -4,7 +4,7 @@
 // only that consensus agreed; consensus agreeing on a refusal is a network
 // success and a spend refusal (hard law 3).
 import fs from "node:fs";
-import { clientFor, accountFor, retry, outcome, WAIT, readUntil } from "./lib.mjs";
+import { clientFor, accountFor, retry, outcome, WAIT, readUntil, settledReceipt } from "./lib.mjs";
 
 const network = process.argv[2] || "studio";
 const { address, rail } = JSON.parse(fs.readFileSync("deployments.json", "utf8"))[network];
@@ -21,8 +21,9 @@ let failures = 0;
 async function send(client, functionName, args, label) {
   const hash = await retry(label, () =>
     client.writeContract({ address, functionName, args, value: 0n }), 4);
-  const r = await retry(`${label} receipt`, () =>
+  let r = await retry(`${label} receipt`, () =>
     client.waitForTransactionReceipt({ hash, status: WAIT, retries: 300, interval: 2500 }), 4);
+  r = await settledReceipt(client, hash, r);
   // The leader's own status reads "return" even when the validators disagree
   // and the state change is rolled back; outcome() reads the consensus result.
   const o = outcome(r);

@@ -6,7 +6,7 @@
 //
 //   node rail_scenario.mjs [studio]
 import fs from "node:fs";
-import { clientFor, accountFor, retry, outcome, WAIT, compactJson, readBuild, sharedContracts, readUntil } from "./lib.mjs";
+import { clientFor, accountFor, retry, outcome, WAIT, compactJson, readBuild, sharedContracts, readUntil, settledReceipt } from "./lib.mjs";
 
 const network = process.argv[2] || "studio";
 const FINALITY = Number(process.env.RAIL_FINALITY ?? 45);
@@ -52,7 +52,8 @@ async function deploy(code, args, label) {
 
 async function send(client, address, fn, args, label, value = 0n) {
   const h = await retry(label, () => client.writeContract({ address, functionName: fn, args, value }), 4);
-  const r = await retry(`${label} receipt`, () => client.waitForTransactionReceipt({ hash: h, status: WAIT, retries: 300, interval: 2500 }), 4);
+  let r = await retry(`${label} receipt`, () => client.waitForTransactionReceipt({ hash: h, status: WAIT, retries: 300, interval: 2500 }), 4);
+  r = await settledReceipt(client, h, r);
   const o = outcome(r);
   log.push({ tx: label, hash: h, consensus: o.consensus, leader: o.leader });
   return o;

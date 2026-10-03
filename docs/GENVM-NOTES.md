@@ -120,6 +120,27 @@ the same question reached agreement in 8 of 8 consecutive trials.
 | Deploy cost | - | ~0.96M + 782 gas per byte of code and arguments |
 | Acceptance to finality | about 30 s | 27-31 min (a deploy was still ACCEPTED at 1609 s and FINALIZED by 1852 s) |
 | Value sent by `emit_transfer` arrives | at finality | at finality |
+
+**Ask the model for JSON.** `gl.nondet.exec_prompt(prompt, response_format="json")`
+returns a dict. In text mode the same prompt measured well on Studio, but on
+Bradbury the leader's answer to one case could not be read as a verdict in two
+of three runs - and a fail-closed jury turns an unreadable answer into a
+refusal. In JSON mode that case was decided correctly in every round that
+reached a decision. Still validate every field: JSON mode does not guarantee
+the schema.
+
+**On Bradbury, wait for the round, not the receipt.** `waitForTransactionReceipt`
+can return a receipt whose round is still `IDLE` (no votes) for a jury
+transaction that reaches `AGREE` seconds later, and a read made at once can
+still show the previous state. `deploy/lib.mjs` (`settledReceipt`, `readUntil`)
+polls the transaction and the state; `deploy/reconcile_jury.mjs` corrects a
+recorded run from the chain. Rounds also end undecided - `NO_MAJORITY`, or
+`VALIDATORS_TIMEOUT` - which changes nothing and is answered by convening the
+jury again (`deploy/reconvene.mjs`).
+
+**Submitting can revert once.** A write occasionally came back "Transaction
+reverted ... to consensus contract" at submission on Bradbury; the same call
+retried went through. The scripts retry with backoff.
 | Refusal detail | `exit_code 1` only | `txExecutionResultName` |
 | Consensus result field | `result_name: MAJORITY_AGREE` | `resultName: AGREE` |
 

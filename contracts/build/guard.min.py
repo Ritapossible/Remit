@@ -264,7 +264,7 @@ class RemitGuard(gl.Contract):
       _text = _raw.decode('utf-8', 'replace')[:3000]
     except Exception:
      _state = ARTIFACT_UNVERIFIED
-   _out = gl.nondet.exec_prompt(template.replace(DELIVERABLE_MARKER, build_deliverable(_state, _text, notes)))
+   _out = gl.nondet.exec_prompt(template.replace(DELIVERABLE_MARKER, build_deliverable(_state, _text, notes)), response_format='json')
    _parsed = _parse_verdict(_out)
    _parsed['artifact'] = _state
    return json.dumps(_parsed)
@@ -292,7 +292,7 @@ class RemitGuard(gl.Contract):
    _verdict = str(_theirs.get('verdict', ''))
    if _verdict not in VERDICTS:
     return False
-   _mine = _parse_verdict(gl.nondet.exec_prompt(template.replace(DELIVERABLE_MARKER, build_deliverable(_state, _text, notes))))
+   _mine = _parse_verdict(gl.nondet.exec_prompt(template.replace(DELIVERABLE_MARKER, build_deliverable(_state, _text, notes)), response_format='json'))
    return validator_agrees(leader_verdict=_verdict, own_verdict=_mine['verdict'], leader_outcome=table[_verdict][_state])
   raw = gl.vm.run_nondet(leader, validator, compare_user_errors=True)
   decoded = _as_dict(raw)

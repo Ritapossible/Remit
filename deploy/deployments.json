@@ -1,12 +1,12 @@
 {
   "studio": {
-    "address": "0x381F2c85Cc0410a33783698fcec8809E1aE517d2",
-    "deploy_tx": "0xb2e10eb735ce73aaaaaf894a262e13fd656c11ee0e00b30bbd8a30fc2a28211f",
+    "address": "0xAb490172DbeA48632aEbF8D1E9F2e44EA1CDfEc5",
+    "deploy_tx": "0x59f3237e80222c2706407f8be1ee100b2e64d4d36f50dd79c4226c66df1b7696",
     "agent": "0x8aA26Fa51a68c583C467463e93db0EBc10f7D509",
     "max_tier": 2,
     "shadow": false,
-    "at": "2026-10-03T00:42:15.126Z",
-    "rail": "0xbDf8e97f847aC308F53a34921bd341F590b1deC3",
+    "at": "2026-10-03T07:13:14.014Z",
+    "rail": "0x6C2a4cF62E050B4D0E3d8B1bc5Fe66BBFB194292",
     "rail_finality_seconds": 60,
     "prompts": "0xc3f3FBb14992DbE9eaDCadFFc145E0B0fee6ecA7",
     "prompts_tx": "0x4a9a02045f15b25f46d56381ebafaea507e6768b6420bbbc8fea31d4c8b14848",
@@ -18,13 +18,13 @@
     "prompts_tx": "0xec130c8822a8b002aee4b14a9b8a4928f1516a365bc258b73ff0480cbe1581a3",
     "engine": "0x93Ef0C86Ca60161F77915DB59A924322a2C9E0d9",
     "engine_tx": "0xd2c35c6c2ef0801acb485de16b676f16d942be9918c446ced975a525908f3318",
-    "address": "0x3F67046B4e63fD79521476C4A24Fbe3710F27D31",
-    "deploy_tx": "0x7e3742188071d7299a7baf0da46329c2cb3bd46d9faec66c578a319c8535ac43",
+    "address": "0x525301404a503BA851f93B824a9db44AB94d3d6F",
+    "deploy_tx": "0x75b064c9a3a9cb82868a700305c7915352e80d28b9f0838ab8a64aec558d7c90",
     "agent": "0x8aA26Fa51a68c583C467463e93db0EBc10f7D509",
     "max_tier": 2,
     "shadow": false,
-    "at": "2026-10-03T00:48:22.330Z",
-    "rail": "0xd1740358b74513d738Cf676a1F15D69D43FBD00a",
-    "rail_finality_seconds": 1800
+    "at": "2026-10-03T07:15:01.730Z",
+    "rail": "0xC2756CC5746aD612a569d4d45D523A49ef544be0",
+    "rail_finality_seconds": 2400
   }
 }

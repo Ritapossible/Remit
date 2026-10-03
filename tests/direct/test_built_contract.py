@@ -106,13 +106,21 @@ def test_validator_checks_evidence_exactly_and_fails_closed_on_judgement(built):
     after = built.index("gl.vm.run_nondet")
     body = built[validator:after]
     assert 'str(_theirs.get("artifact", "")) != _state' in body, "evidence not compared exactly"
-    assert "gl.nondet.exec_prompt(template.replace(DELIVERABLE_MARKER, build_deliverable(_state, _text, notes)))" in body, (
-        "validator does not re-answer the same question from its own evidence"
+    assert "template.replace(DELIVERABLE_MARKER, build_deliverable(_state, _text, notes)), response_format=\"json\"" in body, (
+        "validator does not re-answer the same question, in JSON mode, from its own evidence"
     )
     assert "validator_agrees(" in body, "judgement not compared through the fail-closed rule"
     assert "leader_outcome=table[_verdict][_state]" in body, "the leader's verdict must be judged by what it would do"
     assert "== VERDICT_UNDETERMINED" not in body, "an unsure validator must not accept everything"
     assert '_mine["confidence"]' not in body, "confidence must not enter the comparison"
+
+
+def test_both_closures_ask_for_json(built):
+    """Text mode produced unreadable answers on Bradbury; both the leader and
+    the validator must ask the model for a structured answer."""
+    start = built.index("def leader()")
+    body = built[start : built.index("gl.vm.run_nondet", start)]
+    assert body.count('response_format="json"') == 2
 
 
 def test_a_hesitant_in_remit_is_undetermined(built):
