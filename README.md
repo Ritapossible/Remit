@@ -131,20 +131,26 @@ its rail). Bradbury caps a transaction at 2^24 gas, so nothing over about 20 KB
 deploys; the split is how the guard fits. Studio runs the same three contracts.
 Addresses are in `deploy/deployments.json`.
 
-**Bradbury, so far.** All four contracts deployed, with deploy gas measured
+**Bradbury.** All four contracts deploy under the gas cap, with gas measured
 before sending: prompts 8.7M, engine 13.9M, guard plus mandate 15.7M, against
-the 16.78M cap. On the deployed guard, a walkthrough passed 10 of 13 checks:
-the three failures were a read made the instant the jury's transaction was
-accepted, before its state was visible - the verdict (`out_of_remit`, 90) is on
-chain and finalized, and the scripts now wait for the read. The rail paid all
-three authorized spends and refused both refused ones. Bradbury finalises a
-transaction 27-31 minutes after it is created, so its rail waits 40 minutes.
+16.78M. The reference guard's walkthrough passed 13 transactions with 0 failed
+checks - a payment cleared in its own transaction, one refused by arithmetic,
+the split held, an early jury refused, the jury's verdict, the principal's
+override - and its rail paid the three authorized spends and refused the two
+refused ones, after a 40-minute delay. Bradbury finalises a transaction 27-31
+minutes after it is created; value from the rail arrives then.
+
+The rail scenario passed on Bradbury too (`deploy/rail-bradbury.json`, 0 failed
+checks, run with a 1,900-second delay - above the longest finality measured):
+the vendor received exactly 0.15 GEN when the payout finalised, and paying
+early, twice, a held spend or a refused spend reverted with the rail's balance
+unchanged; the agent could not withdraw.
 
 Every result below is a real transaction, recorded in `deploy/*.json`, and every
 assertion is on resulting state and the consensus outcome - never on a
 transaction merely being accepted.
 
-**The rail** (`deploy/rail-studio.json`, 0 failed checks). A funded rail paid an
+**The rail** (`deploy/rail-studio.json` and `deploy/rail-bradbury.json`, 0 failed checks). A funded rail paid an
 authorized 0.15 GEN spend to the vendor - balance read after the call - and
 reverted, with balances unchanged, when asked to pay: before the finality delay,
 twice, a held spend, a refused spend, and when the agent tried to withdraw.

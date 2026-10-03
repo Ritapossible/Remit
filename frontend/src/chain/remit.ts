@@ -201,8 +201,16 @@ async function settle(c: Client, hash: string, pollMs: number): Promise<TxOutcom
     interval: pollMs,
     retries: 400,
   });
-  const first = interpret(hash, accepted);
-  if (first.consensus !== "UNKNOWN") return first;
+  let current = interpret(hash, accepted);
+  // On Bradbury a receipt can arrive while its round is still IDLE (no votes)
+  // for a transaction that reaches AGREE seconds later. Poll the transaction
+  // until the round is decided rather than reporting "no consensus".
+  const undecided = (o: TxOutcome) => o.consensus === "UNKNOWN" || o.consensus === "IDLE";
+  for (let i = 0; i < 120 && undecided(current); i++) {
+    await new Promise((r) => setTimeout(r, Math.max(pollMs, 3000)));
+    current = interpret(hash, await c.getTransaction({ hash: hash as never }).catch(() => accepted));
+  }
+  if (!undecided(current)) return current;
   const finalised = await c.waitForTransactionReceipt({
     hash: hash as never,
     status: "FINALIZED" as never,

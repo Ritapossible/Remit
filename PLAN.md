@@ -151,11 +151,21 @@ claimed. Every point checked out against the code. What changed:
 - [ ] Injection corpus (one adversarial artifact is not a corpus) - Phase 6
 - [ ] Appeal reversing a verdict while a payout waits - Phase 6
 
-## Phase 5 - Testnet `[ ]`
+## Phase 5 - Testnet: Bradbury `[x]`
 
-- [ ] Reference guard deployed on Testnet Asimov / Bradbury
-- [ ] Walkthrough and structuring scenarios re-run there, 0 failed checks
-- [ ] Receipt timings recorded, so the app's waits are set from measurement
+- [x] Deploy gas measured before sending (`deploy/probe_gas.mjs`): about 0.96M
+      plus 782 per byte of code and arguments, against a 2^24 cap
+- [x] Split into a shared engine, a shared prompts contract and a per-agent
+      guard; each fits, and tests hold the split to the same decisions and the
+      same jury prompt
+- [x] Reference guard and rail deployed; walkthrough 13 transactions, 0 failed
+- [x] Jury cases run on Bradbury; text-mode answers misread one case, so the
+      guard asks for JSON; undecided rounds (no majority, validator timeout)
+      convened again and decided correctly
+- [x] Timings recorded: finality 27-31 minutes, so Bradbury rails wait 40;
+      a receipt can arrive before its round is decided, so scripts poll
+- [x] The app waits for a decided round too: a receipt still IDLE is polled,
+      not reported as "no consensus"
 
 ## Phase 6 - Hardening `[ ]`
 

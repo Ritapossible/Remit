@@ -101,7 +101,9 @@ const vendorBefore = await balance(vendor);
 const railBefore = await balance(rail);
 o = await send(agent, rail, "pay", [0], "pay 0");
 check("pay applied", o.applied, true);
-const vendorAfter = await settledBalance(vendor, vendorBefore);
+// Value sent by emit_transfer arrives when the paying transaction finalises:
+// about 30 s on Studio, 27-31 min on Bradbury.
+const vendorAfter = await settledBalance(vendor, vendorBefore, network === "studio" ? 240 : 2700);
 check("vendor received", fmt(vendorAfter - vendorBefore), fmt(GEN(0.15)));
 check("rail paid out", fmt(railBefore - (await balance(rail))), fmt(GEN(0.15)));
 
