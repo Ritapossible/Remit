@@ -13,7 +13,7 @@ export type Verdict = (typeof VERDICTS)[number];
 
 export const OUTCOMES = ["allowed", "refused"] as const;
 
-export const AUTHORIZATIONS = ["authorized", "refused", "pending"] as const;
+export const AUTHORIZATIONS = ["authorized", "refused", "pending", "revoked"] as const;
 export type Authorization = (typeof AUTHORIZATIONS)[number];
 
 export const RULE_TYPES = ["reflex", "judgment"] as const;

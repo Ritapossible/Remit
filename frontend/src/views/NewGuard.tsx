@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useApp, href } from "../state";
-import { CONTRACT_CODE, GAS_CAP, compactJson, deployGuard, estimateDeployGas, type TxOutcome } from "../chain/remit";
+import { CONTRACT_CODE, GAS_CAP, compactJson, deployGuard, estimateDeployGas, write, type TxOutcome } from "../chain/remit";
+import { RegistryList } from "../components/Court";
+import { useTx } from "../components/Rail";
 import { campaignTemplate, contractorTemplate, mandateNotices, parseMandateText, validateMandate } from "../lib/mandate";
 import { Spinner, TxLine, explainError } from "../components/ui";
 import { NETWORKS } from "../chain/networks";
@@ -26,6 +28,8 @@ export function NewGuard() {
   const [hash, setHash] = useState<string>();
   const [outcome, setOutcome] = useState<TxOutcome | null>(null);
   const [err, setErr] = useState("");
+  const reg = useTx();
+  const registry = NETWORKS[network].registry;
 
   const check = useMemo(() => {
     try {
@@ -170,7 +174,26 @@ export function NewGuard() {
               >
                 Open this guard →
               </button>
+              {registry && (
+                <button
+                  className="btn"
+                  disabled={!canSign || reg.pending || !!reg.outcome?.applied}
+                  onClick={() => reg.run((onHash) => write(client, registry, "register", [outcome.address!, ""], pollMs, onHash))}
+                >
+                  {reg.pending ? <Spinner /> : null} {reg.outcome?.applied ? "Registered" : "Register it"}
+                </button>
+              )}
             </div>
+          )}
+          {outcome?.applied && (
+            <TxLine
+              network={network}
+              pending={reg.pending}
+              hash={reg.hash}
+              outcome={reg.outcome}
+              successText="Registered: the agent is bound to this guard on this network."
+              refusalHint="The registry refused: the agent may already be bound to another principal's guard."
+            />
           )}
           {err && <div className="notice bad">{err}</div>}
         </div>
@@ -193,6 +216,7 @@ export function NewGuard() {
           {!agentOk && agent && <div className="notice bad small">The agent address is not valid.</div>}
         </div>
       </div>
+      <RegistryList />
     </>
   );
 }

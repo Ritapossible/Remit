@@ -1,20 +1,18 @@
 // Funds deployment accounts on the testnet from a funding key. Plain native
 // transfers between wallets, confirmed by reading balances back afterwards.
-import { createWalletClient, createPublicClient, http, defineChain, parseEther } from "viem";
-import { accountFor } from "./lib.mjs";
+import { createWalletClient, createPublicClient, http, parseEther } from "viem";
+import { accountFor, CHAINS } from "./lib.mjs";
 
-const chain = defineChain({
-  id: 4221,
-  name: "GenLayer Testnet Asimov",
-  nativeCurrency: { name: "GEN", symbol: "GEN", decimals: 18 },
-  rpcUrls: { default: { http: ["https://rpc-asimov.genlayer.com"] } },
-});
-const transport = http("https://rpc-asimov.genlayer.com");
+// node fund.mjs [network] role=amount ...   (network defaults to bradbury)
+const args = process.argv.slice(2);
+const network = args[0] && !args[0].includes("=") ? args.shift() : "bradbury";
+const chain = CHAINS[network];
+const transport = http(chain.rpcUrls.default.http[0]);
 const pub = createPublicClient({ chain, transport });
 const funder = accountFor("funder");
 const wallet = createWalletClient({ chain, transport, account: funder });
 
-const plan = process.argv.slice(2).map((a) => a.split("=")); // role=amount
+const plan = args.map((a) => a.split("=")); // role=amount
 for (const [role, amount] of plan) {
   const to = accountFor(role).address;
   const before = await pub.getBalance({ address: to });

@@ -337,9 +337,9 @@ label.field input, label.field select { width: 100%; }
 .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
 .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .badge.plain::before { display: none; }
-.b-settled, .b-authorized, .b-in_remit, .b-verified, .b-done { color: var(--settled); background: var(--settled-bg); }
-.b-refused, .b-out_of_remit, .b-unverified { color: var(--refused); background: var(--refused-bg); }
-.b-held, .b-pending, .b-foreclosed, .b-progress { color: var(--held); background: var(--held-bg); }
+.b-settled, .b-authorized, .b-in_remit, .b-verified, .b-done, .b-dismissed { color: var(--settled); background: var(--settled-bg); }
+.b-refused, .b-out_of_remit, .b-unverified, .b-revoked, .b-upheld { color: var(--refused); background: var(--refused-bg); }
+.b-held, .b-pending, .b-foreclosed, .b-progress, .b-open { color: var(--held); background: var(--held-bg); }
 .b-undetermined, .b-absent, .b-neutral, .b-planned { color: var(--ink-2); background: var(--surface-2); }
 .b-reflex { color: var(--reflex); background: var(--reflex-bg); }
 .b-judgment { color: var(--judgment); background: var(--judgment-bg); }
@@ -487,6 +487,8 @@ dl.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
   .wallet-row .wallet-name { display: none; }
   .wallet-row .btn { flex: none; }
   .wallet-row > .btn:not(.wallet-chip) { flex: 1 1 0; }
+  .burner-row { width: 100%; min-width: 0; row-gap: 8px; }
+  .burner-row > .btn.primary { flex: 1 1 100%; }
   /* Guard address: input takes the row, buttons beside it. */
   .guardbar { margin: 16px 0 22px; }
   .guardbar form { flex: 1 1 100%; flex-wrap: nowrap; }
@@ -513,4 +515,8 @@ dl.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
   .table.stack td.card-head::before { font-size: 14px; color: var(--ink); font-family: inherit; }
   .table-wrap .table.stack tr:last-child td { border-bottom: 1px solid var(--line); }
   .table-wrap .table.stack tr:last-child td:last-child { border-bottom: 0; }
+}
+@media (max-width: 380px) {
+  .tabs { gap: 0; }
+  .tabs a { padding: 8px 10px; font-size: 14px; }
 }

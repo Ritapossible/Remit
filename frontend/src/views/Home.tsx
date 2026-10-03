@@ -349,12 +349,30 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
     ),
   },
   {
+    q: "What about a payment that slipped under every trigger?",
+    a: (
+      <>
+        <p>
+          It can still be challenged. For the mandate’s clawback window, anyone but the agent can challenge a payment
+          that cleared without a jury, naming the rule it evaded and posting a bond. The rail won’t pay it while the
+          challenge is open; the agent can answer with evidence; then the jury rules.
+        </p>
+        <p>
+          Upheld, the payment is blocked - or, if the rail already paid it, made good from the agent’s standing bond -
+          and a tier-2 or tier-3 rule freezes the agent. Dismissed, the bond goes to the agent, and the challenger’s next
+          bond doubles, so griefing prices itself out.
+        </p>
+      </>
+    ),
+  },
+  {
     q: "What if the jury is slow, unsure, or wrong?",
     a: (
       <p>
         Every hold has a deadline and a default you chose. “Undetermined” falls to that default - unproven is not
-        guilty. The principal can release or refuse any held spend at any time. And shadow mode lets you watch the
-        docket before granting authority at all.
+        guilty. The principal can release or refuse any held spend at any time, and anyone can appeal a jury’s round
+        before it is final - the rail waits out that window before it pays. And shadow mode lets you watch the docket
+        before granting authority at all.
       </p>
     ),
   },
@@ -362,8 +380,9 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
     q: "Is it live?",
     a: (
       <p>
-        Yes, on GenLayer Studio, where the full flow runs end to end. The testnet deployment is the next milestone -
-        see the <a href={href({ name: "roadmap" })}>roadmap</a> for what’s done, what’s next, and what isn’t built yet.
+        Yes - on GenLayer Studio and on the Bradbury testnet, where the guard, its rail and court, and the registry
+        are deployed, and each scenario in the repository is recorded as real transactions. See the{" "}
+        <a href={href({ name: "roadmap" })}>roadmap</a> for what’s done and what’s next.
       </p>
     ),
   },

@@ -1,4 +1,5 @@
 import { CasePayment } from "../components/Rail";
+import { CaseCourt } from "../components/Court";
 import { useCallback, useEffect, useState } from "react";
 import { useApp, href } from "../state";
 import { useNow } from "../hooks";
@@ -294,14 +295,17 @@ function Actions({ spend, onChange }: { spend: SpendView; onChange: () => Promis
 
   if (!held) {
     return (
-      <div className="card">
-        <h3>Decided</h3>
-        <p className="sub" style={{ marginBottom: 0 }}>
-          This case is closed. The guard's answer for this spend is <b>{spend.authorization}</b>.
-        </p>
-        <CasePayment spend={spend} />
-        <TxLine network={network} pending={pending} hash={hash} outcome={outcome} refusalHint={hint} />
-      </div>
+      <>
+        <div className="card">
+          <h3>Decided</h3>
+          <p className="sub" style={{ marginBottom: 0 }}>
+            This case is closed. The guard's answer for this spend is <b>{spend.authorization}</b>.
+          </p>
+          <CasePayment spend={spend} />
+          <TxLine network={network} pending={pending} hash={hash} outcome={outcome} refusalHint={hint} />
+        </div>
+        {spend.authorization === "authorized" && <CaseCourt spend={spend} />}
+      </>
     );
   }
 

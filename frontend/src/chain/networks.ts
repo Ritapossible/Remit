@@ -19,11 +19,13 @@ export interface NetworkConfig {
   /** The shared engine every guard on this network is bound to. A guard can be
    *  deployed here only once the engine (and its prompts contract) exist. */
   engine?: string;
+  /** The shared registry: which guard each agent is bound to. */
+  registry?: string;
   /** Whether the app can deploy a guard here today. */
   deployable: boolean;
 }
 
-const d = deployments as Record<string, { address?: string; rail?: string; engine?: string }>;
+const d = deployments as Record<string, { address?: string; rail?: string; engine?: string; registry?: string }>;
 const explorerOf = (c: typeof studionet) => (c.blockExplorers?.default.url ?? "").replace(/\/$/, "");
 
 // Chain config comes from genlayer-js 1.1.8. Older releases pointed the testnet
@@ -43,6 +45,7 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
     defaultGuard: d.studio?.address,
     defaultRail: d.studio?.rail,
     engine: d.studio?.engine,
+    registry: d.studio?.registry,
     deployable: !!d.studio?.engine,
   },
   bradbury: {
@@ -57,6 +60,7 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
     defaultGuard: d.bradbury?.address,
     defaultRail: d.bradbury?.rail,
     engine: d.bradbury?.engine,
+    registry: d.bradbury?.registry,
     deployable: !!d.bradbury?.engine,
   },
 };

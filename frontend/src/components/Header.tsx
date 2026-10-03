@@ -253,7 +253,7 @@ function WalletControl() {
   }
 
   return (
-    <div className="row wallet-row">
+    <div className="row burner-row">
       <span className="small muted">Studio burner</span>
       <Addr value={address} />
       <span className="small">{balance === null ? "…" : <Gen atto={balance} />}</span>

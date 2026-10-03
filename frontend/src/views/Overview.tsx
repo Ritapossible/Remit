@@ -1,4 +1,5 @@
 import { RailPanel } from "../components/Rail";
+import { FreezeBanner } from "../components/Court";
 import { useApp, href } from "../state";
 import { useDocket } from "../hooks";
 import { describePredicate, type RuleInfo } from "../lib/mandate";
@@ -24,9 +25,8 @@ export function Overview() {
         {mandateError && <div className="notice bad">{mandateError}</div>}
         {!guard && !def && (
           <div className="notice warn" style={{ marginTop: 16 }}>
-            There's no Remit guard on {NETWORKS[network].label} yet - testnet deployment is the next milestone on the{" "}
-            <a href={href({ name: "roadmap" })}>roadmap</a>. Switch to GenLayer Studio to see the reference guard and
-            try the full flow.
+            No reference guard is recorded for {NETWORKS[network].label} in this build. Load a guard by address, deploy
+            one on the New guard page, or see the <a href={href({ name: "roadmap" })}>roadmap</a>.
           </div>
         )}
         {!guard && (
@@ -57,6 +57,7 @@ export function Overview() {
 
   return (
     <>
+      <FreezeBanner />
       <h1 className="page-title">This agent spends under a written mandate.</h1>
       <p className="lede">
         Every payment is checked against the rules below before it is authorized. Arithmetic decides in the same
@@ -152,8 +153,8 @@ export function Overview() {
             <dd>
               {mandate.max_tier}{" "}
               <span className="muted small">
-                - the most authority granted. In this version any tier ≥ 1 refuses the spend; the tier is recorded as
-                severity on the docket.
+                - the most authority granted. A breach at tier 1 refuses the payment; tier 2 also freezes the agent
+                until the principal lifts it; tier 3 also revokes every unpaid payment requested before the breach.
               </span>
             </dd>
             <dt>Mandate</dt>

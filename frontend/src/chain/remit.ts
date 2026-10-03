@@ -74,6 +74,16 @@ export interface RailStatus {
   funded: string;
   paid_total: string;
   paid_count: number;
+  /** Court fields; absent on rails built before the court. */
+  treasury?: string;
+  bond_floor?: string;
+  standing?: string;
+  escrowed?: string;
+  challenge_count?: number;
+  open_challenges?: number;
+  frozen_tier?: number;
+  frozen_by?: number;
+  revoked_below?: number;
 }
 
 export interface RailPayment {
@@ -81,6 +91,46 @@ export interface RailPayment {
   paid: boolean;
   amount: string;
   paid_at: number;
+  revoked?: boolean;
+  /** The open challenge on this spend, or -1. */
+  challenge?: number;
+  /** The challenge that clawed it back, or -1. */
+  upheld_by?: number;
+}
+
+export interface Challenge {
+  id: number;
+  spend: number;
+  rule: string;
+  challenger: string;
+  bond: string;
+  statement: string;
+  opened_at: number;
+  state: "open" | "upheld" | "dismissed" | "lapsed";
+  memo_uri: string;
+  memo_digest: string;
+  verdict?: Verdict;
+  reason?: string;
+  confidence?: number;
+  artifact?: ArtifactState;
+  tier?: number;
+  settlement?: {
+    to_challenger: string;
+    to_agent: string;
+    to_treasury: string;
+    from_standing: string;
+    blocked: boolean;
+  };
+  decided_at?: number;
+}
+
+export interface Registration {
+  guard: string;
+  rail: string;
+  principal: string;
+  agent: string;
+  registered_at: number;
+  active: boolean;
 }
 
 export interface Preview {
@@ -136,6 +186,39 @@ export async function readRail(c: Client, rail: string): Promise<RailStatus> {
 export async function readPayment(c: Client, rail: string, id: number): Promise<RailPayment> {
   const raw = await c.readContract({ address: rail as Addr, functionName: "payment_of", args: [id] });
   return parseLossless<RailPayment>(raw);
+}
+
+/** Every challenge raised at a rail's court; [] for a rail without one. */
+export async function readChallenges(c: Client, rail: string): Promise<Challenge[]> {
+  try {
+    const raw = await c.readContract({ address: rail as Addr, functionName: "challenges", args: [] });
+    return parseLossless<Challenge[]>(raw);
+  } catch {
+    return [];
+  }
+}
+
+/** Whether ``challenger`` may challenge this payment under this rule, and the bond. */
+export async function readBondQuote(
+  c: Client,
+  rail: string,
+  spendId: number,
+  rule: string,
+  challenger: string,
+): Promise<{ error: string; bond: string }> {
+  const raw = await c.readContract({ address: rail as Addr, functionName: "bond_quote", args: [spendId, rule, challenger] });
+  return parseLossless<{ error: string; bond: string }>(raw);
+}
+
+export async function readRegistry(c: Client, registry: string): Promise<Registration[]> {
+  const raw = await c.readContract({ address: registry as Addr, functionName: "guards", args: [] });
+  return parseLossless<Registration[]>(raw);
+}
+
+/** Is the code deployed at ``address`` byte-for-byte the published guard build? */
+export async function verifyGuardCode(c: Client, address: string): Promise<boolean> {
+  const code = await (c as unknown as { getContractCode(a: string): Promise<string> }).getContractCode(address);
+  return code.trim() === CONTRACT_CODE.trim();
 }
 
 /** The contract's own classifier, run as a view. Costs nothing, signs nothing. */

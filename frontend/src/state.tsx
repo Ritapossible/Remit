@@ -197,7 +197,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     try {
       setMandateError("");
-      setMandate(await readMandate(client, guard));
+      const m = await readMandate(client, guard);
+      setMandate(m);
+      // A guard names the rail it obeys; follow it unless one was chosen.
+      if (m.rail) setRailRaw((r) => r || m.rail!);
     } catch (e) {
       setMandate(null);
       setMandateError(

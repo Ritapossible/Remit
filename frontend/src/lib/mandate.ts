@@ -44,6 +44,12 @@ export interface MandateInfo {
   rules: RuleInfo[];
   vendor_lists?: Record<string, string[]>;
   spend_count: number;
+  /** Graduated authority; absent on guards built before tiers 2 and 3. */
+  release?: string;
+  rail?: string;
+  frozen_tier?: number;
+  frozen_by?: number;
+  revoked_below?: number;
 }
 
 // ----------------------------------------------------------- plain English

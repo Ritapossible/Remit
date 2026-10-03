@@ -138,13 +138,13 @@ if (B.c.state === "upheld") {
 // --- C: upheld after the payout - clawed back from the agent's bond -------
 console.log("\nC. the same kind of payment, challenged after the rail paid it");
 const n = Number((await readView(principal, guard, "mandate_info")).spend_count);
-await tx(agent, guard, "request_spend", [vendor, GEN(0.03).toString(), "media", "", "", "Office chairs for the new studio"], `spend ${n}`);
+await tx(agent, guard, "request_spend", [vendor, GEN(0.03).toString(), "media", "", "", "Gym membership for the operator, March"], `spend ${n}`);
 check(`spend ${n} cleared`, (await settledSpend(n)).authorization, "authorized");
 await sleep((FINALITY + 5) * 1000);
 check(`C: rail pays spend ${n}`, (await tx(agent, rail, "pay", [n], `C: pay ${n}`)).applied, true);
 const before = await status();
 const cid = Number(before.challenge_count);
-await challengeAndRule(second, n, "purpose", "Office chairs are furniture, not media production or hosting.", cid, "C");
+await challengeAndRule(second, n, "purpose", "The agent's own description is a personal gym membership - not producing or hosting media.", cid, "C");
 const C = await rule(cid, "C");
 cases.C = C.c;
 check("C: ruled", ["dismissed", "upheld"].includes(C.c.state), true);

@@ -6,14 +6,15 @@ import { parseGen } from "../lib/money";
 import { duration, sameAddr } from "../lib/format";
 import { useNow } from "../hooks";
 import { Addr, Gen, Spinner, TxLine, explainError } from "./ui";
+import { CourtSummary } from "./Court";
 
 // The rail is where the money is. The guard decides; the rail holds GEN and
 // pays a spend only when the guard authorized it and the decision is past the
 // finality delay. These components show it, fund it, and trigger payouts.
 
-const isAddr = (a: string) => /^0x[0-9a-fA-F]{40}$/.test(a);
+export const isAddr = (a: string) => /^0x[0-9a-fA-F]{40}$/.test(a);
 
-function useRailStatus() {
+export function useRailStatus() {
   const { client, rail } = useApp();
   const [status, setStatus] = useState<RailStatus | null>(null);
   const [error, setError] = useState("");
@@ -39,7 +40,7 @@ function useRailStatus() {
 }
 
 /** A transaction in flight, with its outcome. */
-function useTx() {
+export function useTx() {
   const [pending, setPending] = useState(false);
   const [hash, setHash] = useState<string>();
   const [outcome, setOutcome] = useState<TxOutcome | null>(null);
@@ -109,12 +110,19 @@ export function RailPanel() {
               disabled={!canSign || attach.pending}
               onClick={() =>
                 attach.run(
-                  (onHash) => write(client, guard, "attach_rail", [tx.outcome!.address!], pollMs, onHash),
+                  async (onHash) => {
+                    const r = tx.outcome!.address!;
+                    const attached = await write(client, guard, "attach_rail", [r], pollMs, onHash);
+                    const registry = NETWORKS[network].registry;
+                    // Record guard and rail together in the network's registry.
+                    if (!attached.applied || !registry) return attached;
+                    return write(client, registry, "register", [guard, r], pollMs, onHash);
+                  },
                   async () => setRail(tx.outcome!.address!),
                 )
               }
             >
-              {attach.pending ? <Spinner /> : null} Attach it to the guard
+              {attach.pending ? <Spinner /> : null} Attach it to the guard and register both
             </button>
           </div>
         )}
@@ -132,6 +140,8 @@ export function RailPanel() {
         </form>
         <TxLine network={network} pending={tx.pending} hash={tx.hash} outcome={tx.outcome} />
         {tx.err && <div className="notice bad">{tx.err}</div>}
+        <TxLine network={network} pending={attach.pending} hash={attach.hash} outcome={attach.outcome} successText="Attached and registered." />
+        {attach.err && <div className="notice bad">{attach.err}</div>}
       </div>
     );
   }
@@ -182,6 +192,7 @@ export function RailPanel() {
       </div>
       <TxLine network={network} pending={tx.pending} hash={tx.hash} outcome={tx.outcome} successText="Funds added to the rail." />
       {tx.err && <div className="notice bad">{tx.err}</div>}
+      <CourtSummary />
     </div>
   );
 }
