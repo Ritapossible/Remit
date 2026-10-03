@@ -3,8 +3,9 @@
 PLAN.md Phase 1: *every guard must have a test that fails when the guard is
 removed. A check that cannot fail is not evidence.*
 
-Each entry below weakens or deletes one guard in ``remit_core.py``. The suite
-is then run against the mutant and must FAIL. A mutant that survives means the
+Each entry below weakens or deletes one guard in ``remit_core.py`` or
+``remit_prompts.py``. The contracts are rebuilt from the mutant, so the tests
+that run the built and deployed bytes see it too, and the suite must FAIL. A mutant that survives means the
 guard it broke is untested, and the run exits non-zero naming it.
 
 Run with:  python3 tests/mutation_check.py
@@ -17,9 +18,12 @@ import sys
 import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TARGET = os.path.join(ROOT, "contracts", "remit_core.py")
+CORE = os.path.join(ROOT, "contracts", "remit_core.py")
+PROMPTS = os.path.join(ROOT, "contracts", "remit_prompts.py")
+BUILD = os.path.join(ROOT, "contracts", "build")
 
-# (name, what it breaks, original fragment, mutated fragment)
+# (name, what it breaks, original fragment, mutated fragment[, file])
+# The file defaults to remit_core.py.
 MUTATIONS = [
     (
         "jury-fails-open",
@@ -165,6 +169,33 @@ MUTATIONS = [
         '            raise RemitError("defaults: missing %r" % key)',
         "            pass",
     ),
+    (
+        "category-accepts-prose",
+        "a declared category with newlines could pose as a fact for the jury",
+        '        if not (ch.isascii() and (ch.isalnum() or ch in " _.-")):',
+        '        if not (ch.isascii()):',
+    ),
+    (
+        "claim-not-neutralized",
+        "the agent's claim must not be able to open a fake answer section",
+        "    parts.append(neutralize(claim_text) if claim_text else \"(none)\")",
+        "    parts.append(str(claim_text) if claim_text else \"(none)\")",
+        PROMPTS,
+    ),
+    (
+        "artifact-not-neutralized",
+        "the fetched artifact must not be able to close the untrusted block",
+        "        parts.append(neutralize(artifact_text))",
+        "        parts.append(str(artifact_text))",
+        PROMPTS,
+    ),
+    (
+        "headings-survive-neutralize",
+        "runs of '=' that build section headings must be broken up",
+        "    while \"===\" in out or \"---\" in out:",
+        "    while \"---\" in out:",
+        PROMPTS,
+    ),
 ]
 
 
@@ -177,8 +208,18 @@ def run_suite():
     )
 
 
+def rebuild():
+    """Regenerate contracts/build from whatever the sources now say."""
+    subprocess.run(
+        [sys.executable, os.path.join(ROOT, "deploy", "build_contract.py")],
+        check=True, capture_output=True, cwd=ROOT,
+    )
+
+
 def main():
-    original = open(TARGET).read()
+    originals = {path: open(path).read() for path in (CORE, PROMPTS)}
+    snapshot = tempfile.mkdtemp()
+    shutil.copytree(BUILD, os.path.join(snapshot, "build"))
 
     baseline = run_suite()
     if baseline.returncode != 0:
@@ -186,32 +227,43 @@ def main():
         print(baseline.stdout[-3000:])
         return 2
 
-    backup = tempfile.NamedTemporaryFile("w", suffix=".py", delete=False)
-    backup.write(original)
-    backup.close()
-
     survived, killed, unapplied = [], [], []
     try:
-        for name, why, old, new in MUTATIONS:
+        for entry in MUTATIONS:
+            name, why, old, new = entry[:4]
+            target = entry[4] if len(entry) > 4 else CORE
+            original = originals[target]
             if old not in original:
                 unapplied.append((name, why))
                 continue
             if original.count(old) != 1:
                 unapplied.append((name, why + " [fragment not unique]"))
                 continue
-            open(TARGET, "w").write(original.replace(old, new, 1))
-            result = run_suite()
+            try:
+                open(target, "w").write(original.replace(old, new, 1))
+                try:
+                    rebuild()
+                except subprocess.CalledProcessError:
+                    killed.append(name)  # the build itself refused the mutant
+                    continue
+                result = run_suite()
+            finally:
+                open(target, "w").write(original)
             if result.returncode == 0:
                 survived.append((name, why))
             else:
                 killed.append(name)
     finally:
-        shutil.copyfile(backup.name, TARGET)
-        os.unlink(backup.name)
+        for path, text in originals.items():
+            open(path, "w").write(text)
+        shutil.rmtree(BUILD)
+        shutil.copytree(os.path.join(snapshot, "build"), BUILD)
+        shutil.rmtree(snapshot)
 
     restored = run_suite()
     if restored.returncode != 0:
-        print("RESTORE FAILED - contracts/remit_core.py may be damaged.")
+        print("RESTORE FAILED - the sources or contracts/build may be damaged.")
+        print(restored.stdout[-3000:])
         return 3
 
     print("mutants killed   : %d" % len(killed))

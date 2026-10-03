@@ -97,9 +97,12 @@ def api_classify(compiled_json, history_json, candidate_json):
     engine classifier. ``candidate`` and each history row are
     ``[amount, recipient, category, at]``."""
     compiled = json.loads(compiled_json)
+    candidate = json.loads(candidate_json)
+    if not is_category(candidate[2]):
+        return json.dumps({"error": "category must be 1-40 letters, digits, spaces, '_', '.' or '-'", "state": "invalid", "rules": []})
     state, fired = classify_spend(
         _mandate_of(compiled),
-        _spend_of(json.loads(candidate_json)),
+        _spend_of(candidate),
         [_spend_of(h) for h in json.loads(history_json)],
     )
     return json.dumps({"state": state, "rules": [str(r) for r in fired]})

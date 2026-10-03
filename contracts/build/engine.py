@@ -229,6 +229,19 @@ def window_count(spend, history, seconds, now):
     return 1 + len(_window_slice(history, seconds, now))
 
 
+def is_category(value):
+    """A category is a label, not prose: 1-40 ASCII letters, digits, spaces,
+    '_', '.' or '-'. It reaches the jury's FACTS block, so a category carrying
+    newlines or headings could pose as a fact (T3/T4)."""
+    text = str(value)
+    if len(text) < 1 or len(text) > 40:
+        return False
+    for ch in text:
+        if not (ch.isascii() and (ch.isalnum() or ch in " _.-")):
+            return False
+    return True
+
+
 def same_recipient(spend, history):
     """Prior spends to the same recipient as ``spend``. Addresses are compared
     normalised, so case cannot split one vendor into two."""
@@ -850,9 +863,12 @@ def api_classify(compiled_json, history_json, candidate_json):
     engine classifier. ``candidate`` and each history row are
     ``[amount, recipient, category, at]``."""
     compiled = json.loads(compiled_json)
+    candidate = json.loads(candidate_json)
+    if not is_category(candidate[2]):
+        return json.dumps({"error": "category must be 1-40 letters, digits, spaces, '_', '.' or '-'", "state": "invalid", "rules": []})
     state, fired = classify_spend(
         _mandate_of(compiled),
-        _spend_of(json.loads(candidate_json)),
+        _spend_of(candidate),
         [_spend_of(h) for h in json.loads(history_json)],
     )
     return json.dumps({"state": state, "rules": [str(r) for r in fired]})

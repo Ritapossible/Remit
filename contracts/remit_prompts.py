@@ -47,6 +47,22 @@ ARTIFACT_NOTES = {
 DELIVERABLE_MARKER = "<<<REMIT_DELIVERABLE>>>"
 
 
+def neutralize(text):
+    """Untrusted text cannot imitate the prompt's structure.
+
+    The prompt separates its sections with ``=== HEADING ===`` lines and wraps
+    untrusted text in ``--- begin/end ---`` markers. Text the agent controls -
+    its claim, its artifact, its declared category - could otherwise close the
+    untrusted block and open a fake ``=== YOUR ANSWER ===`` section. So runs of
+    ``=`` and ``-`` are broken up, the evidence marker is removed, and carriage
+    returns are dropped. The words survive; only the structure is disarmed.
+    """
+    out = str(text).replace("\r", "").replace(DELIVERABLE_MARKER, "[removed]")
+    while "===" in out or "---" in out:
+        out = out.replace("===", "= = =").replace("---", "- - -")
+    return out
+
+
 def build_deliverable(artifact_state, artifact_text, notes):
     """The evidence block: what the fetched artifact is, and its text if the
     bytes matched the committed digest. ``notes`` is ARTIFACT_NOTES, passed in
@@ -55,7 +71,7 @@ def build_deliverable(artifact_state, artifact_text, notes):
     parts = [notes.get(artifact_state, notes["unverified"])]
     if artifact_state == "verified" and artifact_text:
         parts.append("--- begin artifact ---")
-        parts.append(str(artifact_text))
+        parts.append(neutralize(artifact_text))
         parts.append("--- end artifact ---")
     return "\n".join(parts)
 
@@ -128,7 +144,7 @@ def build_verdict_template(*, ask, facts_lines, claim_text, rule_context=None):
         "above."
     )
     parts.append("--- begin untrusted claim ---")
-    parts.append(str(claim_text) if claim_text else "(none)")
+    parts.append(neutralize(claim_text) if claim_text else "(none)")
     parts.append("--- end untrusted claim ---")
     parts.append("")
     parts.append("=== YOUR ANSWER ===")
@@ -176,7 +192,7 @@ def build_facts_lines(
         "Rule being applied: %s" % rule_id,
         "Payment amount: %d (smallest unit)" % int(amount),
         "Recipient: %s" % str(recipient),
-        "Category declared by the agent: %s" % str(category),
+        "Category declared by the agent: %s" % neutralize(category),
         "This is payment number %d from this agent under this mandate." % int(spend_index),
         "Payments by this agent in the preceding %d seconds, including this one: %d"
         % (int(window_seconds), int(window_count)),
@@ -194,6 +210,6 @@ def build_facts_lines(
         for entry in recent:
             lines.append(
                 "    %d to %s, %d seconds before this one, category %s"
-                % (int(entry[0]), str(entry[1]), int(entry[2]), str(entry[3]))
+                % (int(entry[0]), str(entry[1]), int(entry[2]), neutralize(entry[3]))
             )
     return lines

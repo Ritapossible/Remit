@@ -34,13 +34,13 @@ def _require_one_of(value, allowed, context):
  return value
 
 def normalize_address(value, context='address'):
- text = _require_str(value, context).strip().lower()
- if not text.startswith('0x') or len(text) < 3:
+ _b = _require_str(value, context).strip().lower()
+ if not _b.startswith('0x') or len(_b) < 3:
   raise RemitError('%s: not an address: %r' % (context, value))
- for ch in text[2:]:
+ for ch in _b[2:]:
   if ch not in '0123456789abcdef':
    raise RemitError('%s: not hex: %r' % (context, value))
- return text
+ return _b
 MIN_IN_REMIT_CONFIDENCE = 60
 
 def harden_verdict(verdict, confidence):
@@ -60,13 +60,19 @@ def validator_agrees(*, leader_verdict, own_verdict, leader_outcome):
  return leader_outcome == OUTCOME_REFUSED
 DELIVERABLE_MARKER = '<<<REMIT_DELIVERABLE>>>'
 
+def neutralize(text):
+ _a = str(text).replace('\r', '').replace(DELIVERABLE_MARKER, '[removed]')
+ while '===' in _a or '---' in _a:
+  _a = _a.replace('===', '= = =').replace('---', '- - -')
+ return _a
+
 def build_deliverable(artifact_state, artifact_text, notes):
- parts = [notes.get(artifact_state, notes['unverified'])]
+ _a = [notes.get(artifact_state, notes['unverified'])]
  if artifact_state == 'verified' and artifact_text:
-  parts.append('--- begin artifact ---')
-  parts.append(str(artifact_text))
-  parts.append('--- end artifact ---')
- return '\n'.join(parts)
+  _a.append('--- begin artifact ---')
+  _a.append(neutralize(artifact_text))
+  _a.append('--- end artifact ---')
+ return '\n'.join(_a)
 AUTH_AUTHORIZED = 'authorized'
 AUTH_REFUSED = 'refused'
 AUTH_PENDING = 'pending'
@@ -99,15 +105,15 @@ class RemitGuard(gl.Contract):
 
  def __init__(self, agent: str, mandate_json: str, max_tier: int, shadow: bool, engine: str):
   self.engine = Address(engine)
-  compiled = str(self._eng().compile_mandate(str(mandate_json), int(max_tier)))
-  errors = json.loads(compiled).get('errors', [])
-  if errors:
-   raise Exception('[EXPECTED] mandate rejected: ' + '; '.join([str(e) for e in errors]))
+  _a = str(self._eng().compile_mandate(str(mandate_json), int(max_tier)))
+  _c = json.loads(_a).get('errors', [])
+  if _c:
+   raise Exception('[EXPECTED] mandate rejected: ' + '; '.join([str(e) for e in _c]))
   self.principal = gl.message.sender_address
   self.agent = Address(agent)
   self.max_tier = u256(int(max_tier))
   self.shadow = bool(shadow)
-  self.compiled = compiled
+  self.compiled = _a
   self.spend_count = u256(0)
 
  def _eng(self):
@@ -125,15 +131,15 @@ class RemitGuard(gl.Contract):
   return u256(int(spend_id))
 
  def _history(self) -> list:
-  out = []
-  index = 0
-  total = int(self.spend_count)
-  while index < total:
-   key = u256(index)
-   if self.s_state[key] in (SPEND_SETTLED, SPEND_HELD):
-    out.append([int(self.s_amount[key]), str(self.s_recipient[key]), str(self.s_category[key]), int(self.s_at[key])])
-   index += 1
-  return out
+  _c = []
+  _a = 0
+  _d = int(self.spend_count)
+  while _a < _d:
+   _b = u256(_a)
+   if self.s_state[_b] in (SPEND_SETTLED, SPEND_HELD):
+    _c.append([int(self.s_amount[_b]), str(self.s_recipient[_b]), str(self.s_category[_b]), int(self.s_at[_b])])
+   _a += 1
+  return _c
 
  def _classify(self, recipient: str, value: int, category: str, at: int) -> dict:
   return json.loads(str(self._eng().classify(self.compiled, json.dumps(self._history()), json.dumps([value, recipient, category, at]))))
@@ -142,20 +148,20 @@ class RemitGuard(gl.Contract):
   return [r for r in str(self.s_rules[key]).split(',') if r != '']
 
  def _needs_artifact(self, key) -> bool:
-  fired = self._rule_ids(key)
+  _a = self._rule_ids(key)
   for r in self._mandate()['rules']:
-   if r['id'] in fired and bool(r['requires_artifact']):
+   if r['id'] in _a and bool(r['requires_artifact']):
     return True
   return False
 
  def _tier_for(self, key) -> int:
-  fired = self._rule_ids(key)
-  tier = 0
+  _b = self._rule_ids(key)
+  _d = 0
   for r in self._mandate()['rules']:
-   if r['id'] in fired and int(r['tier']) > tier:
-    tier = int(r['tier'])
-  cap = int(self.max_tier)
-  return tier if tier < cap else cap
+   if r['id'] in _b and int(r['tier']) > _d:
+    _d = int(r['tier'])
+  _a = int(self.max_tier)
+  return _d if _d < _a else _a
 
  def _outcomes(self, key) -> dict:
   return json.loads(str(self._eng().outcomes(self.compiled, self._needs_artifact(key))))
@@ -175,150 +181,152 @@ class RemitGuard(gl.Contract):
  def request_spend(self, recipient: str, amount: int, category: str, memo_uri: str, memo_digest: str, claim: str) -> None:
   if gl.message.sender_address != self.agent:
    raise Exception('[EXPECTED] only the registered agent may request a spend')
-  value = int(amount)
-  if value <= 0:
+  _g = int(amount)
+  if _g <= 0:
    raise Exception('[EXPECTED] a spend must declare a positive amount')
   if str(memo_uri) != '' and (not _is_sha256_hex(memo_digest)):
    raise Exception('[EXPECTED] a committed artifact needs a sha256 digest')
-  now = self._now()
-  who = normalize_address(recipient)
-  decided = self._classify(who, value, str(category), now)
-  state = str(decided['state'])
-  fired = [str(r) for r in decided['rules']]
-  key = u256(int(self.spend_count))
-  self.s_amount[key] = u256(value)
-  self.s_recipient[key] = who
-  self.s_category[key] = str(category)
-  self.s_at[key] = u256(now)
-  self.s_rules[key] = ','.join(fired)
-  self.s_memo_uri[key] = str(memo_uri)
-  self.s_memo_digest[key] = str(memo_digest).strip().lower()
-  self.s_claim[key] = str(claim)[:2000]
-  self.s_verdict[key] = ''
-  self.s_reason[key] = ''
-  self.s_confidence[key] = u256(0)
-  self.s_artifact[key] = ''
-  self.s_tier[key] = u256(0)
-  self.s_held_at[key] = u256(0)
-  self.s_state[key] = state
-  self.s_outcome[key] = ''
-  self.s_decided_at[key] = u256(0 if state == SPEND_HELD else now)
+  _d = self._now()
+  _h = normalize_address(recipient)
+  _a = self._classify(_h, _g, str(category), _d)
+  if _a.get('error'):
+   raise Exception('[EXPECTED] ' + str(_a['error']))
+  _f = str(_a['state'])
+  _b = [str(r) for r in _a['rules']]
+  _c = u256(int(self.spend_count))
+  self.s_amount[_c] = u256(_g)
+  self.s_recipient[_c] = _h
+  self.s_category[_c] = str(category)
+  self.s_at[_c] = u256(_d)
+  self.s_rules[_c] = ','.join(_b)
+  self.s_memo_uri[_c] = str(memo_uri)
+  self.s_memo_digest[_c] = str(memo_digest).strip().lower()
+  self.s_claim[_c] = str(claim)[:2000]
+  self.s_verdict[_c] = ''
+  self.s_reason[_c] = ''
+  self.s_confidence[_c] = u256(0)
+  self.s_artifact[_c] = ''
+  self.s_tier[_c] = u256(0)
+  self.s_held_at[_c] = u256(0)
+  self.s_state[_c] = _f
+  self.s_outcome[_c] = ''
+  self.s_decided_at[_c] = u256(0 if _f == SPEND_HELD else _d)
   self.spend_count = u256(int(self.spend_count) + 1)
-  if state == SPEND_REFUSED:
-   self.s_outcome[key] = OUTCOME_REFUSED
-   self.s_tier[key] = u256(1 if int(self.max_tier) >= 1 else 0)
+  if _f == SPEND_REFUSED:
+   self.s_outcome[_c] = OUTCOME_REFUSED
+   self.s_tier[_c] = u256(1 if int(self.max_tier) >= 1 else 0)
    return
-  if state == SPEND_SETTLED:
-   self.s_outcome[key] = OUTCOME_ALLOWED
+  if _f == SPEND_SETTLED:
+   self.s_outcome[_c] = OUTCOME_ALLOWED
    return
-  self.s_held_at[key] = u256(now)
+  self.s_held_at[_c] = u256(_d)
 
  @gl.public.write
  def commit_artifact(self, spend_id: int, uri: str, digest: str) -> None:
-  key = self._require_spend(spend_id)
+  _a = self._require_spend(spend_id)
   if gl.message.sender_address != self.agent:
    raise Exception('[EXPECTED] only the agent may commit an artifact')
-  if self.s_state[key] != SPEND_HELD:
+  if self.s_state[_a] != SPEND_HELD:
    raise Exception('[EXPECTED] spend is not held; the artifact is frozen')
   if not _is_sha256_hex(digest):
    raise Exception('[EXPECTED] digest must be 64 hex characters')
-  self.s_memo_uri[key] = str(uri)
-  self.s_memo_digest[key] = str(digest).strip().lower()
+  self.s_memo_uri[_a] = str(uri)
+  self.s_memo_digest[_a] = str(digest).strip().lower()
 
  @gl.public.write
  def adjudicate(self, spend_id: int) -> None:
-  key = self._require_spend(spend_id)
-  if self.s_state[key] != SPEND_HELD:
+  _w = self._require_spend(spend_id)
+  if self.s_state[_w] != SPEND_HELD:
    raise Exception('[EXPECTED] spend is not held')
   now = self._now()
-  defaults = self._defaults()
-  memo_uri = str(self.s_memo_uri[key])
-  memo_digest = str(self.s_memo_digest[key])
-  if memo_uri == '':
-   state_now = str(self._eng().uncommitted(int(self.s_held_at[key]), now, int(defaults['response_window_seconds'])))
-   if state_now == ARTIFACT_FORECLOSED:
+  _s = self._defaults()
+  _y = str(self.s_memo_uri[_w])
+  _x = str(self.s_memo_digest[_w])
+  if _y == '':
+   _ae = str(self._eng().uncommitted(int(self.s_held_at[_w]), now, int(_s['response_window_seconds'])))
+   if _ae == ARTIFACT_FORECLOSED:
     raise Exception('[EXPECTED] response window has not elapsed')
-  fired = self._rule_ids(key)
-  if not fired:
+  _t = self._rule_ids(_w)
+  if not _t:
    raise Exception('[EXPECTED] held spend has no fired rule')
-  candidate = [int(self.s_amount[key]), str(self.s_recipient[key]), str(self.s_category[key]), int(self.s_at[key])]
-  question = json.loads(str(gl.get_contract_at(Address(str(self._eng().prompts_address()))).view().jury_prompt(self.compiled, ','.join(fired), str(self.s_claim[key]), json.dumps(candidate), json.dumps(self._history()), int(spend_id) + 1)))
-  template = str(question['template'])
-  notes = {str(k): str(v) for k, v in question['notes'].items()}
-  table = {}
-  for _v, _row in self._outcomes(key).items():
-   table[str(_v)] = {str(_a): str(_o) for _a, _o in _row.items()}
+  _q = [int(self.s_amount[_w]), str(self.s_recipient[_w]), str(self.s_category[_w]), int(self.s_at[_w])]
+  _ab = json.loads(str(gl.get_contract_at(Address(str(self._eng().prompts_address()))).view().jury_prompt(self.compiled, ','.join(_t), str(self.s_claim[_w]), json.dumps(_q), json.dumps(self._history()), int(spend_id) + 1)))
+  _ag = str(_ab['template'])
+  _z = {str(k): str(v) for k, v in _ab['notes'].items()}
+  _af = {}
+  for _v, _i in self._outcomes(_w).items():
+   _af[str(_v)] = {str(_a): str(_o) for _a, _o in _i.items()}
 
   def leader() -> str:
-   _state = ARTIFACT_ABSENT
-   _text = ''
-   if memo_uri != '':
-    _state = ARTIFACT_UNVERIFIED
+   _j = ARTIFACT_ABSENT
+   _k = ''
+   if _y != '':
+    _j = ARTIFACT_UNVERIFIED
     try:
-     _resp = gl.nondet.web.get(memo_uri)
-     _raw = _resp.body
-     if isinstance(_raw, str):
-      _raw = _raw.encode('utf-8')
-     if hashlib.sha256(_raw).hexdigest().lower() == memo_digest:
-      _state = ARTIFACT_VERIFIED
-      _text = _raw.decode('utf-8', 'replace')[:3000]
+     _h = gl.nondet.web.get(_y)
+     _g = _h.body
+     if isinstance(_g, str):
+      _g = _g.encode('utf-8')
+     if hashlib.sha256(_g).hexdigest().lower() == _x:
+      _j = ARTIFACT_VERIFIED
+      _k = _g.decode('utf-8', 'replace')[:3000]
     except Exception:
-     _state = ARTIFACT_UNVERIFIED
-   _out = gl.nondet.exec_prompt(template.replace(DELIVERABLE_MARKER, build_deliverable(_state, _text, notes)), response_format='json')
-   _parsed = _parse_verdict(_out)
-   _parsed['artifact'] = _state
-   return json.dumps(_parsed)
+     _j = ARTIFACT_UNVERIFIED
+   _e = gl.nondet.exec_prompt(_ag.replace(DELIVERABLE_MARKER, build_deliverable(_j, _k, _z)), response_format='json')
+   _f = _parse_verdict(_e)
+   _f['artifact'] = _j
+   return json.dumps(_f)
 
   def validator(leader_result: str) -> bool:
-   _state = ARTIFACT_ABSENT
-   _text = ''
-   if memo_uri != '':
-    _state = ARTIFACT_UNVERIFIED
+   _j = ARTIFACT_ABSENT
+   _k = ''
+   if _y != '':
+    _j = ARTIFACT_UNVERIFIED
     try:
-     _resp = gl.nondet.web.get(memo_uri)
-     _raw = _resp.body
-     if isinstance(_raw, str):
-      _raw = _raw.encode('utf-8')
-     if hashlib.sha256(_raw).hexdigest().lower() == memo_digest:
-      _state = ARTIFACT_VERIFIED
-      _text = _raw.decode('utf-8', 'replace')[:3000]
+     _h = gl.nondet.web.get(_y)
+     _g = _h.body
+     if isinstance(_g, str):
+      _g = _g.encode('utf-8')
+     if hashlib.sha256(_g).hexdigest().lower() == _x:
+      _j = ARTIFACT_VERIFIED
+      _k = _g.decode('utf-8', 'replace')[:3000]
     except Exception:
-     _state = ARTIFACT_UNVERIFIED
-   _theirs = _as_dict(leader_result)
-   if not _theirs:
+     _j = ARTIFACT_UNVERIFIED
+   _l = _as_dict(leader_result)
+   if not _l:
     return False
-   if str(_theirs.get('artifact', '')) != _state:
+   if str(_l.get('artifact', '')) != _j:
     return False
-   _verdict = str(_theirs.get('verdict', ''))
-   if _verdict not in VERDICTS:
+   _n = str(_l.get('verdict', ''))
+   if _n not in VERDICTS:
     return False
-   _mine = _parse_verdict(gl.nondet.exec_prompt(template.replace(DELIVERABLE_MARKER, build_deliverable(_state, _text, notes)), response_format='json'))
-   return validator_agrees(leader_verdict=_verdict, own_verdict=_mine['verdict'], leader_outcome=table[_verdict][_state])
+   _c = _parse_verdict(gl.nondet.exec_prompt(_ag.replace(DELIVERABLE_MARKER, build_deliverable(_j, _k, _z)), response_format='json'))
+   return validator_agrees(leader_verdict=_n, own_verdict=_c['verdict'], leader_outcome=_af[_n][_j])
   raw = gl.vm.run_nondet(leader, validator, compare_user_errors=True)
-  decoded = _as_dict(raw)
-  result = _parse_verdict(decoded)
-  artifact = str(decoded.get('artifact', ARTIFACT_ABSENT))
-  if artifact not in ARTIFACT_STATES:
-   artifact = ARTIFACT_UNVERIFIED
-  self.s_verdict[key] = result['verdict']
-  self.s_reason[key] = result['reason']
-  self._finalise(key, table[result['verdict']][artifact], artifact, result['confidence'])
+  _r = _as_dict(raw)
+  _ad = _parse_verdict(_r)
+  _p = str(_r.get('artifact', ARTIFACT_ABSENT))
+  if _p not in ARTIFACT_STATES:
+   _p = ARTIFACT_UNVERIFIED
+  self.s_verdict[_w] = _ad['verdict']
+  self.s_reason[_w] = _ad['reason']
+  self._finalise(_w, _af[_ad['verdict']][_p], _p, _ad['confidence'])
 
  @gl.public.write
  def resolve_deadline(self, spend_id: int) -> None:
-  key = self._require_spend(spend_id)
-  if self.s_state[key] != SPEND_HELD:
+  _c = self._require_spend(spend_id)
+  if self.s_state[_c] != SPEND_HELD:
    raise Exception('[EXPECTED] spend is not held')
-  defaults = self._defaults()
-  now = self._now()
-  if now - int(self.s_held_at[key]) < int(defaults['hold_deadline_seconds']):
+  _b = self._defaults()
+  _d = self._now()
+  if _d - int(self.s_held_at[_c]) < int(_b['hold_deadline_seconds']):
    raise Exception('[EXPECTED] deadline not reached')
-  if self.s_memo_uri[key] == '':
-   artifact = str(self._eng().uncommitted(int(self.s_held_at[key]), now, int(defaults['response_window_seconds'])))
+  if self.s_memo_uri[_c] == '':
+   _a = str(self._eng().uncommitted(int(self.s_held_at[_c]), _d, int(_b['response_window_seconds'])))
   else:
-   artifact = ARTIFACT_UNVERIFIED
-  self.s_reason[key] = 'deadline_default'
-  self._finalise(key, str(self._outcomes(key)['deadline'][artifact]), artifact, 0)
+   _a = ARTIFACT_UNVERIFIED
+  self.s_reason[_c] = 'deadline_default'
+  self._finalise(_c, str(self._outcomes(_c)['deadline'][_a]), _a, 0)
 
  @gl.public.write
  def override_release(self, spend_id: int) -> None:
@@ -329,22 +337,22 @@ class RemitGuard(gl.Contract):
   self._override(spend_id, OUTCOME_REFUSED)
 
  def _override(self, spend_id: int, outcome: str) -> None:
-  key = self._require_spend(spend_id)
+  _b = self._require_spend(spend_id)
   if gl.message.sender_address != self.principal:
    raise Exception('[EXPECTED] only the principal may override')
-  if self.s_state[key] != SPEND_HELD:
+  if self.s_state[_b] != SPEND_HELD:
    raise Exception('[EXPECTED] spend is not held')
-  self.s_reason[key] = 'principal_override'
-  existing = self.s_artifact[key]
-  self._finalise(key, outcome, existing if existing != '' else ARTIFACT_ABSENT, 0)
+  self.s_reason[_b] = 'principal_override'
+  _a = self.s_artifact[_b]
+  self._finalise(_b, outcome, _a if _a != '' else ARTIFACT_ABSENT, 0)
 
  @gl.public.view
  def authorization_of(self, spend_id: int) -> str:
-  key = self._require_spend(spend_id)
-  state = self.s_state[key]
-  if state == SPEND_HELD:
+  _a = self._require_spend(spend_id)
+  _b = self.s_state[_a]
+  if _b == SPEND_HELD:
    return AUTH_PENDING
-  if self.s_outcome[key] == OUTCOME_ALLOWED:
+  if self.s_outcome[_a] == OUTCOME_ALLOWED:
    return AUTH_AUTHORIZED
   if self.shadow:
    return AUTH_AUTHORIZED
@@ -352,30 +360,30 @@ class RemitGuard(gl.Contract):
 
  @gl.public.view
  def settlement_of(self, spend_id: int) -> str:
-  key = self._require_spend(spend_id)
-  state = self.s_state[key]
-  if state == SPEND_HELD:
-   auth = AUTH_PENDING
-  elif self.s_outcome[key] == OUTCOME_ALLOWED:
-   auth = AUTH_AUTHORIZED
+  _b = self._require_spend(spend_id)
+  _c = self.s_state[_b]
+  if _c == SPEND_HELD:
+   _a = AUTH_PENDING
+  elif self.s_outcome[_b] == OUTCOME_ALLOWED:
+   _a = AUTH_AUTHORIZED
   else:
-   auth = AUTH_REFUSED
-  return json.dumps({'id': int(spend_id), 'authorization': auth, 'recipient': self.s_recipient[key], 'amount': int(self.s_amount[key]), 'decided_at': int(self.s_decided_at.get(key, u256(0))), 'shadow': bool(self.shadow), 'principal': str(self.principal), 'agent': str(self.agent)})
+   _a = AUTH_REFUSED
+  return json.dumps({'id': int(spend_id), 'authorization': _a, 'recipient': self.s_recipient[_b], 'amount': int(self.s_amount[_b]), 'decided_at': int(self.s_decided_at.get(_b, u256(0))), 'shadow': bool(self.shadow), 'principal': str(self.principal), 'agent': str(self.agent)})
 
  @gl.public.view
  def get_spend(self, spend_id: int) -> str:
-  key = self._require_spend(spend_id)
+  _a = self._require_spend(spend_id)
   return json.dumps(self._summarise(int(spend_id)))
 
  @gl.public.view
  def docket(self) -> str:
-  out = []
-  index = 0
-  total = int(self.spend_count)
-  while index < total:
-   out.append(self._summarise(index))
-   index += 1
-  return json.dumps(out)
+  _b = []
+  _a = 0
+  _c = int(self.spend_count)
+  while _a < _c:
+   _b.append(self._summarise(_a))
+   _a += 1
+  return json.dumps(_b)
 
  @gl.public.view
  def mandate_info(self) -> str:
@@ -391,83 +399,83 @@ class RemitGuard(gl.Contract):
 
  @gl.public.view
  def preview_spend(self, recipient: str, amount: int, category: str) -> str:
-  value = int(amount)
-  if value <= 0:
+  _c = int(amount)
+  if _c <= 0:
    return json.dumps({'state': 'invalid', 'rules': [], 'reason': 'amount must be positive'})
-  decided = self._classify(normalize_address(recipient), value, str(category), self._now())
-  return json.dumps({'state': str(decided['state']), 'rules': [str(r) for r in decided['rules']], 'reason': ''})
+  _a = self._classify(normalize_address(recipient), _c, str(category), self._now())
+  return json.dumps({'state': str(_a['state']), 'rules': [str(r) for r in _a['rules']], 'reason': str(_a.get('error', ''))})
 
  def _summarise(self, index: int) -> dict:
-  key = u256(int(index))
-  state = self.s_state[key]
-  if state == SPEND_HELD:
-   authorization = AUTH_PENDING
-  elif self.s_outcome[key] == OUTCOME_ALLOWED or self.shadow:
-   authorization = AUTH_AUTHORIZED
+  _b = u256(int(index))
+  _d = self.s_state[_b]
+  if _d == SPEND_HELD:
+   _a = AUTH_PENDING
+  elif self.s_outcome[_b] == OUTCOME_ALLOWED or self.shadow:
+   _a = AUTH_AUTHORIZED
   else:
-   authorization = AUTH_REFUSED
-  return {'id': int(index), 'amount': int(self.s_amount[key]), 'recipient': self.s_recipient[key], 'category': self.s_category[key], 'at': int(self.s_at[key]), 'state': state, 'rules': [r for r in self.s_rules[key].split(',') if r != ''], 'memo_uri': self.s_memo_uri[key], 'memo_digest': self.s_memo_digest[key], 'claim': self.s_claim[key], 'held_at': int(self.s_held_at[key]), 'verdict': self.s_verdict[key], 'reason': self.s_reason[key], 'confidence': int(self.s_confidence[key]), 'artifact': self.s_artifact[key], 'outcome': self.s_outcome[key], 'tier': int(self.s_tier[key]), 'decided_at': int(self.s_decided_at.get(key, u256(0))), 'authorization': authorization, 'shadow': bool(self.shadow)}
+   _a = AUTH_REFUSED
+  return {'id': int(index), 'amount': int(self.s_amount[_b]), 'recipient': self.s_recipient[_b], 'category': self.s_category[_b], 'at': int(self.s_at[_b]), 'state': _d, 'rules': [r for r in self.s_rules[_b].split(',') if r != ''], 'memo_uri': self.s_memo_uri[_b], 'memo_digest': self.s_memo_digest[_b], 'claim': self.s_claim[_b], 'held_at': int(self.s_held_at[_b]), 'verdict': self.s_verdict[_b], 'reason': self.s_reason[_b], 'confidence': int(self.s_confidence[_b]), 'artifact': self.s_artifact[_b], 'outcome': self.s_outcome[_b], 'tier': int(self.s_tier[_b]), 'decided_at': int(self.s_decided_at.get(_b, u256(0))), 'authorization': _a, 'shadow': bool(self.shadow)}
 
 def _is_sha256_hex(value) -> bool:
- text = str(value).strip().lower()
- if len(text) != 64:
+ _b = str(value).strip().lower()
+ if len(_b) != 64:
   return False
- for ch in text:
+ for ch in _b:
   if ch not in '0123456789abcdef':
    return False
  return True
 
 def _as_dict(value) -> dict:
- data = value
- if isinstance(data, (bytes, bytearray)):
-  data = data.decode('utf-8', 'replace')
- elif not isinstance(data, (dict, str)):
-  data = str(data)
+ _b = value
+ if isinstance(_b, (bytes, bytearray)):
+  _b = _b.decode('utf-8', 'replace')
+ elif not isinstance(_b, (dict, str)):
+  _b = str(_b)
  for _ in range(4):
-  if isinstance(data, dict):
-   return data
-  if not isinstance(data, str):
+  if isinstance(_b, dict):
+   return _b
+  if not isinstance(_b, str):
    return {}
-  text = data.strip()
-  start = text.find('{')
-  end = text.rfind('}')
-  if start >= 0 and end > start and (not text.startswith('"')):
-   text = text[start:end + 1]
+  _e = _b.strip()
+  _d = _e.find('{')
+  _c = _e.rfind('}')
+  if _d >= 0 and _c > _d and (not _e.startswith('"')):
+   _e = _e[_d:_c + 1]
   try:
-   data = json.loads(text)
+   _b = json.loads(_e)
   except Exception:
    return {}
- return data if isinstance(data, dict) else {}
+ return _b if isinstance(_b, dict) else {}
 
 def _parse_verdict(raw) -> dict:
- data = _as_dict(raw)
- verdict = ''
- for alias in ('verdict', 'answer', 'decision', 'result', 'label'):
-  if alias in data and isinstance(data[alias], str):
-   verdict = data[alias].strip().lower().replace('-', '_').replace(' ', '_')
+ _c = _as_dict(raw)
+ _e = ''
+ for _a in ('verdict', 'answer', 'decision', 'result', 'label'):
+  if _a in _c and isinstance(_c[_a], str):
+   _e = _c[_a].strip().lower().replace('-', '_').replace(' ', '_')
    break
- if verdict in ('in_remit', 'inremit', 'within_remit', 'allowed', 'yes'):
-  verdict = VERDICT_IN_REMIT
- elif verdict in ('out_of_remit', 'outofremit', 'outside_remit', 'refused', 'no'):
-  verdict = VERDICT_OUT_OF_REMIT
+ if _e in ('in_remit', 'inremit', 'within_remit', 'allowed', 'yes'):
+  _e = VERDICT_IN_REMIT
+ elif _e in ('out_of_remit', 'outofremit', 'outside_remit', 'refused', 'no'):
+  _e = VERDICT_OUT_OF_REMIT
  else:
-  verdict = VERDICT_UNDETERMINED
- reason = ''
- for alias in ('reason', 'reason_code', 'code', 'rationale'):
-  if alias in data and isinstance(data[alias], str):
-   reason = data[alias].strip().lower()[:64]
+  _e = VERDICT_UNDETERMINED
+ _d = ''
+ for _a in ('reason', 'reason_code', 'code', 'rationale'):
+  if _a in _c and isinstance(_c[_a], str):
+   _d = _c[_a].strip().lower()[:64]
    break
- confidence = 0
- for alias in ('confidence', 'certainty', 'score'):
-  if alias in data:
+ _b = 0
+ for _a in ('confidence', 'certainty', 'score'):
+  if _a in _c:
    try:
-    confidence = int(float(str(data[alias]).strip().rstrip('%')))
+    _b = int(float(str(_c[_a]).strip().rstrip('%')))
    except Exception:
-    confidence = 0
+    _b = 0
    break
- if confidence < 0:
-  confidence = 0
- if confidence > 100:
-  confidence = 100
- verdict = harden_verdict(verdict, confidence)
- return {'verdict': verdict, 'reason': reason, 'confidence': confidence}
+ if _b < 0:
+  _b = 0
+ if _b > 100:
+  _b = 100
+ _e = harden_verdict(_e, _b)
+ return {'verdict': _e, 'reason': _d, 'confidence': _b}

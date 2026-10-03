@@ -106,6 +106,76 @@ def tree_shake(tree, root="RemitGuard"):
     return tree, removed
 
 
+def rename_locals(tree):
+    """Give each function's own local variables short names.
+
+    Only names a function assigns itself are renamed - never a parameter
+    (GenVM calls public methods by argument name), never a name that matches
+    a module-level definition or a builtin (so no global read can be captured),
+    and consistently across nested closures, which share their enclosing
+    scope's names. Semantics are unchanged; tests/direct/test_split.py runs the
+    minified contracts against the readable ones to prove it.
+    """
+    import builtins as _b
+
+    module_names = set(dir(_b)) | {"gl", "Address", "u256", "TreeMap", "DynArray", "self"}
+    for node in tree.body:
+        module_names |= _defines(node)
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            module_names |= {(a.asname or a.name).split(".")[0] for a in node.names}
+
+    def outermost_functions():
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                yield node
+            elif isinstance(node, ast.ClassDef):
+                for item in node.body:
+                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        yield item
+
+    for fn in outermost_functions():
+        params, stored, declared = set(), set(), set()
+        for n in ast.walk(fn):
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                a = n.args
+                params |= {x.arg for x in a.posonlyargs + a.args + a.kwonlyargs + [y for y in (a.vararg, a.kwarg) if y]}
+                if not isinstance(n, ast.Lambda) and n is not fn:
+                    declared.add(n.name)
+            elif isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store):
+                stored.add(n.id)
+            elif isinstance(n, ast.ExceptHandler) and n.name:
+                stored.add(n.name)
+            elif isinstance(n, (ast.Global, ast.Nonlocal)):
+                declared |= set(n.names)
+        targets = sorted(stored - params - declared - module_names)
+        used = {n.id for n in ast.walk(fn) if isinstance(n, ast.Name)} | params | declared | module_names
+        mapping, i = {}, 0
+        for name in targets:
+            while True:
+                short = "_%s" % _short(i)
+                i += 1
+                if short not in used:
+                    break
+            if len(short) < len(name):
+                mapping[name] = short
+        for n in ast.walk(fn):
+            if isinstance(n, ast.Name) and n.id in mapping:
+                n.id = mapping[n.id]
+            elif isinstance(n, ast.ExceptHandler) and n.name in mapping:
+                n.name = mapping[n.name]
+    return tree
+
+
+def _short(i):
+    letters = "abcdefghijklmnopqrstuvwxyz"
+    out = ""
+    while True:
+        out = letters[i % 26] + out
+        i = i // 26 - 1
+        if i < 0:
+            return out
+
+
 def reindent(code):
     """Four-space indentation to one space. Safe on ast.unparse output: it
     never continues a statement onto another line, so leading whitespace is
@@ -128,6 +198,7 @@ def minify(source, shake=True, root="RemitGuard"):
     removed = []
     if shake:
         tree, removed = tree_shake(tree, root=root)
+    tree = rename_locals(tree)
     return header + "\n" + reindent(ast.unparse(tree)) + "\n", removed
 
 

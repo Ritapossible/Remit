@@ -181,6 +181,8 @@ class RemitGuard(gl.Contract):
         now = self._now()
         who = normalize_address(recipient)
         decided = self._classify(who, value, str(category), now)
+        if decided.get("error"):
+            raise Exception("[EXPECTED] " + str(decided["error"]))
         state = str(decided["state"])
         fired = [str(r) for r in decided["rules"]]
 
@@ -512,7 +514,9 @@ class RemitGuard(gl.Contract):
         if value <= 0:
             return json.dumps({"state": "invalid", "rules": [], "reason": "amount must be positive"})
         decided = self._classify(normalize_address(recipient), value, str(category), self._now())
-        return json.dumps({"state": str(decided["state"]), "rules": [str(r) for r in decided["rules"]], "reason": ""})
+        return json.dumps(
+            {"state": str(decided["state"]), "rules": [str(r) for r in decided["rules"]], "reason": str(decided.get("error", ""))}
+        )
 
     def _summarise(self, index: int) -> dict:
         key = u256(int(index))

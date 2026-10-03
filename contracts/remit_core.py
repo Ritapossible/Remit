@@ -225,6 +225,19 @@ def window_count(spend, history, seconds, now):
     return 1 + len(_window_slice(history, seconds, now))
 
 
+def is_category(value):
+    """A category is a label, not prose: 1-40 ASCII letters, digits, spaces,
+    '_', '.' or '-'. It reaches the jury's FACTS block, so a category carrying
+    newlines or headings could pose as a fact (T3/T4)."""
+    text = str(value)
+    if len(text) < 1 or len(text) > 40:
+        return False
+    for ch in text:
+        if not (ch.isascii() and (ch.isalnum() or ch in " _.-")):
+            return False
+    return True
+
+
 def same_recipient(spend, history):
     """Prior spends to the same recipient as ``spend``. Addresses are compared
     normalised, so case cannot split one vendor into two."""
