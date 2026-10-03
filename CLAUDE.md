@@ -261,7 +261,7 @@ Pin the GenVM runner. Do not float it.
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 ```
 
-This hash is carried from prior working contracts in this codebase's lineage.
+This hash is the runner every Remit contract has deployed with on Studio and Bradbury.
 **Re-verify it against the current `genlayer-dev` skill before the first
 deployment** - pins move, and a stale pin fails at deploy time rather than at
 lint time.

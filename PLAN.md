@@ -219,8 +219,7 @@ interface because bonds and tiers are consequences of attacks - writing them
 first would have been guessing.
 
 Phase 3 is deliberately separated from Phase 2. A deployed contract that has
-never transacted proves nothing, and the distinction has cost real time in this
-codebase's lineage.
+never transacted proves nothing.
 
 ## Non-goals
 

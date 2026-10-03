@@ -267,8 +267,8 @@ trigger can still be challenged within the clawback window.
 
 **Attacks and own goals.**
 - *Destruction.* Calling `gl.get_contract_at(wallet).emit_transfer` treats a
-  wallet as an Intelligent Contract; measured in earlier work, the sender was
-  debited and the wallet credited nothing, with the transaction ACCEPTED.
+  wallet as an Intelligent Contract: the sender is debited and the wallet
+  credited nothing, with the transaction ACCEPTED.
 - *Bypass.* An agent whose key holds the money can simply not ask the gate.
 - *Paying on a verdict an appeal reverses.* A rail that pays at acceptance has
   already paid if the verdict flips.
@@ -313,9 +313,9 @@ record that looks empty.
 
 **Profit.** A guaranteed favourable verdict against an honest counterparty.
 
-This one is not hypothetical. It was found and confirmed on chain in prior work
-in this codebase's lineage, where an early close froze the other party out and
-the forfeit landed regardless.
+This one is not hypothetical: an early close that freezes the other party out,
+with the forfeit landing regardless, is the classic failure of on-chain dispute
+designs.
 
 **Mitigation.**
 - A **mandatory response window** runs from the moment a spend is HELD. The case

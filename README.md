@@ -303,8 +303,3 @@ CLAUDE.md           project memory: hard constraints, conventions, commands
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
-Remit shares a problem domain with prior GenLayer emergency-halt work
-(notably [Halt](https://github.com/JspIIV/halt), AGPL-3.0) but contains no code
-derived from it and inverts its posture: Remit gates spends before value moves
-rather than halting protocols after a breach.
