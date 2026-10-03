@@ -133,6 +133,21 @@ challenger's next bond (one step forgiven per week, a win clears it), and a
 dismissed challenge's bond goes to the agent it griefed. An upheld challenge
 returns the bond with a 5% reward, after the principal is made whole.
 
+## Deployed contracts
+
+The app reads these from `deploy/deployments.json` when it is built; nothing has to be configured by hand.
+
+| Contract | Studio | Bradbury |
+| --- | --- | --- |
+| **Engine** - shared: validates mandates, classifies spends, court arithmetic | [`0xC54324E0127BC5ce3E314467a1c2Eec9F9bEC515`](https://genlayer-explorer.vercel.app/address/0xC54324E0127BC5ce3E314467a1c2Eec9F9bEC515) | [`0x6Bbf7978ba6f7A61E29b33D0f13ecc01B9F50CE3`](https://explorer-bradbury.genlayer.com/address/0x6Bbf7978ba6f7A61E29b33D0f13ecc01B9F50CE3) |
+| **Prompts** - shared: builds the jury's question | [`0xba3Aa01E33bE3e464B2D9b6630a1851e411b51A5`](https://genlayer-explorer.vercel.app/address/0xba3Aa01E33bE3e464B2D9b6630a1851e411b51A5) | [`0x18D3D692481C78f57E488E352155076cf2E091cd`](https://explorer-bradbury.genlayer.com/address/0x18D3D692481C78f57E488E352155076cf2E091cd) |
+| **Registry** - shared: binds each agent to one principal's guard | [`0xC55Dcbf923da53Fd5746De792b6991c9b9144dE0`](https://genlayer-explorer.vercel.app/address/0xC55Dcbf923da53Fd5746De792b6991c9b9144dE0) | [`0x3Bc28fF37db197A1c57ED262b8FAC405ee02bAeE`](https://explorer-bradbury.genlayer.com/address/0x3Bc28fF37db197A1c57ED262b8FAC405ee02bAeE) |
+| **Guard (reference)** - decides; holds nothing | [`0x9F4A53576E135aE81949d2525Fa2C4776afDedDc`](https://genlayer-explorer.vercel.app/address/0x9F4A53576E135aE81949d2525Fa2C4776afDedDc) | [`0x4CC1E5c237f064993Ae288B47c274EfeA0c852c8`](https://explorer-bradbury.genlayer.com/address/0x4CC1E5c237f064993Ae288B47c274EfeA0c852c8) |
+| **Rail (reference)** - treasury and court for the reference guard | [`0xF8Aca245124d7992Faab116406d68ac97f4D8D1D`](https://genlayer-explorer.vercel.app/address/0xF8Aca245124d7992Faab116406d68ac97f4D8D1D) | [`0x697F48EB35FB3EBB3a418bd70a3ae3c90191D411`](https://explorer-bradbury.genlayer.com/address/0x697F48EB35FB3EBB3a418bd70a3ae3c90191D411) |
+
+Reference agent `0x8aA26Fa51a68c583C467463e93db0EBc10f7D509` (both networks), max tier 3. Rail finality delay: 60 s on Studio, 2400 s on Bradbury; bond floor 0.01 GEN.
+
+
 ## Status
 
 **Running on GenLayer Studio and the Bradbury testnet**, as five contracts: a
@@ -140,7 +155,7 @@ shared rules engine, a shared prompts contract and a shared registry, and per
 agent a guard and its rail (treasury and court). Bradbury caps a transaction at
 2^24 gas, so nothing over about 20 KB deploys; the split is how everything
 fits. Deployed sizes: engine 18.1 KB, prompts 10.6 KB, guard 17.4 KB plus its
-mandate, rail 16.8 KB, registry 3.0 KB. Addresses are in
+mandate, rail 16.8 KB, registry 3.0 KB. Addresses are below and in
 `deploy/deployments.json`.
 
 Every result below is a real transaction, recorded in `deploy/*.json`, and every
