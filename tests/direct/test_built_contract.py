@@ -125,7 +125,7 @@ def test_both_closures_ask_for_json(built):
 
 def test_a_hesitant_in_remit_is_undetermined(built):
     fn = built[built.index("def _parse_verdict(raw) -> dict:"):]
-    assert "harden_verdict(verdict, confidence)" in fn
+    assert 'harden_verdict(result["verdict"], result["confidence"])' in fn
 
 
 def test_every_fired_rule_reaches_the_jury(built):
@@ -155,7 +155,7 @@ def test_settlement_view_ignores_shadow(built):
 def test_an_unreadable_llm_response_is_undetermined_not_a_guess(built):
     """Anything unparseable resolves to UNDETERMINED, which falls to the
     registered default. It is never coerced into a verdict."""
-    fn = built[built.index("def _parse_verdict(raw) -> dict:"):]
+    fn = built[built.index("def _read_verdict(raw) -> dict:"):]
     assert "verdict = VERDICT_UNDETERMINED" in fn
 
 
@@ -259,7 +259,7 @@ def test_as_dict_coerces_a_wrapper_object(built):
     verdict and no error anywhere in the receipt.
     """
     fn = built[built.index("def _as_dict(value) -> dict:"):]
-    fn = fn[: fn.index("\ndef _parse_verdict")]
+    fn = fn[: fn.index("\ndef _read_verdict")]
     assert "not isinstance(data, (dict, str))" in fn
     assert "data = str(data)" in fn
 

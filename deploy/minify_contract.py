@@ -166,6 +166,60 @@ def rename_locals(tree):
     return tree
 
 
+def rename_globals(tree, root):
+    """Give module-level definitions short names: ``_A``, ``_B``, ...
+
+    Upper case after the underscore, so they never meet a local renamed by
+    ``rename_locals`` (lower case), and underscored, so ``from genlayer
+    import *`` can never supply one. Kept as they are: the contract class
+    (``root``), any class with a decorator other than ``dataclass`` (an EVM
+    interface), and any name that some function or class body also binds
+    locally - renaming it would change which binding a read sees.
+    """
+    defs = []
+    for node in tree.body:
+        for name in sorted(_defines(node)):
+            defs.append((name, node))
+    bound_inside = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            a = node.args
+            bound_inside |= {x.arg for x in a.posonlyargs + a.args + a.kwonlyargs + [y for y in (a.vararg, a.kwarg) if y]}
+            if not isinstance(node, ast.Lambda):
+                for n in ast.walk(node):
+                    if n is not node and isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store):
+                        bound_inside.add(n.id)
+                    elif n is not node and isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                        bound_inside.add(n.name)
+                    elif isinstance(n, ast.ExceptHandler) and n.name:
+                        bound_inside.add(n.name)
+        elif isinstance(node, ast.ClassDef):
+            for item in node.body:
+                bound_inside |= _defines(item)
+    every = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)} | {d for d, _ in defs}
+    mapping, i = {}, 0
+    for name, node in defs:
+        if name == root or name in bound_inside or name in mapping:
+            continue
+        if isinstance(node, ast.ClassDef) and any(
+            not (isinstance(d, ast.Name) and d.id == "dataclass") for d in node.decorator_list
+        ):
+            continue
+        while True:
+            short = "_%s" % _short(i).upper()
+            i += 1
+            if short not in every:
+                break
+        if len(short) < len(name):
+            mapping[name] = short
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Name) and n.id in mapping:
+            n.id = mapping[n.id]
+        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and n.name in mapping:
+            n.name = mapping[n.name]
+    return tree
+
+
 def _short(i):
     letters = "abcdefghijklmnopqrstuvwxyz"
     out = ""
@@ -199,6 +253,8 @@ def minify(source, shake=True, root="RemitGuard"):
     if shake:
         tree, removed = tree_shake(tree, root=root)
     tree = rename_locals(tree)
+    if shake:
+        tree = rename_globals(tree, root)
     return header + "\n" + reindent(ast.unparse(tree)) + "\n", removed
 
 

@@ -106,3 +106,50 @@ def test_neutralize_is_idempotent_and_breaks_every_run():
         once = prompts.neutralize(attack)
         assert "===" not in once and "---" not in once and "\r" not in once
         assert prompts.neutralize(once) == once
+
+
+# --- a bonded challenge: the challenger's statement is untrusted too --------
+
+CHALLENGE_STRUCTURE = STRUCTURE[:6] + [
+    "=== CHALLENGE (supplied by the challenger; UNTRUSTED) ===",
+    "--- begin untrusted challenge ---",
+    "--- end untrusted challenge ---",
+] + STRUCTURE[6:]
+
+
+def challenge_prompt(statement, claim=""):
+    hist = [[15000, VENDOR_A, "media", T0 - 60]]
+    cand = [15000, VENDOR_A, "media", T0]
+    q = json.loads(
+        prompts_api.api_challenge_prompt(COMPILED, "structuring", claim, statement, json.dumps(cand), json.dumps(hist), 2)
+    )
+    return q["template"].replace(prompts.DELIVERABLE_MARKER, prompts.build_deliverable("absent", "", q["notes"]))
+
+
+@pytest.mark.parametrize("attack", INJECTIONS)
+def test_challenge_statement_cannot_forge_structure(attack):
+    text = challenge_prompt(attack, claim=attack)
+    for marker in CHALLENGE_STRUCTURE:
+        assert text.count(marker) == 1, "%r appears %d times" % (marker, text.count(marker))
+    positions = [text.index(m) for m in CHALLENGE_STRUCTURE]
+    assert positions == sorted(positions), "sections out of order"
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("===") or stripped.startswith("---"):
+            assert stripped in CHALLENGE_STRUCTURE, "forged structure line: %r" % stripped
+    start = text.index("--- begin untrusted challenge ---")
+    assert prompts.neutralize(attack) in text[start : text.index("--- end untrusted challenge ---")]
+
+
+def test_a_challenge_is_framed_as_an_interested_allegation():
+    text = challenge_prompt("They split it.")
+    assert "posted a bond alleging a breach" in text and "gains if you find one" in text
+    assert "opened by an arithmetic trigger" not in text
+    assert "opened by an arithmetic trigger" in prompt()
+
+
+def test_a_challenge_must_name_a_judgment_rule():
+    with pytest.raises(core.RemitError):
+        prompts_api.api_challenge_prompt(COMPILED, "per-spend", "", "x", json.dumps([1, VENDOR_A, "m", T0]), "[]", 1)
+    with pytest.raises(core.RemitError):
+        prompts_api.api_challenge_prompt(COMPILED, "nope", "", "x", json.dumps([1, VENDOR_A, "m", T0]), "[]", 1)

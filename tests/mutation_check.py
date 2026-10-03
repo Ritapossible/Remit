@@ -4,7 +4,7 @@ PLAN.md Phase 1: *every guard must have a test that fails when the guard is
 removed. A check that cannot fail is not evidence.*
 
 Each entry below weakens or deletes one guard in ``remit_core.py`` or
-``remit_prompts.py``. The contracts are rebuilt from the mutant, so the tests
+``remit_prompts.py``, or in a contract shell. The contracts are rebuilt from the mutant, so the tests
 that run the built and deployed bytes see it too, and the suite must FAIL. A mutant that survives means the
 guard it broke is untested, and the run exits non-zero naming it.
 
@@ -20,6 +20,9 @@ import tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CORE = os.path.join(ROOT, "contracts", "remit_core.py")
 PROMPTS = os.path.join(ROOT, "contracts", "remit_prompts.py")
+GUARD = os.path.join(ROOT, "contracts", "contract_shell.py")
+RAIL = os.path.join(ROOT, "contracts", "rail_shell.py")
+REGISTRY = os.path.join(ROOT, "contracts", "registry_shell.py")
 BUILD = os.path.join(ROOT, "contracts", "build")
 
 # (name, what it breaks, original fragment, mutated fragment[, file])
@@ -196,6 +199,128 @@ MUTATIONS = [
         "    while \"---\" in out:",
         PROMPTS,
     ),
+    (
+        "challenge-uphold-fails-open",
+        "an upheld challenge must stand only on agreement",
+        "    if leader_verdict == VERDICT_OUT_OF_REMIT:\n        return False\n    return own_verdict != VERDICT_OUT_OF_REMIT",
+        "    return own_verdict != VERDICT_OUT_OF_REMIT",
+    ),
+    (
+        "challenge-breach-veto-lost",
+        "a validator sure of the breach must veto a dismissal",
+        "        return False\n    return own_verdict != VERDICT_OUT_OF_REMIT",
+        "        return False\n    return True",
+    ),
+    (
+        "hesitant-breach-counts",
+        "a hesitant breach must not uphold a challenge",
+        "    if verdict == VERDICT_OUT_OF_REMIT and int(confidence) < MIN_UPHELD_CONFIDENCE:",
+        "    if False:",
+    ),
+    (
+        "jury-decisions-rechallengeable",
+        "a jury's or principal's decision is appealed, not challenged",
+        '    if str(spend.get("verdict", "")) != "" or str(spend.get("reason", "")) != "":',
+        "    if False:",
+    ),
+    (
+        "clawback-window-ignored",
+        "a payment past the clawback window is final",
+        "    if decided_at <= 0 or now - decided_at > int(clawback_window_seconds):",
+        "    if decided_at <= 0:",
+    ),
+    (
+        "challenger-paid-before-principal",
+        "the principal is made whole before the challenger is rewarded",
+        "agent_standing=standing - clawback, policy=policy)",
+        "agent_standing=standing, policy=policy)",
+    ),
+    (
+        "unpaid-payment-not-blocked",
+        "an upheld challenge must stop a payment the rail has not made",
+        '"from_standing": clawback + reward, "blocked": not paid}',
+        '"from_standing": clawback + reward, "blocked": False}',
+    ),
+    (
+        "win-does-not-reset-streak",
+        "a challenger who is right pays the floor again",
+        "    if upheld:\n        return 0, 0",
+        "    if upheld:\n        return losses, 0",
+    ),
+    (
+        "tier-two-does-not-freeze",
+        "a tier-2 breach must freeze the agent",
+        "    if shadow or tier < TIER_FREEZE:",
+        "    if shadow or tier < TIER_REVOKE:",
+    ),
+    (
+        "shadow-mode-freezes",
+        "shadow mode withholds nothing, so it freezes nothing",
+        "    if shadow or tier < TIER_FREEZE:",
+        "    if tier < TIER_FREEZE:",
+    ),
+    (
+        "revocation-reaches-forward",
+        "a tier-3 revocation must not touch what is requested after it",
+        "    return int(spend_id) < int(revoked_below)",
+        "    return int(spend_id) <= int(revoked_below)",
+    ),
+    (
+        "guard-ignores-court-freeze",
+        "an agent frozen by the rail's court must not spend",
+        "            if court > tier:",
+        "            if False:",
+        GUARD,
+    ),
+    (
+        "guard-breach-does-not-freeze",
+        "the guard's own out-of-remit verdict must apply its tier",
+        "        if result[\"verdict\"] == VERDICT_OUT_OF_REMIT:\n            # Graduated",
+        "        if False:\n            # Graduated",
+        GUARD,
+    ),
+    (
+        "guard-revocation-ignored",
+        "a tier-3 revocation must withdraw the guard's authorization",
+        "            return AUTH_REVOKED",
+        "            return AUTH_AUTHORIZED",
+        GUARD,
+    ),
+    (
+        "rail-pays-under-challenge",
+        "the rail must not pay a payment that is under challenge",
+        '        if int(self.open_on.get(key, u256(0))) > 0:\n            raise Exception("[EXPECTED] spend is under challenge',
+        '        if False:\n            raise Exception("[EXPECTED] spend is under challenge',
+        RAIL,
+    ),
+    (
+        "rail-pays-clawed-back",
+        "the rail must not pay a payment an upheld challenge clawed back",
+        '        if int(self.upheld_on.get(key, u256(0))) > 0:\n            raise Exception("[EXPECTED] an upheld',
+        '        if False:\n            raise Exception("[EXPECTED] an upheld',
+        RAIL,
+    ),
+    (
+        "rail-withdraws-bonds",
+        "the principal's withdrawal must never reach a bond",
+        "        if value <= 0 or int(self.treasury) < value:\n            raise Exception(\"[EXPECTED] invalid withdrawal",
+        "        if value <= 0 or int(self.balance) < value:\n            raise Exception(\"[EXPECTED] invalid withdrawal",
+        RAIL,
+    ),
+    (
+        "bond-withdrawn-inside-window",
+        "the agent's bond must stay while a payment is challengeable",
+        "                if now - int(s[\"decided_at\"]) <= window:",
+        "                if False:",
+        RAIL,
+    ),
+    (
+        "registry-lets-agent-move",
+        "another principal must not take over a registered agent",
+        "            if self.r_principal[old] != who:",
+        "            if False:",
+        REGISTRY,
+    ),
 ]
 
 
@@ -217,7 +342,7 @@ def rebuild():
 
 
 def main():
-    originals = {path: open(path).read() for path in (CORE, PROMPTS)}
+    originals = {path: open(path).read() for path in (CORE, PROMPTS, GUARD, RAIL, REGISTRY)}
     snapshot = tempfile.mkdtemp()
     shutil.copytree(BUILD, os.path.join(snapshot, "build"))
 

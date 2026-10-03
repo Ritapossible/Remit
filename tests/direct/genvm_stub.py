@@ -51,6 +51,27 @@ class _Public:
         return fn
 
 
+class _Evm:
+    """``gl.evm``: an EVM contract interface whose only use here is sending
+    value. A transfer moves value out of the contract executing the call."""
+
+    runtime = None
+
+    @classmethod
+    def contract_interface(cls, klass):
+        rt = cls.runtime
+
+        class _Iface:
+            def __init__(self, address):
+                self.address = str(address).lower()
+
+            def emit_transfer(self, value=0):
+                rt.transfer(rt.current, self.address, int(value))
+
+        _Iface.__name__ = klass.__name__
+        return _Iface
+
+
 class _Response:
     def __init__(self, body):
         self.body = body
@@ -67,6 +88,43 @@ class Runtime:
         self.web = {}
         self.model = lambda prompt: {"verdict": "undetermined", "reason": "", "confidence": 0}
         self.prompts_seen = []
+        self.value = 0
+        self.current = None
+        self.balances = {}
+        self.transfers = []
+
+    def transfer(self, source, to, value):
+        if self.balances.get(source, 0) < value:
+            raise Exception("insufficient balance in %s" % source)
+        self.balances[source] = self.balances.get(source, 0) - value
+        self.balances[to] = self.balances.get(to, 0) + value
+        self.transfers.append((source, to, value))
+
+    def call(self, address, method, *args, sender=None, value=0):
+        """A transaction: ``sender`` calls ``method`` on the contract at
+        ``address``, sending ``value``. State is rolled back on an exception,
+        as a reverted transaction's would be."""
+        import copy
+
+        address = str(address).lower()
+        if sender:
+            self.sender = sender
+        snapshot = (copy.deepcopy(self.contracts_state()), dict(self.balances), list(self.transfers))
+        self.value, self.current = int(value), address
+        self.balances[address] = self.balances.get(address, 0) + int(value)
+        try:
+            return getattr(self.contracts[address], method)(*args)
+        except Exception:
+            state, self.balances, self.transfers = snapshot
+            for addr, data in state.items():
+                self.contracts[addr].__dict__.clear()
+                self.contracts[addr].__dict__.update(data)
+            raise
+        finally:
+            self.value, self.current = 0, None
+
+    def contracts_state(self):
+        return {addr: obj.__dict__ for addr, obj in self.contracts.items()}
 
     # --- what `gl` exposes ------------------------------------------------
     def make_gl(self):
@@ -75,6 +133,10 @@ class Runtime:
         class Contract:
             def __init_subclass__(cls, **kw):
                 super().__init_subclass__(**kw)
+
+            @property
+            def balance(self):
+                return rt.balances.get(self.__dict__.get("_stub_address"), 0)
 
             def __getattr__(self, name):
                 # Storage fields are annotated on the class and start empty.
@@ -99,6 +161,10 @@ class Runtime:
             @property
             def sender_address(self):
                 return rt.sender
+
+            @property
+            def value(self):
+                return rt.value
 
         class _Web:
             @staticmethod
@@ -128,8 +194,10 @@ class Runtime:
             message=_Message(),
             nondet=_Nondet,
             vm=_Vm,
-            get_contract_at=lambda addr: _Proxy(rt.contracts[str(addr)]),
+            evm=_Evm,
+            get_contract_at=lambda addr: _Proxy(rt.contracts[str(addr).lower()]),
         )
+        _Evm.runtime = rt
         return gl
 
     def clock(self):
@@ -162,7 +230,13 @@ def load(path, runtime):
 def deploy(runtime, namespace, cls, address, *args, sender=None):
     if sender:
         runtime.sender = sender
+    address = str(address).lower()
     obj = namespace[cls].__new__(namespace[cls])
-    namespace[cls].__init__(obj, *args)
+    obj.__dict__["_stub_address"] = address
+    runtime.current = address
+    try:
+        namespace[cls].__init__(obj, *args)
+    finally:
+        runtime.current = None
     runtime.contracts[address] = obj
     return obj

@@ -99,6 +99,15 @@ def scenario(suffix):
     rt.sender = PRINCIPAL
     out["adjudicate"] = attempt(g.adjudicate, 1)
 
+    # The split breached a tier-2 rule: the agent is frozen until the
+    # principal lifts it.
+    rt.sender = AGENT
+    out["frozen spend"] = attempt(g.request_spend, OTHER, 10 * GEN, "hosting", "", "", "x")
+    out["agent cannot lift"] = attempt(g.lift_freeze)
+    out["info while frozen"] = json.loads(g.mandate_info())
+    rt.sender = PRINCIPAL
+    out["lift"] = attempt(g.lift_freeze)
+
     # A second case: separate purchases, released by the jury.
     rt.sender = AGENT
     out["spend 3"] = attempt(g.request_spend, OTHER, 120 * GEN, "hosting", "", "", "PO-5102 renewal")
@@ -142,6 +151,12 @@ def test_the_scenario_does_what_the_product_promises(readable):
     assert "category must be" in r["forged category"]
     assert "response window has not elapsed" in r["adjudicate early"]
     assert r["adjudicate"] == "ok" and r["adjudicate 5"] == "ok"
+    # Tier 2: the refused split froze the agent; only the principal lifts it.
+    assert "frozen at tier 2" in r["frozen spend"]
+    assert "only the principal" in r["agent cannot lift"]
+    frozen = r["info while frozen"]
+    assert (frozen["frozen_tier"], frozen["frozen_by"]) == (2, 1)
+    assert r["lift"] == "ok" and r["mandate"]["frozen_tier"] == 0
     states = [(s["state"], s["authorization"], s["verdict"]) for s in r["docket"]]
     assert states == [
         ("settled", "authorized", ""),          # first payment clears

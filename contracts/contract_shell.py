@@ -33,6 +33,7 @@ Hard laws enforced here (see CLAUDE.md):
 AUTH_AUTHORIZED = "authorized"
 AUTH_REFUSED = "refused"
 AUTH_PENDING = "pending"
+AUTH_REVOKED = "revoked"
 
 
 class RemitGuard(gl.Contract):
@@ -69,6 +70,15 @@ class RemitGuard(gl.Contract):
     # delay after this before paying.
     s_decided_at: TreeMap[u256, u256]
 
+    # --- graduated authority (tiers 2 and 3) ---
+    # A jury breach at tier 2 freezes the agent; at tier 3 it also revokes
+    # every authorization decided before it. The rail's court can freeze the
+    # agent too, for an upheld challenge; the guard reads that on every spend.
+    frozen_tier: u256
+    frozen_by: u256
+    revoked_below: u256
+    rail: str
+
     # ----------------------------------------------------------------- init
 
     def __init__(self, agent: str, mandate_json: str, max_tier: int, shadow: bool, engine: str):
@@ -83,6 +93,7 @@ class RemitGuard(gl.Contract):
         self.shadow = bool(shadow)
         self.compiled = compiled
         self.spend_count = u256(0)
+        self.rail = ""
 
     # -------------------------------------------------------------- helpers
 
@@ -145,6 +156,25 @@ class RemitGuard(gl.Contract):
     def _defaults(self) -> dict:
         return self._mandate()["defaults"]
 
+    def _frozen(self) -> int:
+        """The freeze in force: this guard's own, or its rail's court's."""
+        tier = int(self.frozen_tier)
+        if self.rail != "":
+            court = int(gl.get_contract_at(Address(self.rail)).view().court_freeze())
+            if court > tier:
+                tier = court
+        return tier
+
+    def _auth(self, key) -> str:
+        """The authorization a rail acts on (shadow mode aside)."""
+        if self.s_state[key] == SPEND_HELD:
+            return AUTH_PENDING
+        if self.s_outcome[key] != OUTCOME_ALLOWED:
+            return AUTH_REFUSED
+        if is_revoked(spend_id=int(key), revoked_below=int(self.revoked_below)):
+            return AUTH_REVOKED
+        return AUTH_AUTHORIZED
+
     def _finalise(self, key, outcome: str, artifact: str, confidence: int) -> None:
         self.s_state[key] = SPEND_SETTLED if outcome == OUTCOME_ALLOWED else SPEND_REFUSED
         self.s_outcome[key] = outcome
@@ -172,6 +202,9 @@ class RemitGuard(gl.Contract):
         """
         if gl.message.sender_address != self.agent:
             raise Exception("[EXPECTED] only the registered agent may request a spend")
+        frozen = self._frozen()
+        if frozen >= TIER_FREEZE:
+            raise Exception("[EXPECTED] the agent is frozen at tier %d; only the principal can lift it" % frozen)
         value = int(amount)
         if value <= 0:
             raise Exception("[EXPECTED] a spend must declare a positive amount")
@@ -380,6 +413,15 @@ class RemitGuard(gl.Contract):
         self.s_verdict[key] = result["verdict"]
         self.s_reason[key] = result["reason"]
         self._finalise(key, table[result["verdict"]][artifact], artifact, result["confidence"])
+        if result["verdict"] == VERDICT_OUT_OF_REMIT:
+            # Graduated authority: a breach at tier 2 freezes the agent; at
+            # tier 3 it also revokes what the rail has not yet paid.
+            freeze = freeze_tier(tier=int(self.s_tier[key]), shadow=bool(self.shadow))
+            if freeze > int(self.frozen_tier):
+                self.frozen_tier = u256(freeze)
+                self.frozen_by = u256(int(spend_id) + 1)
+            if freeze >= TIER_REVOKE:
+                self.revoked_below = u256(int(self.spend_count))
 
     @gl.public.write
     def resolve_deadline(self, spend_id: int) -> None:
@@ -410,6 +452,26 @@ class RemitGuard(gl.Contract):
     def override_refuse(self, spend_id: int) -> None:
         self._override(spend_id, OUTCOME_REFUSED)
 
+    @gl.public.write
+    def lift_freeze(self) -> None:
+        """The principal's key outranks Remit: it may lift a freeze. A tier-3
+        revocation stands - those payments stay unpaid; the principal can pay
+        them from the rail's treasury directly. A freeze imposed by the rail's
+        court is lifted on the rail."""
+        if gl.message.sender_address != self.principal:
+            raise Exception("[EXPECTED] only the principal may lift a freeze")
+        self.frozen_tier = u256(0)
+        self.frozen_by = u256(0)
+
+    @gl.public.write
+    def attach_rail(self, rail: str) -> None:
+        """Once, by the principal: the rail whose court this guard obeys."""
+        if gl.message.sender_address != self.principal:
+            raise Exception("[EXPECTED] only the principal may attach a rail")
+        if self.rail != "":
+            raise Exception("[EXPECTED] a rail is already attached")
+        self.rail = str(Address(rail))
+
     def _override(self, spend_id: int, outcome: str) -> None:
         key = self._require_spend(spend_id)
         if gl.message.sender_address != self.principal:
@@ -431,14 +493,10 @@ class RemitGuard(gl.Contract):
         to grant real authority.
         """
         key = self._require_spend(spend_id)
-        state = self.s_state[key]
-        if state == SPEND_HELD:
-            return AUTH_PENDING
-        if self.s_outcome[key] == OUTCOME_ALLOWED:
+        auth = self._auth(key)
+        if auth != AUTH_PENDING and self.shadow:
             return AUTH_AUTHORIZED
-        if self.shadow:
-            return AUTH_AUTHORIZED
-        return AUTH_REFUSED
+        return auth
 
     @gl.public.view
     def settlement_of(self, spend_id: int) -> str:
@@ -451,17 +509,10 @@ class RemitGuard(gl.Contract):
         rather than pay refused spends.
         """
         key = self._require_spend(spend_id)
-        state = self.s_state[key]
-        if state == SPEND_HELD:
-            auth = AUTH_PENDING
-        elif self.s_outcome[key] == OUTCOME_ALLOWED:
-            auth = AUTH_AUTHORIZED
-        else:
-            auth = AUTH_REFUSED
         return json.dumps(
             {
                 "id": int(spend_id),
-                "authorization": auth,
+                "authorization": self._auth(key),
                 "recipient": self.s_recipient[key],
                 "amount": int(self.s_amount[key]),
                 "decided_at": int(self.s_decided_at.get(key, u256(0))),
@@ -499,6 +550,13 @@ class RemitGuard(gl.Contract):
         m["max_tier"] = int(self.max_tier)
         m["shadow"] = bool(self.shadow)
         m["spend_count"] = int(self.spend_count)
+        m["release"] = "remit-guard/3"
+        m["rail"] = self.rail
+        m["frozen_tier"] = int(self.frozen_tier)
+        m["frozen_by"] = int(self.frozen_by) - 1
+        m["revoked_below"] = int(self.revoked_below)
+        # The rail's court may freeze the agent too (its court_freeze view);
+        # not read here, because the rail itself reads this view.
         return json.dumps(m)
 
     @gl.public.view
@@ -521,12 +579,9 @@ class RemitGuard(gl.Contract):
     def _summarise(self, index: int) -> dict:
         key = u256(int(index))
         state = self.s_state[key]
-        if state == SPEND_HELD:
-            authorization = AUTH_PENDING
-        elif self.s_outcome[key] == OUTCOME_ALLOWED or self.shadow:
+        authorization = self._auth(key)
+        if authorization != AUTH_PENDING and self.shadow:
             authorization = AUTH_AUTHORIZED
-        else:
-            authorization = AUTH_REFUSED
         return {
             "id": int(index),
             "amount": int(self.s_amount[key]),
@@ -553,97 +608,11 @@ class RemitGuard(gl.Contract):
         }
 
 
-def _is_sha256_hex(value) -> bool:
-    text = str(value).strip().lower()
-    if len(text) != 64:
-        return False
-    for ch in text:
-        if ch not in "0123456789abcdef":
-            return False
-    return True
-
-
-def _as_dict(value) -> dict:
-    """Decode a consensus payload into a dict, however it arrives.
-
-    A leader's return value reaches the validator JSON-encoded, so a single
-    ``json.loads`` yields a *string* rather than an object. Calling ``.get`` on
-    that raises, the validator closure errors, and the error counts as a
-    disagreement - which is how a correct verdict came to be rejected by every
-    validator with nothing in the receipt pointing at the cause.
-
-    So decode until it is a dict, and return an empty dict rather than raising.
-    """
-    data = value
-    if isinstance(data, (bytes, bytearray)):
-        data = data.decode("utf-8", "replace")
-    elif not isinstance(data, (dict, str)):
-        # A leader's value does not arrive as a plain str. Measured on Studio
-        # with a per-predicate consensus readout: isinstance(x, str) is False,
-        # yet "verified" in str(x) is True - the payload is reachable only
-        # through str(). Returning {} for anything unrecognised is what made a
-        # correct verdict look like unanimous disagreement.
-        data = str(data)
-    for _ in range(4):
-        if isinstance(data, dict):
-            return data
-        if not isinstance(data, str):
-            return {}
-        text = data.strip()
-        start = text.find("{")
-        end = text.rfind("}")
-        if start >= 0 and end > start and not text.startswith('"'):
-            text = text[start : end + 1]
-        try:
-            data = json.loads(text)
-        except Exception:
-            return {}
-    return data if isinstance(data, dict) else {}
-
-
 def _parse_verdict(raw) -> dict:
-    """Defensive parsing of an LLM response.
-
-    Models return unpredictable shapes. Accept a dict or a string, strip
-    wrapping prose, alias the keys models actually use, and coerce the
-    confidence. Anything that cannot be read as one of the three verdicts is
-    UNDETERMINED, which resolves to the registered default rather than to a
-    guess.
-    """
-    data = _as_dict(raw)
-
-    verdict = ""
-    for alias in ("verdict", "answer", "decision", "result", "label"):
-        if alias in data and isinstance(data[alias], str):
-            verdict = data[alias].strip().lower().replace("-", "_").replace(" ", "_")
-            break
-    if verdict in ("in_remit", "inremit", "within_remit", "allowed", "yes"):
-        verdict = VERDICT_IN_REMIT
-    elif verdict in ("out_of_remit", "outofremit", "outside_remit", "refused", "no"):
-        verdict = VERDICT_OUT_OF_REMIT
-    else:
-        verdict = VERDICT_UNDETERMINED
-
-    reason = ""
-    for alias in ("reason", "reason_code", "code", "rationale"):
-        if alias in data and isinstance(data[alias], str):
-            reason = data[alias].strip().lower()[:64]
-            break
-
-    confidence = 0
-    for alias in ("confidence", "certainty", "score"):
-        if alias in data:
-            try:
-                confidence = int(float(str(data[alias]).strip().rstrip("%")))
-            except Exception:
-                confidence = 0
-            break
-    if confidence < 0:
-        confidence = 0
-    if confidence > 100:
-        confidence = 100
-
-    # A hesitant yes is not a yes (harden_verdict). Applied here so the leader,
-    # every validator and the recorded result all follow the same rule.
-    verdict = harden_verdict(verdict, confidence)
-    return {"verdict": verdict, "reason": reason, "confidence": confidence}
+    """A jury answer as the guard counts it: read defensively
+    (``_read_verdict``), then a hesitant yes is not a yes (harden_verdict).
+    Applied here so the leader, every validator and the recorded result all
+    follow the same rule."""
+    result = _read_verdict(raw)
+    result["verdict"] = harden_verdict(result["verdict"], result["confidence"])
+    return result

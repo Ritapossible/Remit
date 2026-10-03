@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble the two deployable Intelligent Contracts.
+"""Assemble the deployable Intelligent Contracts.
 
 A GenVM contract is a single file, but the deterministic engine must be
 testable without a chain and the prompt layer must be testable as pure string
@@ -8,8 +8,8 @@ building. So they are authored separately and inlined here.
 Remit deploys as three contracts because Bradbury caps a transaction at 2^24
 gas and a deploy costs about 0.96M gas plus 782 per byte of code and arguments
 (measured with deploy/probe_gas.mjs): the shared, stateless **engine** (rules)
-and **prompts** (the jury's question), and one **guard** per agent. Outputs,
-never edited by hand:
+and **prompts** (the jury's question), the shared **registry**, and per agent a
+**guard** and its **rail** (treasury and court). Outputs, never edited by hand:
 
   contracts/build/<name>.py      readable, tested
   contracts/build/<name>.min.py  deployed: docstrings and comments stripped,
@@ -32,7 +32,9 @@ RUNNER = "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6"
 BUILDS = {
     "engine": (["remit_core.py", "engine_api.py", "engine_shell.py"], "RemitEngine"),
     "prompts": (["remit_core.py", "remit_prompts.py", "prompts_api.py", "prompts_shell.py"], "RemitPrompts"),
-    "guard": (["remit_core.py", "remit_prompts.py", "contract_shell.py"], "RemitGuard"),
+    "guard": (["remit_core.py", "remit_prompts.py", "jury_common.py", "contract_shell.py"], "RemitGuard"),
+    "rail": (["remit_core.py", "remit_prompts.py", "jury_common.py", "rail_shell.py"], "RemitRail"),
+    "registry": (["remit_core.py", "registry_shell.py"], "RemitRegistry"),
 }
 
 # The runner header must be followed IMMEDIATELY by code. Any comment line
@@ -52,14 +54,15 @@ from dataclasses import dataclass
 # Built by deploy/build_contract.py from:
 #   contracts/remit_core.py       deterministic engine (pure, chain-free)
 #   contracts/remit_prompts.py    prompt construction
-#   contracts/contract_shell.py   storage, entrypoints, consensus block
+#   contracts/jury_common.py      reading a jury's answer (guard, rail)
+#   contracts/*_shell.py          storage, entrypoints, consensus block
 # ---------------------------------------------------------------------------
 ''' % RUNNER
 
 # Imports the parts declare for themselves; the preamble already provides them.
 DROP_IMPORT = re.compile(
     r"^(from dataclasses import dataclass|import json|import hashlib|import datetime"
-    r"|from remit_core import \*|from remit_prompts import \*)\s*$"
+    r"|from remit_core import \*|from remit_prompts import \*|from jury_common import \*)\s*$"
 )
 
 
@@ -104,7 +107,7 @@ def main():
         with open(min_path, "w") as handle:
             handle.write(small)
         print(
-            "%-6s %6d bytes readable -> %6d bytes deployed (%d unreachable definitions dropped)"
+            "%-8s %6d bytes readable -> %6d bytes deployed (%d unreachable definitions dropped)"
             % (name, len(built.encode("utf-8")), len(small.encode("utf-8")), len(removed))
         )
     return 0

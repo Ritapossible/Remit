@@ -143,3 +143,48 @@ def api_outcomes(compiled_json, requires_artifact):
 def api_uncommitted(held_at, now, window):
     """FORECLOSED inside the response window, ABSENT after it (T9)."""
     return uncommitted_artifact(held_at=int(held_at), now=int(now), response_window_seconds=int(window))
+
+
+def api_challenge_terms(spend_json, rule_json, challenger, agent, now, window, losses, last_loss_at, floor):
+    """May this challenge be opened, and for what bond? ``{"error", "bond"}``.
+
+    The court (the rail) asks before taking a bond: ``challenge_error`` for
+    eligibility, ``challenge_bond`` on the challenger's loss streak for the
+    price. ``rule_json`` is the named mandate rule, or ``null``.
+    """
+    spend = json.loads(spend_json)
+    error = challenge_error(
+        spend=spend,
+        rule=json.loads(rule_json),
+        challenger=str(challenger),
+        agent=str(agent),
+        now=int(now),
+        clawback_window_seconds=int(window),
+    )
+    bond = challenge_bond(
+        amount=int(spend["amount"]),
+        losses=int(losses),
+        last_loss_at=int(last_loss_at),
+        now=int(now),
+        policy=BondPolicy(floor=int(floor)),
+    )
+    return json.dumps({"error": error, "bond": bond})
+
+
+def api_challenge_result(verdict, bond, amount, paid, standing, floor, losses, now, tier):
+    """Everything a decided challenge changes, for the court to apply:
+    ``resolve_challenge``'s transfers, the challenger's new loss streak
+    (``record_challenge_result``) and the freeze an upheld breach imposes
+    (``freeze_tier``; ``tier`` already capped by the guard's max tier)."""
+    out = resolve_challenge(
+        verdict=str(verdict),
+        bond=int(bond),
+        amount=int(amount),
+        paid=bool(paid),
+        standing=int(standing),
+        policy=BondPolicy(floor=int(floor)),
+    )
+    upheld = out["state"] == CHALLENGE_UPHELD
+    out["losses"], out["last_loss_at"] = record_challenge_result(losses=int(losses), upheld=upheld, now=int(now))
+    out["freeze"] = freeze_tier(tier=int(tier), shadow=False) if upheld else 0
+    return json.dumps(out)

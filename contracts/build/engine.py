@@ -11,7 +11,8 @@ from dataclasses import dataclass
 # Built by deploy/build_contract.py from:
 #   contracts/remit_core.py       deterministic engine (pure, chain-free)
 #   contracts/remit_prompts.py    prompt construction
-#   contracts/contract_shell.py   storage, entrypoints, consensus block
+#   contracts/jury_common.py      reading a jury's answer (guard, rail)
+#   contracts/*_shell.py          storage, entrypoints, consensus block
 # ---------------------------------------------------------------------------
 
 
@@ -615,6 +616,135 @@ def settle_challenge(*, bond, refused_amount, upheld, agent, challenger, agent_s
 
 
 # --------------------------------------------------------------------------
+# Challenges and graduated authority (T1, T7)
+#
+# A payment that cleared without a jury stays open to a bonded challenge for
+# the mandate's clawback window. The jury answers the challenged rule's own
+# question about that payment. Upholding is the dangerous direction here - it
+# blocks or claws back a payment, pays the challenger from the agent's bond and
+# can freeze the agent - so it is the answer that needs agreement, and doubt
+# dismisses.
+# --------------------------------------------------------------------------
+
+CHALLENGE_OPEN = "open"
+CHALLENGE_UPHELD = "upheld"
+CHALLENGE_DISMISSED = "dismissed"
+CHALLENGE_LAPSED = "lapsed"
+
+MIN_UPHELD_CONFIDENCE = 60
+
+# Tier semantics on a breach (a refusal by the guard's jury, or an upheld
+# challenge): 1 refuses or claws back the payment; 2 also freezes the agent -
+# no new spend is authorized until the principal lifts it; 3 also revokes every
+# authorization the rail has not yet paid (by spend index: ``is_revoked``).
+TIER_FREEZE = 2
+TIER_REVOKE = 3
+
+
+def harden_challenge(verdict, confidence):
+    """A hesitant breach is not a breach: the burden is on the challenger."""
+    _require_one_of(verdict, VERDICTS, "verdict")
+    if verdict == VERDICT_OUT_OF_REMIT and int(confidence) < MIN_UPHELD_CONFIDENCE:
+        return VERDICT_UNDETERMINED
+    return verdict
+
+
+def challenge_agrees(*, leader_verdict, own_verdict):
+    """Does a validator accept the leader's ruling on a challenge? The mirror
+    of ``validator_agrees``.
+
+    - The same verdict is agreement.
+    - A leader that UPHOLDS (out_of_remit) stands only on agreement.
+    - A validator that is itself sure of the breach vetoes a dismissal; the
+      round fails and the challenge runs to its deadline, where it lapses and
+      the bond is returned.
+    - Otherwise both readings dismiss, and that is agreement.
+    """
+    _require_one_of(leader_verdict, VERDICTS, "leader verdict")
+    _require_one_of(own_verdict, VERDICTS, "own verdict")
+    if leader_verdict == own_verdict:
+        return True
+    if leader_verdict == VERDICT_OUT_OF_REMIT:
+        return False
+    return own_verdict != VERDICT_OUT_OF_REMIT
+
+
+def challenge_error(*, spend, rule, challenger, agent, now, clawback_window_seconds):
+    """Why a challenge may not be opened, or "" if it may.
+
+    ``spend`` is the guard's summary of the payment; ``rule`` the mandate rule
+    the challenger says it breached (or None). Only a payment that cleared
+    WITHOUT a jury is challengeable: a jury's verdict is reviewed by GenLayer's
+    own appeal, and a principal's override is the principal's own decision.
+    """
+    if spend.get("authorization") != "authorized":
+        return "only an authorized payment can be challenged"
+    if str(spend.get("verdict", "")) != "" or str(spend.get("reason", "")) != "":
+        return "this payment was decided by a jury or by the principal; appeal that decision instead"
+    if rule is None or rule.get("type") != RULE_JUDGMENT:
+        return "a challenge must name one of the mandate's judgment rules"
+    if normalize_address(challenger, "challenger") == normalize_address(agent, "agent"):
+        return "the agent cannot challenge its own payment"
+    decided_at = int(spend.get("decided_at", 0))
+    if decided_at <= 0 or now - decided_at > int(clawback_window_seconds):
+        return "the clawback window for this payment has closed"
+    return ""
+
+
+def resolve_challenge(*, verdict, bond, amount, paid, standing, policy):
+    """Who receives what when a challenge is decided. Conserved exactly.
+
+    Upheld: the challenger's bond comes back with a reward, and the payment is
+    clawed back - blocked if the rail has not paid it, otherwise made good to
+    the treasury from the agent's standing bond, as far as it reaches. The
+    principal is made whole before the challenger is rewarded.
+    Dismissed (in_remit or undetermined): the bond goes to the agent (T1).
+    """
+    _require_one_of(verdict, VERDICTS, "verdict")
+    bond = _require_int(bond, "bond")
+    amount = _require_int(amount, "amount")
+    standing = _require_int(standing, "standing")
+    if verdict != VERDICT_OUT_OF_REMIT:
+        out = {"state": CHALLENGE_DISMISSED, "to_challenger": 0, "to_agent": bond,
+               "to_treasury": 0, "from_standing": 0, "blocked": False}
+        _require_conserved(out["to_challenger"] + out["to_agent"], bond, "resolve_challenge/dismissed")
+        return out
+    clawback = min(amount, standing) if paid else 0
+    reward = challenge_reward(refused_amount=amount, agent_standing=standing - clawback, policy=policy)
+    out = {"state": CHALLENGE_UPHELD, "to_challenger": bond + reward, "to_agent": 0,
+           "to_treasury": clawback, "from_standing": clawback + reward, "blocked": not paid}
+    _require_conserved(out["to_challenger"] + out["to_treasury"], bond + out["from_standing"], "resolve_challenge/upheld")
+    return out
+
+
+def record_challenge_result(*, losses, upheld, now):
+    """A challenger's loss streak after a ruling: a loss adds one step, a win
+    clears it (BondPolicy). Returns ``(losses, last_loss_at)``; a win returns
+    ``(0, 0)``."""
+    losses = _require_int(losses, "losses")
+    if upheld:
+        return 0, 0
+    return losses + 1, _require_int(now, "now")
+
+
+def freeze_tier(*, tier, shadow):
+    """The freeze a breach at ``tier`` imposes: 0 (none), 2 or 3. A shadow
+    guard withholds nothing, so it freezes nothing."""
+    tier = _require_int(tier, "tier")
+    if shadow or tier < TIER_FREEZE:
+        return 0
+    return TIER_REVOKE if tier >= TIER_REVOKE else TIER_FREEZE
+
+
+def is_revoked(*, spend_id, revoked_below):
+    """A tier-3 breach revokes every payment requested before it: those with
+    an id below ``revoked_below``, the ledger's length when the breach was
+    found. By index, not by time - a payment decided in the same second as the
+    breach is on one side of it or the other, never both."""
+    return int(spend_id) < int(revoked_below)
+
+
+# --------------------------------------------------------------------------
 # Mandate validation (registration)
 # --------------------------------------------------------------------------
 
@@ -911,6 +1041,51 @@ def api_uncommitted(held_at, now, window):
     return uncommitted_artifact(held_at=int(held_at), now=int(now), response_window_seconds=int(window))
 
 
+def api_challenge_terms(spend_json, rule_json, challenger, agent, now, window, losses, last_loss_at, floor):
+    """May this challenge be opened, and for what bond? ``{"error", "bond"}``.
+
+    The court (the rail) asks before taking a bond: ``challenge_error`` for
+    eligibility, ``challenge_bond`` on the challenger's loss streak for the
+    price. ``rule_json`` is the named mandate rule, or ``null``.
+    """
+    spend = json.loads(spend_json)
+    error = challenge_error(
+        spend=spend,
+        rule=json.loads(rule_json),
+        challenger=str(challenger),
+        agent=str(agent),
+        now=int(now),
+        clawback_window_seconds=int(window),
+    )
+    bond = challenge_bond(
+        amount=int(spend["amount"]),
+        losses=int(losses),
+        last_loss_at=int(last_loss_at),
+        now=int(now),
+        policy=BondPolicy(floor=int(floor)),
+    )
+    return json.dumps({"error": error, "bond": bond})
+
+
+def api_challenge_result(verdict, bond, amount, paid, standing, floor, losses, now, tier):
+    """Everything a decided challenge changes, for the court to apply:
+    ``resolve_challenge``'s transfers, the challenger's new loss streak
+    (``record_challenge_result``) and the freeze an upheld breach imposes
+    (``freeze_tier``; ``tier`` already capped by the guard's max tier)."""
+    out = resolve_challenge(
+        verdict=str(verdict),
+        bond=int(bond),
+        amount=int(amount),
+        paid=bool(paid),
+        standing=int(standing),
+        policy=BondPolicy(floor=int(floor)),
+    )
+    upheld = out["state"] == CHALLENGE_UPHELD
+    out["losses"], out["last_loss_at"] = record_challenge_result(losses=int(losses), upheld=upheld, now=int(now))
+    out["freeze"] = freeze_tier(tier=int(tier), shadow=False) if upheld else 0
+    return json.dumps(out)
+
+
 # --- engine_shell.py ---------------------------------------------------
 
 class RemitEngine(gl.Contract):
@@ -918,7 +1093,7 @@ class RemitEngine(gl.Contract):
     prompts: Address
 
     def __init__(self, prompts: str):
-        self.release = "remit-engine/2"
+        self.release = "remit-engine/3"
         self.prompts = Address(prompts)
 
     @gl.public.view
@@ -936,6 +1111,22 @@ class RemitEngine(gl.Contract):
     @gl.public.view
     def uncommitted(self, held_at: int, now: int, window: int) -> str:
         return api_uncommitted(int(held_at), int(now), int(window))
+
+    @gl.public.view
+    def challenge_terms(
+        self, spend: str, rule: str, challenger: str, agent: str, now: int, window: int, losses: int, last_loss_at: int, floor: int
+    ) -> str:
+        return api_challenge_terms(
+            str(spend), str(rule), str(challenger), str(agent), int(now), int(window), int(losses), int(last_loss_at), int(floor)
+        )
+
+    @gl.public.view
+    def challenge_result(
+        self, verdict: str, bond: int, amount: int, paid: bool, standing: int, floor: int, losses: int, now: int, tier: int
+    ) -> str:
+        return api_challenge_result(
+            str(verdict), int(bond), int(amount), bool(paid), int(standing), int(floor), int(losses), int(now), int(tier)
+        )
 
     @gl.public.view
     def prompts_address(self) -> str:

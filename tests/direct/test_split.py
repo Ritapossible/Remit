@@ -185,7 +185,13 @@ def test_jury_prompt_refuses_unknown_or_missing_rules():
 
 # --- 2. deployable bytes are the tested bytes ------------------------------
 
-CONTRACTS = {"engine": "RemitEngine", "prompts": "RemitPrompts", "guard": "RemitGuard"}
+CONTRACTS = {
+    "engine": "RemitEngine",
+    "prompts": "RemitPrompts",
+    "guard": "RemitGuard",
+    "rail": "RemitRail",
+    "registry": "RemitRegistry",
+}
 # Names the GenVM runtime provides through `from genlayer import *`.
 GENLAYER = {"gl", "Address", "u256", "TreeMap", "DynArray"}
 
@@ -227,7 +233,7 @@ def test_every_name_a_deployed_contract_uses_is_defined(name):
 MANDATE_ROOM = 1_800
 
 
-@pytest.mark.parametrize("name", ["engine", "prompts"])
+@pytest.mark.parametrize("name", ["engine", "prompts", "registry"])
 def test_shared_contracts_fit_the_gas_cap(name):
     size = os.path.getsize(os.path.join(BUILD, name + ".min.py"))
     assert deploy_gas(size) < CAP * 0.95, "%s.min.py is %d bytes" % (name, size)
@@ -236,3 +242,9 @@ def test_shared_contracts_fit_the_gas_cap(name):
 def test_the_guard_leaves_room_for_a_mandate():
     size = os.path.getsize(os.path.join(BUILD, "guard.min.py"))
     assert deploy_gas(size + MANDATE_ROOM) < CAP * 0.97, "guard.min.py is %d bytes" % size
+
+
+def test_the_rail_fits_with_its_arguments():
+    """Constructor arguments are an address and two integers."""
+    size = os.path.getsize(os.path.join(BUILD, "rail.min.py"))
+    assert deploy_gas(size + 200) < CAP * 0.95, "rail.min.py is %d bytes" % size

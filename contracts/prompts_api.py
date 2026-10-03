@@ -14,7 +14,7 @@ def _spend_of(row):
     return Spend(amount=int(row[0]), recipient=str(row[1]), category=str(row[2]), at=int(row[3]))
 
 
-def api_jury_prompt(compiled_json, rule_ids, claim, candidate_json, history_json, spend_index):
+def api_jury_prompt(compiled_json, rule_ids, claim, candidate_json, history_json, spend_index, challenge=None):
     """The adjudication prompt with the evidence left as DELIVERABLE_MARKER,
     and the evidence notes the guard fills it in with, as JSON
     ``{"template": str, "notes": {artifact_state: str}}``.
@@ -72,5 +72,22 @@ def api_jury_prompt(compiled_json, rule_ids, claim, candidate_json, history_json
         facts_lines=[str(f) for f in facts],
         claim_text=str(claim),
         rule_context=context,
+        challenge=challenge,
     )
     return json.dumps({"template": template, "notes": dict(ARTIFACT_NOTES)})
+
+
+def api_challenge_prompt(compiled_json, rule_id, claim, statement, candidate_json, history_json, spend_index):
+    """The jury's question for a bonded challenge to a payment that cleared:
+    the challenged judgment rule's own question, asked of that payment against
+    the ledger as it stood, with the challenger's statement as untrusted text."""
+    compiled = json.loads(compiled_json)
+    rule = None
+    for r in compiled["rules"]:
+        if r["id"] == str(rule_id):
+            rule = r
+    if rule is None or rule["type"] != RULE_JUDGMENT:
+        raise RemitError("a challenge must name one of the mandate's judgment rules")
+    return api_jury_prompt(
+        compiled_json, str(rule_id), claim, candidate_json, history_json, spend_index, challenge=str(statement)
+    )

@@ -13,7 +13,7 @@ class RemitEngine(gl.Contract):
     prompts: Address
 
     def __init__(self, prompts: str):
-        self.release = "remit-engine/2"
+        self.release = "remit-engine/3"
         self.prompts = Address(prompts)
 
     @gl.public.view
@@ -31,6 +31,22 @@ class RemitEngine(gl.Contract):
     @gl.public.view
     def uncommitted(self, held_at: int, now: int, window: int) -> str:
         return api_uncommitted(int(held_at), int(now), int(window))
+
+    @gl.public.view
+    def challenge_terms(
+        self, spend: str, rule: str, challenger: str, agent: str, now: int, window: int, losses: int, last_loss_at: int, floor: int
+    ) -> str:
+        return api_challenge_terms(
+            str(spend), str(rule), str(challenger), str(agent), int(now), int(window), int(losses), int(last_loss_at), int(floor)
+        )
+
+    @gl.public.view
+    def challenge_result(
+        self, verdict: str, bond: int, amount: int, paid: bool, standing: int, floor: int, losses: int, now: int, tier: int
+    ) -> str:
+        return api_challenge_result(
+            str(verdict), int(bond), int(amount), bool(paid), int(standing), int(floor), int(losses), int(now), int(tier)
+        )
 
     @gl.public.view
     def prompts_address(self) -> str:
