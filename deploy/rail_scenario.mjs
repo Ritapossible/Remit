@@ -6,13 +6,13 @@
 //
 //   node rail_scenario.mjs [studio]
 import fs from "node:fs";
-import { clientFor, accountFor, retry, outcome, WAIT } from "./lib.mjs";
+import { clientFor, accountFor, retry, outcome, WAIT, compactJson, readBuild, sharedContracts, readUntil } from "./lib.mjs";
 
 const network = process.argv[2] || "studio";
 const FINALITY = Number(process.env.RAIL_FINALITY ?? 45);
-const guardCode = fs.readFileSync("../contracts/build/remit.py");
+const guardCode = readBuild("guard");
 const railCode = fs.readFileSync("../contracts/rail.py");
-const mandate = fs.readFileSync(`../mandates/demo-${network}.json`, "utf8");
+const mandate = compactJson(fs.readFileSync(`../mandates/demo-${network}.json`, "utf8"));
 const principal = clientFor(network, "principal");
 const agent = clientFor(network, "agent");
 const agentAddr = accountFor("agent").address;
@@ -75,7 +75,8 @@ async function settledBalance(addr, before, seconds = 240) {
 }
 
 console.log(`network ${network}, rail finality delay ${FINALITY}s\n`);
-const guard = await deploy(guardCode, [agentAddr, mandate, 2, false], "deploy guard");
+const { engine } = await sharedContracts(network, principal);
+const guard = await deploy(guardCode, [agentAddr, mandate, 2, false, engine], "deploy guard");
 const rail = await deploy(railCode, [guard, FINALITY], "deploy rail");
 console.log(`guard ${guard}\nrail  ${rail}\n`);
 
@@ -86,7 +87,7 @@ check("rail balance", fmt(await balance(rail)), fmt(GEN(0.5)));
 
 console.log("\n2. Spend 0: 0.15 GEN to an allowlisted vendor - authorized in the same transaction");
 o = await send(agent, guard, "request_spend", [vendor, GEN(0.15).toString(), "media", "", "", "storyboard"], "spend 0");
-let s = await read(guard, "settlement_of", [0]);
+let s = (await readUntil(() => read(guard, "settlement_of", [0]), (x) => x.authorization === "authorized", { seconds: 120 })).value;
 check("guard says", s.authorization, "authorized");
 
 console.log("\n3. Paying before the finality delay reverts");
@@ -109,7 +110,7 @@ check("double pay refused", o.refused, true);
 
 console.log("\n6. Spend 1: a second 0.15 GEN to the same vendor - held for the jury (same-recipient trigger)");
 o = await send(agent, guard, "request_spend", [vendor, GEN(0.15).toString(), "media", "", "", "edit"], "spend 1");
-s = await read(guard, "settlement_of", [1]);
+s = (await readUntil(() => read(guard, "settlement_of", [1]), (x) => x.authorization === "pending", { seconds: 120 })).value;
 check("guard says", s.authorization, "pending");
 const railMid = await balance(rail);
 o = await send(agent, rail, "pay", [1], "pay 1 while held");
@@ -118,7 +119,7 @@ check("rail balance unchanged", fmt(await balance(rail)), fmt(railMid));
 
 console.log("\n7. Spend 2: 0.05 GEN to an address not on the allowlist - refused by arithmetic");
 o = await send(agent, guard, "request_spend", [OUTSIDER, GEN(0.05).toString(), "media", "", "", "misc"], "spend 2");
-s = await read(guard, "settlement_of", [2]);
+s = (await readUntil(() => read(guard, "settlement_of", [2]), (x) => x.authorization === "refused", { seconds: 120 })).value;
 check("guard says", s.authorization, "refused");
 await sleep(FINALITY * 1000 + 5000);
 o = await send(agent, rail, "pay", [2], "pay 2 refused");

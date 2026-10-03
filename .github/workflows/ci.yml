@@ -18,10 +18,11 @@ jobs:
         run: python -m pytest tests/direct
       - name: Mutation check - every guard must be killable
         run: python tests/mutation_check.py
-      - name: Committed contract matches its sources
-        # The frontend bundles contracts/build/remit.py. If it is stale, the site
-        # would deploy a contract the tests never saw.
-        run: git diff --exit-code contracts/build/remit.py
+      - name: Committed contracts match their sources
+        # The deployed bytes are contracts/build/*.min.py (the app bundles the
+        # guard). If any build is stale, a deploy would ship code the tests
+        # never saw.
+        run: python deploy/build_contract.py && git diff --exit-code contracts/build/
 
   frontend:
     name: Frontend

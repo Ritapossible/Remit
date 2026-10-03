@@ -1,6 +1,6 @@
 """Structural tests on the BUILT contract.
 
-These read ``contracts/build/remit.py`` as text because every property here is
+These read ``contracts/build/guard.py`` (the guard) as text because every property here is
 invisible to a code review and survives an integration test. Each one
 corresponds to a hard law in CLAUDE.md that has already cost real money or real
 days somewhere in this codebase's lineage.
@@ -14,7 +14,7 @@ import sys
 import pytest
 
 ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
-BUILT = os.path.join(ROOT, "contracts", "build", "remit.py")
+BUILT = os.path.join(ROOT, "contracts", "build", "guard.py")
 RUNNER = "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6"
 
 
@@ -106,9 +106,11 @@ def test_validator_checks_evidence_exactly_and_fails_closed_on_judgement(built):
     after = built.index("gl.vm.run_nondet")
     body = built[validator:after]
     assert 'str(_theirs.get("artifact", "")) != _state' in body, "evidence not compared exactly"
-    assert "build_verdict_prompt" in body, "validator does not re-answer the question"
+    assert "gl.nondet.exec_prompt(template.replace(DELIVERABLE_MARKER, build_deliverable(_state, _text, notes)))" in body, (
+        "validator does not re-answer the same question from its own evidence"
+    )
     assert "validator_agrees(" in body, "judgement not compared through the fail-closed rule"
-    assert "resolve_hold(" in body, "the leader's verdict must be judged by what it would do"
+    assert "leader_outcome=table[_verdict][_state]" in body, "the leader's verdict must be judged by what it would do"
     assert "== VERDICT_UNDETERMINED" not in body, "an unsure validator must not accept everything"
     assert '_mine["confidence"]' not in body, "confidence must not enter the comparison"
 
@@ -119,10 +121,12 @@ def test_a_hesitant_in_remit_is_undetermined(built):
 
 
 def test_every_fired_rule_reaches_the_jury(built):
+    """The guard sends every fired rule to the prompts contract; the engine
+    side (api_jury_prompt asks each one) is tested in test_split.py."""
     start = built.index("    def adjudicate(self, spend_id: int) -> None:")
     body = built[start : built.index("def leader()", start)]
     assert "fired[0]" not in body, "only the first fired rule would be judged"
-    assert "ask = [str(self.rule_ask[r]) for r in fired]" in body
+    assert '",".join(fired)' in body
 
 
 def test_no_dead_defensibility_design_ships(built):
@@ -214,12 +218,11 @@ def test_closure_captures_are_plain_python(built):
     """
     start = built.index("    def adjudicate(self, spend_id: int) -> None:")
     body = built[start : built.index("def leader()", start)]
-    for name in ("memo_uri", "memo_digest", "claim"):
+    for name in ("memo_uri", "memo_digest"):
         assert "%s = str(" % name in body, "%s is captured without coercion" % name
-    assert "ask = [str(" in body, "ask is captured without coercion"
-    assert '"on_undetermined": str(self.d_on_undetermined)' in body, "defaults captured without coercion"
-    assert "facts = [str(f) for f in facts]" in body
-    assert "rule_context = [str(c) for c in" in body
+    assert 'template = str(question["template"])' in body, "template captured without coercion"
+    assert "notes = {str(k): str(v) for" in body, "notes captured without coercion"
+    assert "table[str(_v)] = {str(_a): str(_o) for" in body, "outcome table captured without coercion"
 
 
 def test_consensus_payloads_are_decoded_until_they_are_dicts(built):
@@ -269,17 +272,17 @@ def test_preview_spend_is_a_view_on_the_real_classifier(built):
     decorator = built[: built.index("    def preview_spend(")].rstrip().splitlines()[-1].strip()
     assert decorator == "@gl.public.view"
     body = _method(built, "preview_spend")
-    assert "self._classify(" in body and "self._history()" in body
+    assert "self._classify(" in body
+    assert "self._history()" in _method(built, "_classify"), "preview must classify against the real history"
     assert "self.s_" not in body.replace("self.s_", "", 0) or "] =" not in body, "preview must not write"
     assert "spend_count =" not in body
 
 
-def test_new_storage_fields_are_appended(built):
-    """Storage layout is position-sensitive; new fields are appended, never
-    inserted."""
-    cls = built[built.index("class RemitGuard(gl.Contract):") : built.index("    def __init__(self, agent: str")]
-    fields = [l.split(":")[0].strip() for l in cls.splitlines() if re.match(r"^    [a-z_]+: ", l)]
-    assert fields[-2:] == ["vendor_entries", "s_decided_at"]
+def test_decision_time_is_recorded_for_every_outcome(built):
+    """A rail waits a finality delay after this; it must be set for reflex
+    decisions at request time and for held ones when they resolve."""
+    assert "self.s_decided_at[key] = u256(0 if state == SPEND_HELD else now)" in _method(built, "request_spend")
+    assert "self.s_decided_at[key] = u256(self._now())" in _method(built, "_finalise")
 
 
 def test_claim_reaches_the_summary_view(built):

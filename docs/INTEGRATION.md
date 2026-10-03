@@ -83,9 +83,13 @@ network.
 | `mandate_json` | `str` | The mandate, as JSON text. See [Mandate format](#/docs/mandate-format). |
 | `max_tier` | `int` | The most authority granted. Every rule's tier must be at or below it. |
 | `shadow` | `bool` | Record refusals without withholding authorization. |
+| `engine` | `str` | The network's shared engine (`engine` in `deploy/deployments.json`). Fixed for the guard's life. |
 
 The deployer becomes the **principal**. A mandate that fails validation makes
-the deployment fail.
+the deployment fail. Deploy the bytes in `contracts/build/guard.min.py`, and send
+the mandate without whitespace: on Bradbury the code and the arguments together
+must stay under about 20 KB (2^24 gas). The app's *New guard* page shows the
+estimate before you sign.
 
 ### Writes
 

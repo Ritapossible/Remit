@@ -69,7 +69,8 @@ export function RailPanel() {
   const [draft, setDraft] = useState("");
   const me = wallet.kind === "none" ? "" : wallet.address;
   const isPrincipal = sameAddr(me, mandate?.principal);
-  const finality = network === "studio" ? 60 : 1800;
+  // Bradbury finalises 27-31 minutes after a transaction is created (measured).
+  const finality = network === "studio" ? 60 : 2400;
 
   if (!mandate) return null;
 

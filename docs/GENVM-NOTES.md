@@ -17,11 +17,15 @@ at [skills.genlayer.com](https://skills.genlayer.com).
 
 **Size is not a problem on Studio, and is the whole problem on Bradbury.**
 Studio deployed 70 KB contracts without complaint. Bradbury caps a single
-transaction at **2^24 gas** (16M accepted, 17M refused, measured), and a deploy
-costs about **765 gas per byte** of code plus ~2.25M fixed - so roughly 19 KB of
-code and constructor arguments is the ceiling. Stripping docstrings, comments,
-unreachable functions and indentation took Remit from 70 KB to 36 KB; past that,
-the only sound move is to split the contract.
+transaction at **2^24 gas** (16M accepted, 17M refused, measured). Deploy gas is
+**about 0.96M plus 782 per byte of code and constructor arguments** - fitted to
+dry-run estimates of three contract sizes with `deploy/probe_gas.mjs`, which asks
+genlayer-js for the gas of a deploy and stops before signing. So about 20 KB of
+code and arguments is the ceiling. Stripping docstrings, comments, unreachable
+definitions and indentation took Remit from 70 KB to 36 KB; past that, the only
+sound move was to split it into three contracts - a shared engine (16.4 KB),
+a shared prompts contract (9.9 KB) and a per-agent guard (17.7 KB, plus the
+mandate, sent without whitespace).
 
 **Use genlayer-js 1.1.8 or later for the testnet.** 0.15 hardcoded `gas: 21000`
 on every GenLayer transaction (Studio ignores gas, so it never showed there),
@@ -113,7 +117,9 @@ the same question reached agreement in 8 of 8 consecutive trials.
 | RPC | `https://studio.genlayer.com/api` | `https://rpc-bradbury.genlayer.com` |
 | Faucet | `sim_fundAccount(address, wei)` - wei as a raw JSON integer | none programmatic |
 | Per-transaction gas cap | not enforced | 2^24 |
-| Deploy cost | - | ~765 gas per byte + ~2.25M |
+| Deploy cost | - | ~0.96M + 782 gas per byte of code and arguments |
+| Acceptance to finality | about 30 s | 27-31 min (a deploy was still ACCEPTED at 1609 s and FINALIZED by 1852 s) |
+| Value sent by `emit_transfer` arrives | at finality | at finality |
 | Refusal detail | `exit_code 1` only | `txExecutionResultName` |
 | Consensus result field | `result_name: MAJORITY_AGREE` | `resultName: AGREE` |
 

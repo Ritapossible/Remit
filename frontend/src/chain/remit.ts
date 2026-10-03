@@ -1,12 +1,42 @@
-import contractSource from "../../../contracts/build/remit.py?raw";
+import contractSource from "../../../contracts/build/guard.min.py?raw";
 import railSource from "../../../contracts/rail.py?raw";
 import type { Client } from "./wallet";
 import type { MandateInfo } from "../lib/mandate";
 import { parseLossless } from "../lib/money";
 import type { ArtifactState, Authorization, SpendState, Verdict } from "../lib/constants";
 
-/** The exact artifact the test suite verified. Imported, never copied. */
+/** The exact guard bytes the test suite checks against its readable build.
+ *  Imported, never copied. */
 export const CONTRACT_CODE = contractSource;
+
+/**
+ * Bradbury caps a transaction at 2^24 gas. Measured with deploy/probe_gas.mjs:
+ * a deploy costs about 0.96M gas plus 782 per byte of code and constructor
+ * arguments. The app checks a guard deploy against this before signing.
+ */
+export const GAS_CAP = 16_777_216;
+export function estimateDeployGas(codeBytes: number, argBytes: number): number {
+  return 960_000 + 782 * (codeBytes + argBytes);
+}
+
+/** A JSON text with insignificant whitespace removed and strings untouched.
+ *  Never parse and re-serialise a mandate in JS: amounts exceed 2^53. */
+export function compactJson(text: string): string {
+  let out = "";
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      out += ch;
+      if (ch === "\\") out += text[++i] ?? "";
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+      out += ch;
+    } else if (!/\s/.test(ch)) out += ch;
+  }
+  return out;
+}
 /** The treasury that pays only what a guard authorized. Imported, never copied. */
 export const RAIL_CODE = railSource;
 
@@ -203,15 +233,16 @@ export async function write(
 
 export async function deployGuard(
   c: Client,
-  p: { agent: string; mandateText: string; maxTier: number; shadow: boolean },
+  p: { agent: string; mandateText: string; maxTier: number; shadow: boolean; engine: string },
   pollMs: number,
   onHash?: (hash: string) => void,
 ): Promise<TxOutcome> {
-  // The mandate is passed as the exact text the user wrote. Re-serialising it
-  // in JS would round every amount past 2^53; Python parses the text exactly.
+  // The mandate is passed as the text the user wrote, minus whitespace.
+  // Re-serialising it in JS would round every amount past 2^53; Python parses
+  // the text exactly. The guard is bound to the network's shared engine.
   const hash = (await c.deployContract({
     code: CONTRACT_CODE,
-    args: [p.agent, p.mandateText, p.maxTier, p.shadow],
+    args: [p.agent, compactJson(p.mandateText), p.maxTier, p.shadow, p.engine],
     leaderOnly: false,
   } as never)) as string;
   onHash?.(hash);

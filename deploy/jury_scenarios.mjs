@@ -9,13 +9,13 @@
 //
 //   node jury_scenarios.mjs [studio] [case ...]      REPEAT=2 to run each twice
 import fs from "node:fs";
-import { clientFor, accountFor, retry, outcome, WAIT } from "./lib.mjs";
+import { clientFor, accountFor, retry, outcome, WAIT, compactJson, readBuild, sharedContracts, readUntil } from "./lib.mjs";
 
 const network = process.argv[2] || "studio";
 const only = process.argv.slice(3);
 const REPEAT = Number(process.env.REPEAT ?? 1);
-const code = fs.readFileSync("../contracts/build/remit.py");
-const mandate = fs.readFileSync(`../mandates/demo-${network}.json`, "utf8");
+const code = readBuild("guard");
+const mandate = compactJson(fs.readFileSync(`../mandates/demo-${network}.json`, "utf8"));
 const RESPONSE_WINDOW = JSON.parse(mandate).defaults.response_window_seconds;
 const principal = clientFor(network, "principal");
 const agent = clientFor(network, "agent");
@@ -52,8 +52,9 @@ const CASES = {
   },
 };
 
+const { engine } = await sharedContracts(network, principal);
 async function deployGuard() {
-  const hash = await retry("deploy", () => principal.deployContract({ code, args: [agentAddr, mandate, 2, false], leaderOnly: false }), 5);
+  const hash = await retry("deploy", () => principal.deployContract({ code, args: [agentAddr, mandate, 2, false, engine], leaderOnly: false }), 5);
   const r = await retry("deploy receipt", () => principal.waitForTransactionReceipt({ hash, status: WAIT, retries: 300, interval: 3000 }), 5);
   return outcome(r).address;
 }
@@ -97,12 +98,14 @@ for (const [name, c] of Object.entries(CASES)) {
       await sleep((RESPONSE_WINDOW + 10) * 1000);
     }
     const adj = await send(principal, guard, "adjudicate", [1], "adjudicate");
-    s1 = await spendOf(guard, 1);
+    const seen = await readUntil(() => spendOf(guard, 1), (x) => x.state !== "held" || !adj.agreed);
+    s1 = seen.value;
     const run = {
       case: name,
       run: n + 1,
       guard,
       adjudicate_tx: adj.hash,
+      readable_after_s: seen.waited,
       consensus: adj.consensus,
       validator_votes: votes(adj.receipt),
       verdict: s1.verdict,

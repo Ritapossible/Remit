@@ -261,11 +261,10 @@ lint time.
 ## Commands
 
 ```bash
-genvm-lint contracts/build/remit.py     # must be clean before any deploy
+genvm-lint contracts/build/guard.py     # must be clean before any deploy
 pytest tests/direct -q                  # in-memory, no server, seconds
-pytest tests/integration -q             # against Studio / testnet
-python deploy/build_contract.py         # -> contracts/build/remit.py
-python deploy/minify_contract.py        # -> contracts/build/remit.min.py
+python deploy/build_contract.py         # -> contracts/build/{engine,prompts,guard}{,.min}.py
+node deploy/probe_gas.mjs bradbury contracts/build/guard.min.py args.json   # gas, unsent
 ```
 
 `genlayer-test` direct mode needs Python 3.12+ and provides `direct_vm`,

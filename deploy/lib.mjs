@@ -67,3 +67,68 @@ export function outcome(r) {
     address: r?.data?.contract_address ?? r?.txDataDecoded?.contractAddress ?? r?.contract_address,
   };
 }
+
+/**
+ * A JSON text with insignificant whitespace removed, characters inside strings
+ * untouched. Never parse and re-serialise a mandate in JS: amounts in atto-GEN
+ * exceed 2^53 and would be rounded. Constructor arguments count toward the
+ * Bradbury gas cap, so mandates are sent compact.
+ */
+export function compactJson(text) {
+  let out = "";
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      out += ch;
+      if (ch === "\\") out += text[++i];
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+      out += ch;
+    } else if (!/\s/.test(ch)) out += ch;
+  }
+  return out;
+}
+
+export const BUILD = new URL("../contracts/build/", import.meta.url);
+export const readBuild = (name) => fs.readFileSync(new URL(`${name}.min.py`, BUILD));
+
+/** Deploy a contract and wait for acceptance; throws unless it applied. */
+export async function deployFile(client, code, args, label) {
+  const hash = await retry(label, () => client.deployContract({ code, args, leaderOnly: false }), 5);
+  const r = await retry(`${label} receipt`, () => client.waitForTransactionReceipt({ hash, status: WAIT, retries: 400, interval: 3000 }), 5);
+  const o = outcome(r);
+  if (!o.applied || !o.address) throw new Error(`${label} failed: ${o.consensus} ${o.leader}`);
+  return { address: o.address, hash };
+}
+
+/** The shared contracts for a network: reuse the recorded ones, or deploy. */
+export async function sharedContracts(network, client, { fresh = false } = {}) {
+  const path = new URL("./deployments.json", import.meta.url);
+  const all = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, "utf8")) : {};
+  const rec = all[network] ?? {};
+  if (!fresh && rec.engine && rec.prompts) return { engine: rec.engine, prompts: rec.prompts };
+  const prompts = await deployFile(client, readBuild("prompts"), [], "deploy prompts");
+  const engine = await deployFile(client, readBuild("engine"), [prompts.address], "deploy engine");
+  all[network] = { ...rec, prompts: prompts.address, prompts_tx: prompts.hash, engine: engine.address, engine_tx: engine.hash };
+  fs.writeFileSync(path, JSON.stringify(all, null, 2));
+  return { engine: engine.address, prompts: prompts.address };
+}
+
+/**
+ * Read until a condition holds. On Bradbury a read made the moment a write
+ * reports ACCEPTED can still return the previous state (measured: a jury
+ * verdict that had reached AGREE was not yet visible to an immediate read).
+ * Returns the value and how long it took to appear.
+ */
+export async function readUntil(read, ok, { seconds = 300, every = 5 } = {}) {
+  const t0 = Date.now();
+  let value;
+  for (;;) {
+    value = await read();
+    if (ok(value)) return { value, waited: Math.round((Date.now() - t0) / 1000) };
+    if (Date.now() - t0 > seconds * 1000) return { value, waited: null };
+    await new Promise((r) => setTimeout(r, every * 1000));
+  }
+}

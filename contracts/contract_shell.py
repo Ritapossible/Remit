@@ -1,27 +1,31 @@
-"""Remit chain layer: storage, entrypoints, and the consensus block.
+"""Remit guard: one per agent. Storage, entrypoints, and the jury.
 
-Built into a single deployable file by ``deploy/build_contract.py``, which
-prepends the pinned runner header and inlines ``remit_core`` and
-``remit_prompts``. Do not edit the build output.
+Built by ``deploy/build_contract.py`` into ``contracts/build/guard.py`` (and a
+minified ``guard.min.py``, the bytes that are deployed). Do not edit the build.
 
-**Remit holds no funds.** It authorises; a rail settles. ``contracts/rail.py``
-is that rail: it holds GEN and pays a spend only when ``settlement_of`` says it
-is authorized and the decision has had time to finalise. Keeping custody out of
-the gate means a refusal an appeal later reverses costs nothing here, and the
-rail - not the gate - is the one contract that must be audited for value
-handling.
+**The split.** Every deterministic decision - validating a mandate, classifying
+a spend, resolving a case, building the jury's question - is delegated to the
+shared engine contract (``engine_shell.py``; the jury's question comes from
+``prompts_shell.py``), because Bradbury caps a
+transaction at 2^24 gas and the whole product does not fit in one deploy. The
+jury stays here: consensus closures cannot call another contract, so the guard
+asks the engine for the question and the verdict-to-outcome table first, and
+the closures do only the fetch, the model call and the comparison. The engine
+address is fixed at deployment; the engine itself is stateless and ownerless.
+
+**The guard holds no funds.** It authorises; a rail settles.
+``contracts/rail.py`` holds GEN and pays a spend only when ``settlement_of``
+says it is authorized and the decision has had time to finalise.
 
 Hard laws enforced here (see CLAUDE.md):
 
-- **Never custody in the gate.** There is no ``emit_transfer`` in this file and
-  no payable entrypoint. Structurally, not by convention. Value lives in the
-  rail.
+- **Never custody in the gate.** No ``emit_transfer`` and no payable
+  entrypoint in this file. Value lives in the rail.
 - **The fetch is inline in both closures.** ``genvm-lint`` cannot trace a
   ``gl.nondet.web`` call through a helper, so it is written out twice on
   purpose. Do not refactor it.
-- **Cheap classified guards first.** A view call into a codeless address is
-  uncatchable and hangs to the leader timeout, so every deterministic check
-  runs before anything that could reach an unknown address.
+- **The engine is called only OUTSIDE the consensus closures**, and every
+  value the closures capture is coerced to plain Python first.
 - **ACCEPTED is not success.** Consensus agreeing on a refusal is a network
   success and a spend refusal. State is the record.
 """
@@ -35,34 +39,12 @@ class RemitGuard(gl.Contract):
     # --- identity and authority ---
     principal: Address
     agent: Address
+    engine: Address
     max_tier: u256
     shadow: bool
 
-    # --- the pinned mandate (T5) ---
-    mandate_uri: str
-    mandate_digest: str
-    mandate_version: u256
-
-    # --- registered defaults; no implicit fallbacks ---
-    d_on_deadline: str
-    d_on_undetermined: str
-    d_response_window: u256
-    d_hold_deadline: u256
-    d_clawback_window: u256
-
-    # --- rules, flattened (a mandate is small; this avoids layout risk) ---
-    rule_ids: DynArray[str]
-    rule_kind: TreeMap[str, str]
-    rule_pred: TreeMap[str, str]
-    rule_a: TreeMap[str, u256]
-    rule_b: TreeMap[str, u256]
-    rule_s: TreeMap[str, str]
-    rule_needs_artifact: TreeMap[str, bool]
-    rule_tier: TreeMap[str, u256]
-    rule_ask: TreeMap[str, str]
-
-    # "listname|0xaddress" -> True
-    vendor_member: TreeMap[str, bool]
+    # --- the mandate, as the engine validated and flattened it (T5) ---
+    compiled: str
 
     # --- the spend ledger ---
     spend_count: u256
@@ -82,195 +64,86 @@ class RemitGuard(gl.Contract):
     s_artifact: TreeMap[u256, str]
     s_outcome: TreeMap[u256, str]
     s_tier: TreeMap[u256, u256]
-
-    # "listname|0xaddress", in registration order. Membership is asked through
-    # vendor_member; this exists so anyone can read who an agent may pay.
-    # Appended last: storage layout is position-sensitive.
-    vendor_entries: DynArray[str]
-
-    # When each spend's authorization became final in this contract's state
-    # (the request for reflex decisions, the resolution for held ones). A rail
-    # waits a finality delay after this before paying. Appended last.
+    # When each spend's authorization became final here (the request for
+    # reflex decisions, the resolution for held ones). A rail waits a finality
+    # delay after this before paying.
     s_decided_at: TreeMap[u256, u256]
 
     # ----------------------------------------------------------------- init
 
-    def __init__(self, agent: str, mandate_json: str, max_tier: int, shadow: bool):
-        mandate = json.loads(mandate_json)
-        errors = validate_mandate(mandate, stored_version=0, max_tier=int(max_tier))
+    def __init__(self, agent: str, mandate_json: str, max_tier: int, shadow: bool, engine: str):
+        self.engine = Address(engine)
+        compiled = str(self._eng().compile_mandate(str(mandate_json), int(max_tier)))
+        errors = json.loads(compiled).get("errors", [])
         if errors:
-            raise Exception("[EXPECTED] mandate rejected: " + "; ".join(errors))
-
+            raise Exception("[EXPECTED] mandate rejected: " + "; ".join([str(e) for e in errors]))
         self.principal = gl.message.sender_address
         self.agent = Address(agent)
         self.max_tier = u256(int(max_tier))
         self.shadow = bool(shadow)
-
-        self.mandate_uri = str(mandate.get("mandate_uri", ""))
-        self.mandate_digest = str(mandate.get("mandate_digest", "")).lower()
-        self.mandate_version = u256(int(mandate["version"]))
-
-        defaults = mandate["defaults"]
-        self.d_on_deadline = str(defaults["on_deadline"])
-        self.d_on_undetermined = str(defaults["on_undetermined"])
-        self.d_response_window = u256(int(defaults["response_window_seconds"]))
-        self.d_hold_deadline = u256(int(defaults["hold_deadline_seconds"]))
-        self.d_clawback_window = u256(int(defaults["clawback_window_seconds"]))
-
-        for list_name in mandate.get("vendor_lists", {}):
-            for member in mandate["vendor_lists"][list_name]:
-                entry = str(list_name) + "|" + normalize_address(member)
-                self.vendor_member[entry] = True
-                self.vendor_entries.append(entry)
-
-        for rule in mandate["rules"]:
-            rule_id = str(rule["id"])
-            kind = str(rule["type"])
-            source = rule["check"] if kind == RULE_REFLEX else rule["when"]
-            name, operand = sole_predicate(source, "rule " + rule_id)
-
-            operand_a = 0
-            operand_b = 0
-            operand_s = ""
-            if name in PREDICATES_INT:
-                operand_a = int(operand)
-            elif name in PREDICATES_WINDOW_AMOUNT:
-                operand_a = int(operand["amount"])
-                operand_b = int(operand["seconds"])
-            elif name in PREDICATES_WINDOW_COUNT:
-                operand_a = int(operand["count"])
-                operand_b = int(operand["seconds"])
-            elif name in PREDICATES_LIST_NAME:
-                operand_s = str(operand)
-            else:
-                operand_s = ",".join([str(c) for c in operand])
-
-            self.rule_ids.append(rule_id)
-            self.rule_kind[rule_id] = kind
-            self.rule_pred[rule_id] = name
-            self.rule_a[rule_id] = u256(operand_a)
-            self.rule_b[rule_id] = u256(operand_b)
-            self.rule_s[rule_id] = operand_s
-            self.rule_needs_artifact[rule_id] = bool(rule.get("requires_artifact", False))
-            self.rule_tier[rule_id] = u256(int(rule.get("on_breach", {}).get("tier", 0)))
-            self.rule_ask[rule_id] = str(rule.get("ask", ""))
-
+        self.compiled = compiled
         self.spend_count = u256(0)
 
     # -------------------------------------------------------------- helpers
 
+    def _eng(self):
+        return gl.get_contract_at(self.engine).view()
+
     def _now(self) -> int:
         return int(datetime.datetime.now().timestamp())
 
-    def _in_list(self, list_name: str, who: str) -> bool:
-        key = str(list_name) + "|" + normalize_address(who)
-        return bool(self.vendor_member.get(key, False))
+    def _mandate(self) -> dict:
+        return json.loads(self.compiled)
+
+    def _require_spend(self, spend_id: int):
+        if int(spend_id) < 0 or int(spend_id) >= int(self.spend_count):
+            raise Exception("[EXPECTED] unknown spend")
+        return u256(int(spend_id))
 
     def _history(self) -> list:
-        """Spends that consumed budget: settled or held. A refused spend never
-        moved value and must not count against a later one."""
+        """Spends that consumed budget: settled or held, as
+        ``[amount, recipient, category, at]``. A refused spend never moved
+        value and must not count against a later one."""
         out = []
         index = 0
         total = int(self.spend_count)
         while index < total:
             key = u256(index)
             if self.s_state[key] in (SPEND_SETTLED, SPEND_HELD):
-                out.append(
-                    Spend(
-                        amount=int(self.s_amount[key]),
-                        recipient=self.s_recipient[key],
-                        category=self.s_category[key],
-                        at=int(self.s_at[key]),
-                    )
-                )
+                out.append([int(self.s_amount[key]), str(self.s_recipient[key]), str(self.s_category[key]), int(self.s_at[key])])
             index += 1
         return out
 
-    def _evaluate(self, rule_id: str, candidate, history) -> bool:
-        """List predicates are answered against storage membership flags rather
-        than through the engine's vendor-list path, because enumerating a list
-        on chain would be unbounded."""
-        name = self.rule_pred[rule_id]
-        if name in PREDICATES_LIST_NAME:
-            present = self._in_list(self.rule_s[rule_id], candidate.recipient)
-            return present if name == "recipient_in" else not present
+    def _classify(self, recipient: str, value: int, category: str, at: int) -> dict:
+        return json.loads(
+            str(self._eng().classify(self.compiled, json.dumps(self._history()), json.dumps([value, recipient, category, at])))
+        )
 
-        if name in PREDICATES_INT:
-            operand = int(self.rule_a[rule_id])
-        elif name in PREDICATES_WINDOW_AMOUNT:
-            operand = {"amount": int(self.rule_a[rule_id]), "seconds": int(self.rule_b[rule_id])}
-        elif name in PREDICATES_WINDOW_COUNT:
-            operand = {"count": int(self.rule_a[rule_id]), "seconds": int(self.rule_b[rule_id])}
-        else:
-            operand = [c for c in self.rule_s[rule_id].split(",") if c != ""]
-        return evaluate_predicate(name, operand, candidate, history, {})
-
-    def _classify(self, candidate, history):
-        for rule_id in self.rule_ids:
-            if self.rule_kind[rule_id] != RULE_REFLEX:
-                continue
-            if not self._evaluate(rule_id, candidate, history):
-                return SPEND_REFUSED, [rule_id]
-        fired = []
-        for rule_id in self.rule_ids:
-            if self.rule_kind[rule_id] != RULE_JUDGMENT:
-                continue
-            if self._evaluate(rule_id, candidate, history):
-                fired.append(rule_id)
-        if fired:
-            return SPEND_HELD, fired
-        return SPEND_SETTLED, []
-
-    def _defaults(self) -> dict:
-        return {
-            "on_deadline": self.d_on_deadline,
-            "on_undetermined": self.d_on_undetermined,
-            "response_window_seconds": int(self.d_response_window),
-            "hold_deadline_seconds": int(self.d_hold_deadline),
-            "clawback_window_seconds": int(self.d_clawback_window),
-        }
-
-    def _rule_context(self) -> list:
-        """The arithmetic limits a judgment rule exists to protect.
-
-        Without these a structuring question is unjudgeable: "is this one
-        purchase split?" cannot be answered without knowing the cap it would
-        be splitting under.
-        """
-        out = []
-        for rule_id in self.rule_ids:
-            if self.rule_kind[rule_id] != RULE_REFLEX:
-                continue
-            name = self.rule_pred[rule_id]
-            if name == "amount_lte":
-                out.append("per-payment cap: %d (smallest unit)" % int(self.rule_a[rule_id]))
-            elif name == "daily_total_lte":
-                out.append(
-                    "cap on the rolling 86400-second total: %d (smallest unit)"
-                    % int(self.rule_a[rule_id])
-                )
-        return out
+    def _rule_ids(self, key) -> list:
+        return [r for r in str(self.s_rules[key]).split(",") if r != ""]
 
     def _needs_artifact(self, key) -> bool:
-        for rule_id in self.s_rules[key].split(","):
-            if rule_id != "" and bool(self.rule_needs_artifact.get(rule_id, False)):
+        fired = self._rule_ids(key)
+        for r in self._mandate()["rules"]:
+            if r["id"] in fired and bool(r["requires_artifact"]):
                 return True
         return False
 
     def _tier_for(self, key) -> int:
+        fired = self._rule_ids(key)
         tier = 0
-        for rule_id in self.s_rules[key].split(","):
-            if rule_id != "":
-                candidate = int(self.rule_tier.get(rule_id, 0))
-                if candidate > tier:
-                    tier = candidate
+        for r in self._mandate()["rules"]:
+            if r["id"] in fired and int(r["tier"]) > tier:
+                tier = int(r["tier"])
         cap = int(self.max_tier)
         return tier if tier < cap else cap
 
-    def _require_spend(self, spend_id: int):
-        if int(spend_id) < 0 or int(spend_id) >= int(self.spend_count):
-            raise Exception("[EXPECTED] unknown spend")
-        return u256(int(spend_id))
+    def _outcomes(self, key) -> dict:
+        """verdict -> artifact state -> outcome, from the engine."""
+        return json.loads(str(self._eng().outcomes(self.compiled, self._needs_artifact(key))))
+
+    def _defaults(self) -> dict:
+        return self._mandate()["defaults"]
 
     def _finalise(self, key, outcome: str, artifact: str, confidence: int) -> None:
         self.s_state[key] = SPEND_SETTLED if outcome == OUTCOME_ALLOWED else SPEND_REFUSED
@@ -295,7 +168,7 @@ class RemitGuard(gl.Contract):
         """The gate. Reflex rules and triggers are evaluated in this
         transaction; the common path is authorised here with no jury.
 
-        Remit takes no custody. ``amount`` is declared, not sent.
+        The guard takes no custody. ``amount`` is declared, not sent.
         """
         if gl.message.sender_address != self.agent:
             raise Exception("[EXPECTED] only the registered agent may request a spend")
@@ -306,17 +179,14 @@ class RemitGuard(gl.Contract):
             raise Exception("[EXPECTED] a committed artifact needs a sha256 digest")
 
         now = self._now()
-        candidate = Spend(
-            amount=value,
-            recipient=normalize_address(recipient),
-            category=str(category),
-            at=now,
-        )
-        state, fired = self._classify(candidate, self._history())
+        who = normalize_address(recipient)
+        decided = self._classify(who, value, str(category), now)
+        state = str(decided["state"])
+        fired = [str(r) for r in decided["rules"]]
 
         key = u256(int(self.spend_count))
         self.s_amount[key] = u256(value)
-        self.s_recipient[key] = candidate.recipient
+        self.s_recipient[key] = who
         self.s_category[key] = str(category)
         self.s_at[key] = u256(now)
         self.s_rules[key] = ",".join(fired)
@@ -331,9 +201,9 @@ class RemitGuard(gl.Contract):
         self.s_held_at[key] = u256(0)
         self.s_state[key] = state
         self.s_outcome[key] = ""
+        self.s_decided_at[key] = u256(0 if state == SPEND_HELD else now)
         self.spend_count = u256(int(self.spend_count) + 1)
 
-        self.s_decided_at[key] = u256(0 if state == SPEND_HELD else now)
         if state == SPEND_REFUSED:
             self.s_outcome[key] = OUTCOME_REFUSED
             self.s_tier[key] = u256(1 if int(self.max_tier) >= 1 else 0)
@@ -360,18 +230,18 @@ class RemitGuard(gl.Contract):
     def adjudicate(self, spend_id: int) -> None:
         """Convene the jury on a held spend.
 
-        Every deterministic guard runs before anything that could reach the
-        network (hard law 6). The artifact fetch is written inline in both
-        closures on purpose: ``genvm-lint`` cannot trace it through a helper,
-        and a helper that lints clean at authoring time fails on the network.
+        Every deterministic guard, and every call to the engine, runs before
+        anything that could reach the network. The artifact fetch is written
+        inline in both closures on purpose: ``genvm-lint`` cannot trace it
+        through a helper, and a helper that lints clean at authoring time fails
+        on the network.
         """
         key = self._require_spend(spend_id)
         if self.s_state[key] != SPEND_HELD:
             raise Exception("[EXPECTED] spend is not held")
 
         now = self._now()
-        held_at = int(self.s_held_at[key])
-        window = int(self.d_response_window)
+        defaults = self._defaults()
         # Coerce every value captured by the consensus closures to a plain
         # Python type. The leader runs in-process and tolerates a storage-
         # backed value; the validator is sandboxed and its closure is pickled,
@@ -385,64 +255,40 @@ class RemitGuard(gl.Contract):
             # T9: a party that has not yet had its response window cannot lose
             # for not using it. Refuse to convene rather than adjudicate on an
             # empty record.
-            if uncommitted_artifact(
-                held_at=held_at, now=now, response_window_seconds=window
-            ) == ARTIFACT_FORECLOSED:
+            state_now = str(
+                self._eng().uncommitted(int(self.s_held_at[key]), now, int(defaults["response_window_seconds"]))
+            )
+            if state_now == ARTIFACT_FORECLOSED:
                 raise Exception("[EXPECTED] response window has not elapsed")
 
-        fired = [r for r in self.s_rules[key].split(",") if r != ""]
+        fired = self._rule_ids(key)
         if not fired:
             raise Exception("[EXPECTED] held spend has no fired rule")
-        # Every judgment rule that fired goes to the jury, not just the first:
-        # a second trigger on the same spend is a second question, and
-        # dropping it would let a spend through on the easier of the two.
-        rule_id = ",".join([str(r) for r in fired])
-        ask = [str(self.rule_ask[r]) for r in fired]
-        needs_artifact = self._needs_artifact(key)
-        defaults = {
-            "on_deadline": str(self.d_on_deadline),
-            "on_undetermined": str(self.d_on_undetermined),
-            "response_window_seconds": int(self.d_response_window),
-            "hold_deadline_seconds": int(self.d_hold_deadline),
-            "clawback_window_seconds": int(self.d_clawback_window),
-        }
-
-        window_seconds = 0
-        for r in fired:
-            if int(self.rule_b[r]) > window_seconds:
-                window_seconds = int(self.rule_b[r])
-        if window_seconds == 0:
-            window_seconds = 3600
-        history = self._history()
-        candidate = Spend(
-            amount=int(self.s_amount[key]),
-            recipient=str(self.s_recipient[key]),
-            category=str(self.s_category[key]),
-            at=int(self.s_at[key]),
+        candidate = [int(self.s_amount[key]), str(self.s_recipient[key]), str(self.s_category[key]), int(self.s_at[key])]
+        # The engine builds the whole question from this guard's ledger - every
+        # fired rule, the payment, the history - leaving only the evidence,
+        # which the closures fetch themselves.
+        question = json.loads(
+            str(
+                gl.get_contract_at(Address(str(self._eng().prompts_address())))
+                .view()
+                .jury_prompt(
+                    self.compiled,
+                    ",".join(fired),
+                    str(self.s_claim[key]),
+                    json.dumps(candidate),
+                    json.dumps(self._history()),
+                    int(spend_id) + 1,
+                )
+            )
         )
-        prior = [h for h in history if h.at < candidate.at]
-        to_same = same_recipient(candidate, prior)
-        recent = []
-        for h in sorted(prior, key=lambda x: -x.at)[:8]:
-            if (candidate.at - h.at) <= window_seconds:
-                recent.append((h.amount, h.recipient, candidate.at - h.at, h.category))
-        facts = build_facts_lines(
-            recent=recent,
-            amount=candidate.amount,
-            recipient=candidate.recipient,
-            category=candidate.category,
-            spend_index=int(spend_id) + 1,
-            window_count=window_count(candidate, prior, window_seconds, candidate.at),
-            window_seconds=window_seconds,
-            window_total=window_total(candidate, prior, window_seconds, candidate.at),
-            daily_total=window_total(candidate, prior, DAY_SECONDS, candidate.at),
-            rule_id=rule_id,
-            recipient_count=window_count(candidate, to_same, window_seconds, candidate.at),
-            recipient_total=window_total(candidate, to_same, window_seconds, candidate.at),
-        )
-        claim = str(self.s_claim[key])
-        facts = [str(f) for f in facts]
-        rule_context = [str(c) for c in self._rule_context()]
+        template = str(question["template"])
+        notes = {str(k): str(v) for k, v in question["notes"].items()}
+        # What each verdict would do, so the validator can fail closed on the
+        # leader's verdict without calling the engine inside the closure.
+        table = {}
+        for _v, _row in self._outcomes(key).items():
+            table[str(_v)] = {str(_a): str(_o) for _a, _o in _row.items()}
 
         def leader() -> str:
             _state = ARTIFACT_ABSENT
@@ -460,16 +306,7 @@ class RemitGuard(gl.Contract):
                         _text = _raw.decode("utf-8", "replace")[:3000]
                 except Exception:
                     _state = ARTIFACT_UNVERIFIED
-            _out = gl.nondet.exec_prompt(
-                build_verdict_prompt(
-                    ask=ask,
-                    facts_lines=facts,
-                    artifact_state=_state,
-                    artifact_text=_text,
-                    claim_text=claim,
-                    rule_context=rule_context,
-                )
-            )
+            _out = gl.nondet.exec_prompt(template.replace(DELIVERABLE_MARKER, build_deliverable(_state, _text, notes)))
             _parsed = _parse_verdict(_out)
             _parsed["artifact"] = _state
             return json.dumps(_parsed)
@@ -504,42 +341,22 @@ class RemitGuard(gl.Contract):
             if _verdict not in VERDICTS:
                 return False
 
-            # The judgement: this validator answers the SAME structured
-            # question, from evidence it fetched and hash-checked itself.
-            #
-            # Asking a validator to grade someone else's answer instead was
-            # measured on Studio and is not stable: models split roughly evenly
-            # on "is this defensible?". Re-answering a narrow, well-specified
-            # question is far more determinate than grading a verdict.
+            # The judgement: this validator answers the SAME question, from
+            # evidence it fetched and hash-checked itself. Asking a validator
+            # to grade someone else's answer was measured on Studio and is not
+            # stable; re-answering a narrow question is.
             _mine = _parse_verdict(
-                gl.nondet.exec_prompt(
-                    build_verdict_prompt(
-                        ask=ask,
-                        facts_lines=facts,
-                        artifact_state=_state,
-                        artifact_text=_text,
-                        claim_text=claim,
-                        rule_context=rule_context,
-                    )
-                )
+                gl.nondet.exec_prompt(template.replace(DELIVERABLE_MARKER, build_deliverable(_state, _text, notes)))
             )
             # Fail CLOSED (validator_agrees): a leader's refusal may stand over
             # a validator that is unsure; a leader's authorization stands only
             # on agreement; a validator sure the spend is in remit vetoes
-            # anything else. Reason codes and confidence are not compared -
-            # confidence has already been applied by _parse_verdict, where a
+            # anything else. Confidence was applied by _parse_verdict, where a
             # hesitant in_remit becomes undetermined.
-            _leader_outcome = resolve_hold(
-                verdict=_verdict,
-                artifact=_state,
-                requires_artifact=needs_artifact,
-                defaults=defaults,
-                deadline_reached=False,
-            )
             return validator_agrees(
                 leader_verdict=_verdict,
                 own_verdict=_mine["verdict"],
-                leader_outcome=_leader_outcome,
+                leader_outcome=table[_verdict][_state],
             )
 
         raw = gl.vm.run_nondet(leader, validator, compare_user_errors=True)
@@ -551,14 +368,7 @@ class RemitGuard(gl.Contract):
 
         self.s_verdict[key] = result["verdict"]
         self.s_reason[key] = result["reason"]
-        outcome = resolve_hold(
-            verdict=result["verdict"],
-            artifact=artifact,
-            requires_artifact=needs_artifact,
-            defaults=defaults,
-            deadline_reached=False,
-        )
-        self._finalise(key, outcome, artifact, result["confidence"])
+        self._finalise(key, table[result["verdict"]][artifact], artifact, result["confidence"])
 
     @gl.public.write
     def resolve_deadline(self, spend_id: int) -> None:
@@ -567,27 +377,18 @@ class RemitGuard(gl.Contract):
         key = self._require_spend(spend_id)
         if self.s_state[key] != SPEND_HELD:
             raise Exception("[EXPECTED] spend is not held")
-        if (self._now() - int(self.s_held_at[key])) < int(self.d_hold_deadline):
+        defaults = self._defaults()
+        now = self._now()
+        if (now - int(self.s_held_at[key])) < int(defaults["hold_deadline_seconds"]):
             raise Exception("[EXPECTED] deadline not reached")
 
         if self.s_memo_uri[key] == "":
-            artifact = uncommitted_artifact(
-                held_at=int(self.s_held_at[key]),
-                now=self._now(),
-                response_window_seconds=int(self.d_response_window),
-            )
+            artifact = str(self._eng().uncommitted(int(self.s_held_at[key]), now, int(defaults["response_window_seconds"])))
         else:
             artifact = ARTIFACT_UNVERIFIED
 
-        outcome = resolve_hold(
-            verdict=None,
-            artifact=artifact,
-            requires_artifact=self._needs_artifact(key),
-            defaults=self._defaults(),
-            deadline_reached=True,
-        )
         self.s_reason[key] = "deadline_default"
-        self._finalise(key, outcome, artifact, 0)
+        self._finalise(key, str(self._outcomes(key)["deadline"][artifact]), artifact, 0)
 
     @gl.public.write
     def override_release(self, spend_id: int) -> None:
@@ -677,68 +478,32 @@ class RemitGuard(gl.Contract):
 
     @gl.public.view
     def mandate_info(self) -> str:
-        rules = []
-        for rule_id in self.rule_ids:
-            rules.append(
-                {
-                    "id": rule_id,
-                    "type": self.rule_kind[rule_id],
-                    "predicate": self.rule_pred[rule_id],
-                    "a": int(self.rule_a[rule_id]),
-                    "b": int(self.rule_b[rule_id]),
-                    "s": self.rule_s[rule_id],
-                    "requires_artifact": bool(self.rule_needs_artifact[rule_id]),
-                    "tier": int(self.rule_tier[rule_id]),
-                    "ask": self.rule_ask[rule_id],
-                }
-            )
-        return json.dumps(
-            {
-                "principal": str(self.principal),
-                "agent": str(self.agent),
-                "max_tier": int(self.max_tier),
-                "shadow": bool(self.shadow),
-                "mandate_uri": self.mandate_uri,
-                "mandate_digest": self.mandate_digest,
-                "mandate_version": int(self.mandate_version),
-                "defaults": self._defaults(),
-                "rules": rules,
-                "vendor_lists": self._vendor_lists(),
-                "spend_count": int(self.spend_count),
-            }
-        )
+        """The mandate as registered, with who is bound by it. ``rules`` carry
+        the engine's flattened view of each rule."""
+        m = self._mandate()
+        m.pop("errors", None)
+        m["principal"] = str(self.principal)
+        m["agent"] = str(self.agent)
+        m["engine"] = str(self.engine)
+        m["max_tier"] = int(self.max_tier)
+        m["shadow"] = bool(self.shadow)
+        m["spend_count"] = int(self.spend_count)
+        return json.dumps(m)
 
     @gl.public.view
     def preview_spend(self, recipient: str, amount: int, category: str) -> str:
         """Dry-run the gate: what WOULD happen to this spend right now.
 
-        Runs the same ``_classify`` the real spend runs, against the same
-        history, so a client can tell a user "this will be held for a jury"
-        before they sign anything. It is a view, so it costs nothing and
-        changes nothing - and because it is the contract's own code path, the
-        prediction cannot drift from the decision the way a reimplementation
-        in the frontend would.
+        Asks the engine the same question ``request_spend`` asks, against the
+        same history, so a client can tell a user "this will be held for a
+        jury" before they sign anything - and the prediction cannot drift from
+        the decision the way a reimplementation in the frontend would.
         """
         value = int(amount)
         if value <= 0:
             return json.dumps({"state": "invalid", "rules": [], "reason": "amount must be positive"})
-        candidate = Spend(
-            amount=value,
-            recipient=normalize_address(recipient),
-            category=str(category),
-            at=self._now(),
-        )
-        state, fired = self._classify(candidate, self._history())
-        return json.dumps({"state": state, "rules": [str(r) for r in fired], "reason": ""})
-
-    def _vendor_lists(self) -> dict:
-        out = {}
-        for entry in self.vendor_entries:
-            name, _, addr = str(entry).partition("|")
-            if name not in out:
-                out[name] = []
-            out[name].append(addr)
-        return out
+        decided = self._classify(normalize_address(recipient), value, str(category), self._now())
+        return json.dumps({"state": str(decided["state"]), "rules": [str(r) for r in decided["rules"]], "reason": ""})
 
     def _summarise(self, index: int) -> dict:
         key = u256(int(index))

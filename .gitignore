@@ -10,13 +10,14 @@ venv/
 # Build artifacts
 # contracts/build/ is committed: it is the exact artifact deployed, so a
 # reviewer can verify deployed bytecode against source without a build step.
-*.min.py
 
 # Node / frontend
 node_modules/
 .next/
 dist/
 build/
+!contracts/build/
+!contracts/build/*.py
 
 # Local config and secrets
 .env

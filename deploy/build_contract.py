@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
-"""Assemble the deployable Intelligent Contract.
+"""Assemble the two deployable Intelligent Contracts.
 
 A GenVM contract is a single file, but the deterministic engine must be
 testable without a chain and the prompt layer must be testable as pure string
 building. So they are authored separately and inlined here.
 
-Output: ``contracts/build/remit.py``. Never edit that file.
+Remit deploys as three contracts because Bradbury caps a transaction at 2^24
+gas and a deploy costs about 0.96M gas plus 782 per byte of code and arguments
+(measured with deploy/probe_gas.mjs): the shared, stateless **engine** (rules)
+and **prompts** (the jury's question), and one **guard** per agent. Outputs,
+never edited by hand:
+
+  contracts/build/<name>.py      readable, tested
+  contracts/build/<name>.min.py  deployed: docstrings and comments stripped,
+                                 unreachable definitions dropped
 """
 
 import os
@@ -21,7 +29,11 @@ OUT_DIR = os.path.join(SRC, "build")
 # never floated.
 RUNNER = "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6"
 
-PARTS = ["remit_core.py", "remit_prompts.py", "contract_shell.py"]
+BUILDS = {
+    "engine": (["remit_core.py", "engine_api.py", "engine_shell.py"], "RemitEngine"),
+    "prompts": (["remit_core.py", "remit_prompts.py", "prompts_api.py", "prompts_shell.py"], "RemitPrompts"),
+    "guard": (["remit_core.py", "remit_prompts.py", "contract_shell.py"], "RemitGuard"),
+}
 
 # The runner header must be followed IMMEDIATELY by code. Any comment line
 # between it and the first statement makes the deploy fail with an empty-stderr
@@ -45,7 +57,10 @@ from dataclasses import dataclass
 ''' % RUNNER
 
 # Imports the parts declare for themselves; the preamble already provides them.
-DROP_IMPORT = re.compile(r"^(from dataclasses import dataclass|import json|import hashlib|import datetime)\s*$")
+DROP_IMPORT = re.compile(
+    r"^(from dataclasses import dataclass|import json|import hashlib|import datetime"
+    r"|from remit_core import \*|from remit_prompts import \*)\s*$"
+)
 
 
 def strip_module_docstring(text):
@@ -60,28 +75,38 @@ def strip_module_docstring(text):
     return text
 
 
-def main():
-    os.makedirs(OUT_DIR, exist_ok=True)
+def assemble(parts):
     chunks = [PREAMBLE]
-
-    for name in PARTS:
+    for name in parts:
         path = os.path.join(SRC, name)
         with open(path) as handle:
             body = strip_module_docstring(handle.read())
         kept = [line for line in body.splitlines() if not DROP_IMPORT.match(line)]
         chunks.append("\n# --- %s %s\n" % (name, "-" * (66 - len(name))))
         chunks.append("\n".join(kept).strip("\n") + "\n")
+    return "\n".join(chunks)
 
-    built = "\n".join(chunks)
-    out_path = os.path.join(OUT_DIR, "remit.py")
-    with open(out_path, "w") as handle:
-        handle.write(built)
 
-    compile(built, out_path, "exec")  # syntax gate before anything touches a network
+def main():
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from minify_contract import minify
 
-    print("built  %s" % os.path.relpath(out_path, ROOT))
-    print("lines  %d" % len(built.splitlines()))
-    print("bytes  %d" % len(built.encode("utf-8")))
+    os.makedirs(OUT_DIR, exist_ok=True)
+    for name, (parts, root) in BUILDS.items():
+        built = assemble(parts)
+        out_path = os.path.join(OUT_DIR, name + ".py")
+        compile(built, out_path, "exec")  # syntax gate before anything touches a network
+        with open(out_path, "w") as handle:
+            handle.write(built)
+        small, removed = minify(built, root=root)
+        min_path = os.path.join(OUT_DIR, name + ".min.py")
+        compile(small, min_path, "exec")
+        with open(min_path, "w") as handle:
+            handle.write(small)
+        print(
+            "%-6s %6d bytes readable -> %6d bytes deployed (%d unreachable definitions dropped)"
+            % (name, len(built.encode("utf-8")), len(small.encode("utf-8")), len(removed))
+        )
     return 0
 
 

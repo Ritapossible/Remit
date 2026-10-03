@@ -16,13 +16,14 @@ export interface NetworkConfig {
   defaultGuard?: string;
   /** The rail deployed with the reference guard, if any. */
   defaultRail?: string;
-  /** Whether the app can deploy a guard here today. Bradbury caps a
-   *  transaction at 2^24 gas; the single-contract build exceeds it, so
-   *  deployment there waits on the engine/guard split (see the roadmap). */
+  /** The shared engine every guard on this network is bound to. A guard can be
+   *  deployed here only once the engine (and its prompts contract) exist. */
+  engine?: string;
+  /** Whether the app can deploy a guard here today. */
   deployable: boolean;
 }
 
-const d = deployments as Record<string, { address?: string; rail?: string }>;
+const d = deployments as Record<string, { address?: string; rail?: string; engine?: string }>;
 const explorerOf = (c: typeof studionet) => (c.blockExplorers?.default.url ?? "").replace(/\/$/, "");
 
 // Chain config comes from genlayer-js 1.1.8. Older releases pointed the testnet
@@ -41,7 +42,8 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
     pollMs: 2500,
     defaultGuard: d.studio?.address,
     defaultRail: d.studio?.rail,
-    deployable: true,
+    engine: d.studio?.engine,
+    deployable: !!d.studio?.engine,
   },
   bradbury: {
     id: "bradbury",
@@ -54,6 +56,7 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
     pollMs: 4000,
     defaultGuard: d.bradbury?.address,
     defaultRail: d.bradbury?.rail,
-    deployable: false,
+    engine: d.bradbury?.engine,
+    deployable: !!d.bradbury?.engine,
   },
 };

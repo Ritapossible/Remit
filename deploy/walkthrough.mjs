@@ -4,7 +4,7 @@
 // only that consensus agreed; consensus agreeing on a refusal is a network
 // success and a spend refusal (hard law 3).
 import fs from "node:fs";
-import { clientFor, accountFor, retry, outcome, WAIT } from "./lib.mjs";
+import { clientFor, accountFor, retry, outcome, WAIT, readUntil } from "./lib.mjs";
 
 const network = process.argv[2] || "studio";
 const { address, rail } = JSON.parse(fs.readFileSync("deployments.json", "utf8"))[network];
@@ -92,7 +92,9 @@ await sleep(65000);
 // --- 5: the jury decides -------------------------------------------------
 console.log("\n[5] adjudicate - the jury answers what no threshold can");
 const adj = await send(principal, "adjudicate", [3], "adjudicate");
-s = await spendOf(3);
+const seen = await readUntil(() => spendOf(3), (x) => x.verdict !== "");
+s = seen.value;
+if (seen.waited) console.log(`    (the verdict became readable ${seen.waited}s after ACCEPTED)`);
 console.log(`    verdict=${s.verdict} reason=${s.reason} confidence=${s.confidence} artifact=${s.artifact}`);
 check(`consensus reached (${adj.consensus})`, adj.agreed, true);
 check("a verdict was recorded", s.verdict !== "", true);

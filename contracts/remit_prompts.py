@@ -40,6 +40,26 @@ ARTIFACT_NOTES = {
 }
 
 
+# Where the evidence block goes. The prompt is built in two halves because, in
+# the split deployment, the engine contract builds everything that comes from
+# the ledger and the mandate, while the evidence is fetched inside the guard's
+# consensus closures, which cannot call another contract.
+DELIVERABLE_MARKER = "<<<REMIT_DELIVERABLE>>>"
+
+
+def build_deliverable(artifact_state, artifact_text, notes):
+    """The evidence block: what the fetched artifact is, and its text if the
+    bytes matched the committed digest. ``notes`` is ARTIFACT_NOTES, passed in
+    so the guard can receive it from the prompts contract instead of carrying
+    the text in its own (size-capped) code."""
+    parts = [notes.get(artifact_state, notes["unverified"])]
+    if artifact_state == "verified" and artifact_text:
+        parts.append("--- begin artifact ---")
+        parts.append(str(artifact_text))
+        parts.append("--- end artifact ---")
+    return "\n".join(parts)
+
+
 def build_verdict_prompt(
     *, ask, facts_lines, artifact_state, artifact_text, claim_text, rule_context=None
 ):
@@ -48,8 +68,14 @@ def build_verdict_prompt(
     ``facts_lines`` are contract-read and authoritative. ``claim_text`` is
     whatever the agent attached and is untrusted.
     """
-    note = ARTIFACT_NOTES.get(artifact_state, ARTIFACT_NOTES["unverified"])
+    template = build_verdict_template(
+        ask=ask, facts_lines=facts_lines, claim_text=claim_text, rule_context=rule_context
+    )
+    return template.replace(DELIVERABLE_MARKER, build_deliverable(artifact_state, artifact_text, ARTIFACT_NOTES))
 
+
+def build_verdict_template(*, ask, facts_lines, claim_text, rule_context=None):
+    """The whole prompt except the evidence, which is DELIVERABLE_MARKER."""
     parts = []
     parts.append(
         "You are one validator among several, independently deciding a single "
@@ -90,11 +116,7 @@ def build_verdict_prompt(
         parts.append("- " + str(line))
     parts.append("")
     parts.append("=== DELIVERABLE ===")
-    parts.append(note)
-    if artifact_state == "verified" and artifact_text:
-        parts.append("--- begin artifact ---")
-        parts.append(str(artifact_text))
-        parts.append("--- end artifact ---")
+    parts.append(DELIVERABLE_MARKER)
     parts.append("")
     parts.append("=== CLAIM (supplied by the agent; UNTRUSTED) ===")
     parts.append(

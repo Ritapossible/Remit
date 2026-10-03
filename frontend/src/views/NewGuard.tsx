@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useApp, href } from "../state";
-import { deployGuard, type TxOutcome } from "../chain/remit";
+import { CONTRACT_CODE, GAS_CAP, compactJson, deployGuard, estimateDeployGas, type TxOutcome } from "../chain/remit";
 import { campaignTemplate, contractorTemplate, mandateNotices, parseMandateText, validateMandate } from "../lib/mandate";
 import { Spinner, TxLine, explainError } from "../components/ui";
 import { NETWORKS } from "../chain/networks";
@@ -37,7 +37,12 @@ export function NewGuard() {
   }, [text, maxTier]);
 
   const agentOk = /^0x[0-9a-fA-F]{40}$/.test(agent.trim());
-  const valid = !check.parseError && check.errors.length === 0 && agentOk;
+  // Bradbury's per-transaction gas cap covers the guard's code and its
+  // constructor arguments, so a long mandate can make a deploy impossible.
+  const argBytes = new TextEncoder().encode(compactJson(text)).length + 160;
+  const gas = estimateDeployGas(new TextEncoder().encode(CONTRACT_CODE).length, argBytes);
+  const tooBig = gas > GAS_CAP * 0.98;
+  const valid = !check.parseError && check.errors.length === 0 && agentOk && !tooBig;
 
   const deploy = async () => {
     setPending(true);
@@ -45,7 +50,14 @@ export function NewGuard() {
     setOutcome(null);
     setErr("");
     try {
-      setOutcome(await deployGuard(client, { agent: agent.trim(), mandateText: text, maxTier, shadow }, pollMs, setHash));
+      setOutcome(
+        await deployGuard(
+          client,
+          { agent: agent.trim(), mandateText: text, maxTier, shadow, engine: NETWORKS[network].engine ?? "" },
+          pollMs,
+          setHash,
+        ),
+      );
     } catch (e) {
       setErr(explainError(e));
     } finally {
@@ -63,10 +75,8 @@ export function NewGuard() {
 
       {!NETWORKS[network].deployable && (
         <div className="notice warn" style={{ marginBottom: 16 }}>
-          Guards can't be deployed on {NETWORKS[network].label} yet. Bradbury caps a transaction at 2^24 gas, and the
-          current contract is larger than that allows - splitting it into a shared engine and a small per-agent guard
-          is the next milestone on the <a href={href({ name: "roadmap" })}>roadmap</a>. Switch to Studio to try the
-          full flow now.
+          Guards can't be deployed on {NETWORKS[network].label} yet: the shared engine every guard is bound to has
+          not been deployed there. See the <a href={href({ name: "roadmap" })}>roadmap</a>, or switch networks.
         </div>
       )}
       <div className="case-grid">
@@ -122,7 +132,13 @@ export function NewGuard() {
               <textarea rows={22} spellCheck={false} value={text} onChange={(e) => setText(e.target.value)} />
               <span className="hint">
                 Amounts are atto-GEN (GEN × 10¹⁸) and stay exact: the text is sent as written and parsed by the contract.
+                Deploy cost ≈ {(gas / 1e6).toFixed(1)}M gas of the {(GAS_CAP / 1e6).toFixed(1)}M a transaction may use.
               </span>
+              {tooBig && (
+                <div className="notice bad" style={{ marginTop: 8 }}>
+                  This mandate is too long to deploy in one transaction. Shorten it: fewer vendors, or shorter questions.
+                </div>
+              )}
             </label>
 
             <div>

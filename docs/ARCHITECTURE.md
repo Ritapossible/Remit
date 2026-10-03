@@ -203,7 +203,7 @@ the jury gets both questions and any breach is `out_of_remit`.
 Remit splits deciding from paying.
 
 - **`RemitGuard`** (`contracts/contract_shell.py`, built to
-  `contracts/build/remit.py`) decides. It has no payable method and no
+  `contracts/build/guard.py`) decides. It has no payable method and no
   transfer. It exposes `settlement_of(spend_id)`: the authorization, recipient,
   amount and decision time, ignoring shadow mode.
 - **`RemitRail`** (`contracts/rail.py`) holds GEN and pays. Its one payout,
@@ -243,16 +243,32 @@ contract today.
 ## 7. Deployment topology
 
 ```
+RemitPrompts (one per network, shared)   builds the jury's question
+  constructor()                          stateless, view-only
+
+RemitEngine  (one per network, shared)   validates mandates, classifies
+  constructor(prompts)                   spends, maps verdicts to outcomes;
+                                         stateless, view-only
+
 RemitGuard  (one instance per agent)
-  constructor(agent, mandate_json, max_tier, shadow)
-  storage:    mandate pin + version, defaults, typed rules, vendor lists,
-              spend ledger, cases, verdicts, decision times
+  constructor(agent, mandate_json, max_tier, shadow, engine)
+  storage:    the mandate as the engine compiled it, spend ledger, cases,
+              verdicts, decision times
+  runs:       the jury (consensus closures cannot call another contract, so
+              the guard fetches the question and the outcome table first)
 
 RemitRail   (one per guard, deployed by the guard's principal)
   constructor(guard, finality_seconds)
   storage:    guard, principal, agent, finality delay, paid ledger
   holds:      the GEN the agent may spend
 ```
+
+**Why three contracts.** Bradbury caps a transaction at 2^24 gas and a deploy
+costs about 0.96M plus 782 gas per byte of code and arguments, so nothing over
+about 20 KB deploys. The shared contracts are stateless and ownerless: nobody
+can change their behaviour after deployment, and each guard fixes its engine
+address at its own deployment. Studio runs the same three contracts, so there
+is one design to review.
 
 One instance per agent is the T6 mitigation and it is structural: transactions
 on one Intelligent Contract execute serially, so a shared instance would let
@@ -262,18 +278,30 @@ factory that deploys and indexes guards is on the roadmap.
 
 ## 8. Build pipeline
 
-Splitting the source and building the deployable artifact is not ceremony - the
-deterministic engine must be testable without a chain, and the deployed contract
-must be minified to fit pubdata limits on testnet.
+Splitting the source and building the deployable artifacts is not ceremony -
+the deterministic engine must be testable without a chain, and every deployed
+contract must fit Bradbury's gas cap.
 
 ```
 contracts/remit_core.py      pure Python. No gl.*, no network, no LLM.
 contracts/remit_prompts.py   prompt construction. Isolated, separately testable.
-contracts/contract_shell.py  storage, entrypoints, consensus blocks.
+contracts/engine_api.py      JSON adapters the engine exposes   (+ engine_shell.py)
+contracts/prompts_api.py     JSON adapter for the jury question (+ prompts_shell.py)
+contracts/contract_shell.py  the guard: storage, entrypoints, consensus blocks.
+contracts/rail.py            the treasury (deployed as written).
         |
-        +-- deploy/build_contract.py  -->  contracts/build/remit.py
-        +-- deploy/minify_contract.py -->  contracts/build/remit.min.py
+        +-- deploy/build_contract.py --> contracts/build/{engine,prompts,guard}.py
+                                         (readable, tested)
+                                    --> contracts/build/{engine,prompts,guard}.min.py
+                                         (deployed: docstrings, comments and
+                                          unreachable definitions stripped)
 ```
+
+`tests/direct/test_split.py` holds the split to three promises: the adapters
+decide exactly what the engine decides and the guard's assembled prompt is
+byte-identical to the one measured before the split; each `.min.py` is a fresh
+minify of its tested build and uses no undefined name; and each fits the gas
+budget.
 
 `remit_core.py` holds every decision that can be made without a jury, which is
 most of them. It is imported directly by the direct-mode tests and runs in

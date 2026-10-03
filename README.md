@@ -125,9 +125,20 @@ Both are on the [roadmap](PLAN.md).
 
 ## Status
 
-**Running on GenLayer Studio.** Bradbury runs the rail (measured); the guard is
-too large for Bradbury's per-transaction gas cap until the engine/guard split
-lands (see the roadmap).
+**Running on GenLayer Studio and the Bradbury testnet**, as three contracts: a
+shared rules engine, a shared prompts contract, and one guard per agent (plus
+its rail). Bradbury caps a transaction at 2^24 gas, so nothing over about 20 KB
+deploys; the split is how the guard fits. Studio runs the same three contracts.
+Addresses are in `deploy/deployments.json`.
+
+**Bradbury, so far.** All four contracts deployed, with deploy gas measured
+before sending: prompts 8.7M, engine 13.9M, guard plus mandate 15.7M, against
+the 16.78M cap. On the deployed guard, a walkthrough passed 10 of 13 checks:
+the three failures were a read made the instant the jury's transaction was
+accepted, before its state was visible - the verdict (`out_of_remit`, 90) is on
+chain and finalized, and the scripts now wait for the read. The rail paid all
+three authorized spends and refused both refused ones. Bradbury finalises a
+transaction 27-31 minutes after it is created, so its rail waits 40 minutes.
 
 Every result below is a real transaction, recorded in `deploy/*.json`, and every
 assertion is on resulting state and the consensus outcome - never on a
@@ -237,7 +248,10 @@ contracts/          Intelligent Contract sources
   remit_core.py     deterministic engine - pure Python, no chain, no LLM
   remit_prompts.py  prompt construction, isolated and separately testable
   contract_shell.py the guard: storage, entrypoints, consensus block
-  build/remit.py    the exact guard deployed (built, committed, checked in CI)
+  engine_api.py, engine_shell.py    the shared rules engine (one per network)
+  prompts_api.py, prompts_shell.py  the shared jury-question builder
+  build/*.py        readable builds (tested); build/*.min.py are the deployed
+                    bytes (checked in CI against a fresh build)
   rail.py           the treasury: holds GEN, pays only authorized spends
 frontend/           the web app, docs site and roadmap (Vite + React + genlayer-js)
 tests/direct/       engine tests and structural tests on the built contract
