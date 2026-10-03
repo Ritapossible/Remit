@@ -39,7 +39,8 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
     short: "Studio",
     chain: studionet,
     rpc: studionet.rpcUrls.default.http[0],
-    explorer: explorerOf(studionet),
+    // genlayer-js still names a retired Studio explorer (genlayer-explorer.vercel.app).
+    explorer: "https://explorer-studio.genlayer.com",
     faucet: true,
     pollMs: 2500,
     defaultGuard: d.studio?.address,
