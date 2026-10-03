@@ -1,8 +1,8 @@
 {
   "network": "studio",
-  "recorded_at": "2026-10-03T12:56:48.013Z",
-  "guard": "0x73eFcD2c9B6C104A8a52050b541Cf024F59615ae",
-  "rail": "0x7EFD37d57F408f573C603977d96d60Db642bf1De",
+  "recorded_at": "2026-10-03T13:19:08.924Z",
+  "guard": "0x0b7322A13c917BA129bEaf1763528184cb5F008e",
+  "rail": "0x20f79374e9e786A267ab80DcbFA55E8aF21F22d1",
   "registry": "0xC55Dcbf923da53Fd5746De792b6991c9b9144dE0",
   "finality_seconds": 60,
   "cases": {
@@ -13,13 +13,13 @@
       "challenger": "0xef359811497c724ef1942c6c079c64c07d87952d",
       "bond": 10000000000000000,
       "statement": "This is one part of a larger order split into small payments.",
-      "opened_at": 1791031510,
+      "opened_at": 1791032919,
       "state": "dismissed",
       "memo_uri": "",
       "memo_digest": "",
-      "verdict": "undetermined",
-      "reason": "insufficient_evidence",
-      "confidence": 50,
+      "verdict": "in_remit",
+      "reason": "matches_rule",
+      "confidence": 95,
       "artifact": "absent",
       "tier": 2,
       "settlement": {
@@ -30,10 +30,10 @@
         "from_standing": 0,
         "blocked": false,
         "losses": 1,
-        "last_loss_at": 1791031655,
+        "last_loss_at": 1791033061,
         "freeze": 0
       },
-      "decided_at": 1791031655
+      "decided_at": 1791033061
     },
     "B": {
       "id": 1,
@@ -42,13 +42,13 @@
       "challenger": "0xef359811497c724ef1942c6c079c64c07d87952d",
       "bond": 20000000000000000,
       "statement": "The agent's own description says this paid for flight tickets, not media work.",
-      "opened_at": 1791031699,
+      "opened_at": 1791033093,
       "state": "upheld",
       "memo_uri": "",
       "memo_digest": "",
       "verdict": "out_of_remit",
       "reason": "outside_stated_purpose",
-      "confidence": 96,
+      "confidence": 95,
       "artifact": "absent",
       "tier": 3,
       "settlement": {
@@ -62,7 +62,7 @@
         "last_loss_at": 0,
         "freeze": 3
       },
-      "decided_at": 1791031781
+      "decided_at": 1791033173
     },
     "C": {
       "id": 2,
@@ -70,72 +70,72 @@
       "rule": "purpose",
       "challenger": "0xaa34e14a0e0b2fdd8ad10f06bc0907fa0b1d02bd",
       "bond": 10000000000000000,
-      "statement": "Office chairs are furniture, not media production or hosting.",
-      "opened_at": 1791031973,
-      "state": "dismissed",
+      "statement": "The agent's own description is a personal gym membership - not producing or hosting media.",
+      "opened_at": 1791033423,
+      "state": "upheld",
       "memo_uri": "",
       "memo_digest": "",
-      "verdict": "in_remit",
-      "reason": "matches_rule",
-      "confidence": 85,
+      "verdict": "out_of_remit",
+      "reason": "outside_stated_purpose",
+      "confidence": 98,
       "artifact": "absent",
       "tier": 3,
       "settlement": {
-        "state": "dismissed",
-        "to_challenger": 0,
-        "to_agent": 10000000000000000,
-        "to_treasury": 0,
-        "from_standing": 0,
+        "state": "upheld",
+        "to_challenger": 11500000000000000,
+        "to_agent": 0,
+        "to_treasury": 30000000000000000,
+        "from_standing": 31500000000000000,
         "blocked": false,
-        "losses": 1,
-        "last_loss_at": 1791032052,
-        "freeze": 0
+        "losses": 0,
+        "last_loss_at": 0,
+        "freeze": 3
       },
-      "decided_at": 1791032052
+      "decided_at": 1791033499
     }
   },
   "status": {
-    "guard": "0x73eFcD2c9B6C104A8a52050b541Cf024F59615ae",
+    "guard": "0x0b7322A13c917BA129bEaf1763528184cb5F008e",
     "principal": "0xf1827CaD7C88f02a7cAd3627D7CE482A8f2D33C7",
     "agent": "0x8aA26Fa51a68c583C467463e93db0EBc10f7D509",
     "finality_seconds": 60,
     "balance": 328000000000000000,
     "funded": 300000000000000000,
-    "treasury": 220000000000000000,
+    "treasury": 250000000000000000,
     "paid_total": 80000000000000000,
     "paid_count": 2,
     "bond_floor": 10000000000000000,
-    "standing": 98000000000000000,
+    "standing": 66500000000000000,
     "escrowed": 0,
     "challenge_count": 3,
     "open_challenges": 0,
     "frozen_tier": 0,
     "frozen_by": -1,
-    "revoked_below": 3
+    "revoked_below": 4
   },
   "log": [
     {
       "setup": {
         "engine": "0xC54324E0127BC5ce3E314467a1c2Eec9F9bEC515",
         "registry": "0xC55Dcbf923da53Fd5746De792b6991c9b9144dE0",
-        "guard": "0x73eFcD2c9B6C104A8a52050b541Cf024F59615ae",
-        "guard_tx": "0x1fb7453df9bbc62ca53b0cdb3a248651de4f1fc31ce19275051f609f5a7be418",
-        "rail": "0x7EFD37d57F408f573C603977d96d60Db642bf1De",
-        "rail_tx": "0x5867f9fca6bcf54c4c9ffca67ee5f5d76a4c89cc8e136cf5c3313e63719aad6f",
-        "attach_rail_tx": "0x4d97fde1d0184680601f5fd000cd85491d379c4db2b23cc30eef4f0f12656737",
-        "register_tx": "0x4dca29e3f133dc75ca1f2013be2c57e5c3a9091b775f99043d78cb1a50bc6292",
-        "fund_rail_tx": "0xd45341da22fdbbcd5ca78c8303e9a9895acf6ccd9f094a28f56429a2883815c3"
+        "guard": "0x0b7322A13c917BA129bEaf1763528184cb5F008e",
+        "guard_tx": "0x959eae668a2915df161855422ec3cd7af8a70a21181ecf391303fe94e10cfdd3",
+        "rail": "0x20f79374e9e786A267ab80DcbFA55E8aF21F22d1",
+        "rail_tx": "0xfe2e1b5951459e578b5493086bec8bc4951364d3931ac596fd59dd82b2d01990",
+        "attach_rail_tx": "0xf0920ab184518257d688d3c07634bde2863d1f68fe7e715082831198120e8157",
+        "register_tx": "0x32f9d12d93eb3bfbafa7da5e707bdfb52ec8177460f539b9f13f930dcad34a14",
+        "fund_rail_tx": "0x336d8f36f4b051cfdbbbf6fc1cbc281259843a950b4f53abc3230ea667117f0e"
       }
     },
     {
       "tx": "agent posts a 0.1 GEN bond",
-      "hash": "0x372a124c7e13bde794c1a73a88f8a659fbe29235717bec2df8c1c314526f6517",
+      "hash": "0xad1195f77643147a5492dc96a90430fd87bab8f1f66488322e45d13762a80e82",
       "consensus": "MAJORITY_AGREE",
       "leader": "return"
     },
     {
       "tx": "spend 0",
-      "hash": "0xeaa3249782f33607f3402b6bf026ce5dc85d1980b0a895001181a1e53bc118d1",
+      "hash": "0x6628db42493aa7700f82a211794abc8ec70aba666fcc4258274424913b7385fe",
       "consensus": "MAJORITY_AGREE",
       "leader": "return"
     },
@@ -153,7 +153,7 @@
     },
     {
       "tx": "A: challenge (bond 0.01 GEN)",
-      "hash": "0x41520cbf2ebf5799b32c81b5746c84da230d98bc5f180dc040e1d030cb297d42",
+      "hash": "0x4d5b28b2bba1556e1babfc881026ec8fe9be2bf3677dd31d95dcf2738bf760ec",
       "consensus": "MAJORITY_AGREE",
       "leader": "return"
     },
@@ -165,7 +165,7 @@
     },
     {
       "tx": "A: pay 0 while challenged",
-      "hash": "0xe308977f5f54414198495fedd7d6e30a2ab903ec757e072b86a21aaee05e7df9",
+      "hash": "0x4cd20a22ec3256d0a452e3daa2eb9d5986896e5e48d6c378796c6236f79683ac",
       "consensus": "MAJORITY_AGREE",
       "leader": "contract_error"
     },
@@ -177,7 +177,7 @@
     },
     {
       "tx": "A: rule",
-      "hash": "0xaa35576a8dcbdb4da54f52db228adcd7769503035d33f7a97146664f2b95b9f1",
+      "hash": "0x80f0b2156233d24b29715656264c002fe055f5a4b6cf45e5c3949664b9b7253a",
       "consensus": "MAJORITY_AGREE",
       "leader": "return"
     },
@@ -195,7 +195,7 @@
     },
     {
       "tx": "A: pay 0 after dismissal",
-      "hash": "0x5bb2489f2b4125367ab59adf00f1bfb4d964b4a3e1fb10b804c41e311037c91c",
+      "hash": "0x4109a9de64f5346d4e36e10b7e23d3a94f4c1186968b1a67053e51bdf4deecf6",
       "consensus": "MAJORITY_AGREE",
       "leader": "return"
     },
@@ -213,7 +213,7 @@
     },
     {
       "tx": "spend 1",
-      "hash": "0xd64089f00d2ed1e839f4067a9bb0c8e29fec6216f65c7133e5b621d679c446a2",
+      "hash": "0x7560cf0b3e87ce3cae36dd7352f8ad111ac7d9cabf7bdbe8b853820e276e6671",
       "consensus": "MAJORITY_AGREE",
       "leader": "return"
     },
@@ -231,7 +231,7 @@
     },
     {
       "tx": "B: challenge (bond 0.02 GEN)",
-      "hash": "0xe6b96dffeaab7176da4016769db47da7f4c785a8ad3da0928ed9e0b200d136b2",
+      "hash": "0x68d1bbb07ffe22ee5cdbfdc4e9daf820153e30fe604ac0b865398d8f92d1eb8d",
       "consensus": "MAJORITY_AGREE",
       "leader": "return"
     },
@@ -243,13 +243,13 @@
     },
     {
       "tx": "spend 2 (unpaid when B is ruled)",
-      "hash": "0x4a839868267f6a25bb8fbfc7f3e25b7dc462d1d39a69dfdeb2c3f7b77d3c7099",
+      "hash": "0xa671c9a1e791850581e124e995feb73239fc6577390694cba3810d3b7d015b28",
       "consensus": "MAJORITY_AGREE",
       "leader": "return"
     },
     {
       "tx": "B: rule",
-      "hash": "0x6fa339aeff24ce927d20ae9d3a9f13c43d45aa17fbe38e5152a11831a875ad7c",
+      "hash": "0x78a2df45acfacc19102d7b23e307d8a693d8ea4b9d4973f25842343de35f44f7",
       "consensus": "MAJORITY_AGREE",
       "leader": "return"
     },
@@ -285,7 +285,7 @@
     },
     {
       "tx": "B: pay 1",
-      "hash": "0x371abc297b0695295a9a2b93c44b99ecaf6ce22ac445fbbb479e3db5f9c399aa",
+      "hash": "0xc5282739efd48a003a2b85a62ed58ca56d9c9c3beb7088727d76c453daa031b7",
       "consensus": "MAJORITY_AGREE",
       "leader": "contract_error"
     },
@@ -297,7 +297,7 @@
     },
     {
       "tx": "B: pay 2",
-      "hash": "0xc460ea9ee3df761a90cf11c16542709ddcd852d231076d2ce6b2b871c71697f3",
+      "hash": "0xa96df1e0adadcc30d403e498f1b0df872a6b7ba47bf3a5bd98c60f54b9c09867",
       "consensus": "MAJORITY_AGREE",
       "leader": "contract_error"
     },
@@ -315,7 +315,7 @@
     },
     {
       "tx": "B: spend while frozen",
-      "hash": "0xfc72159fa7e930c5a79ab12942b2ee2a8282a8f22bd8d8e10324e4a34cb0f926",
+      "hash": "0xe85654dea61febf2988764c8a097d366582346fbf676e9f62779af4e6f9a0f9c",
       "consensus": "MAJORITY_AGREE",
       "leader": "contract_error"
     },
@@ -327,7 +327,7 @@
     },
     {
       "tx": "B: agent lifts",
-      "hash": "0x171673cea53cb53c851c01c0396342573d2fbbb14d41b397c5ac1d7d596179af",
+      "hash": "0x282fce5eac40859e5c011edf4a04dc76fa49d15dd421e014c732c93674af2df8",
       "consensus": "MAJORITY_AGREE",
       "leader": "contract_error"
     },
@@ -339,7 +339,7 @@
     },
     {
       "tx": "B: principal lifts",
-      "hash": "0xe457328d583988b5b9646d2a7687d8746eb3b99d44d7e63ed87e1711afbdb4cc",
+      "hash": "0x7ad138b302173bca8c817eef2a9a8f576507f6a1a0c789b5e8ca5219562556b4",
       "consensus": "MAJORITY_AGREE",
       "leader": "return"
     },
@@ -351,7 +351,7 @@
     },
     {
       "tx": "spend 3",
-      "hash": "0x628bc1d7dacaaf8bb915b5b31ad2a4f85357205a95c9b3832e707c4cffefb286",
+      "hash": "0x625a9343735ec1361cc0e3fc470b73a95efdb9a6fdd5b818ae95e822f93e1b49",
       "consensus": "MAJORITY_AGREE",
       "leader": "return"
     },
@@ -363,7 +363,7 @@
     },
     {
       "tx": "C: pay 3",
-      "hash": "0x3a54361da467ed78a4e6745657da60d3721c2703e2b540378381a013fe5c1e86",
+      "hash": "0xc4f078108238dc32670239647bc737fd7f577e5fff9429cebe7f8485f0cfbd72",
       "consensus": "MAJORITY_AGREE",
       "leader": "return"
     },
@@ -381,7 +381,7 @@
     },
     {
       "tx": "C: challenge (bond 0.01 GEN)",
-      "hash": "0xc1c61126cf6f448ddce8754ab7f626307320ad3dbb99de10d9ea05cfbd9a6ece",
+      "hash": "0x06ac5175a93fb9a87e251af04bb2149af7f3e256faae1ce61685c866fa2382a6",
       "consensus": "MAJORITY_AGREE",
       "leader": "return"
     },
@@ -393,7 +393,7 @@
     },
     {
       "tx": "C: rule",
-      "hash": "0xca021211a864ec80ad31d46c2e9cc19a5a3dfbb6e87dae7edf27b8eccc156029",
+      "hash": "0xf10cd75b118b6ce9846ae399c89d236bc55992c429ceec25d75e0eaf603e2711",
       "consensus": "MAJORITY_AGREE",
       "leader": "return"
     },
@@ -404,8 +404,32 @@
       "ok": true
     },
     {
+      "check": "C: not blocked - it was already paid",
+      "actual": "false",
+      "expected": "false",
+      "ok": true
+    },
+    {
+      "check": "C: clawed back into the treasury",
+      "actual": "30000000000000000",
+      "expected": "30000000000000000",
+      "ok": true
+    },
+    {
+      "check": "C: taken from the agent's bond",
+      "actual": "31500000000000000",
+      "expected": "31500000000000000",
+      "ok": true
+    },
+    {
+      "tx": "C: principal lifts",
+      "hash": "0x17bf8be600a82ed8dda399e6a5b9ccef4ca09f11631e2582ee45e92016f52b03",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
       "tx": "D: withdraw bond",
-      "hash": "0x326c0ccf8b0631a05c0a39e3ddb4d504135c5c5f7b5aeb9b17805356182e78e9",
+      "hash": "0x6775348bd7558532141c01934c0b6a3792904fae8385786b9912ee4190d372df",
       "consensus": "MAJORITY_AGREE",
       "leader": "contract_error"
     },
@@ -417,7 +441,7 @@
     },
     {
       "tx": "D: register by agent",
-      "hash": "0x9f243f4d3cd14c86861f79e7552416ae47148f3abab5b5205e616dd028675585",
+      "hash": "0xb51e5d3f7423632c296842a7964c562a4077e87c180b6477685077088c1235d5",
       "consensus": "MAJORITY_AGREE",
       "leader": "contract_error"
     },

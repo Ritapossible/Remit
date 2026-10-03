@@ -46,6 +46,13 @@ async function tx(client, address, fn, args, label, value = 0n) {
   console.log(`  - [${at()}s] ${label}: ${o.applied ? "applied" : o.refused ? "refused" : o.consensus}`);
   return o;
 }
+// The finalised state, read explicitly. After an appeal, Studio has been
+// measured to serve a broken non-final copy of the appealed contract.
+const readFinal = async (fn, args) => {
+  const raw = await principal.readContract({ address: guard, functionName: fn, args, transactionHashVariant: "latest-final" });
+  return typeof raw === "string" ? JSON.parse(raw) : raw;
+};
+let guard;
 const statusOf = async (hash) => {
   const t = await retry("getTransaction", () => principal.getTransaction({ hash }), 4);
   return { status: String(t.statusName ?? t.status), result: String(t.resultName ?? t.result_name ?? ""), round: t };
@@ -55,7 +62,8 @@ console.log(`network ${network}, rail finality ${FINALITY}s\n`);
 const setup = await deployAgentSetup(network, principal, {
   agent: accountFor("agent").address, mandate, maxTier: 3, finality: FINALITY, bondFloor: GEN(0.01), fund: GEN(0.4),
 });
-const { guard, rail } = setup;
+guard = setup.guard;
+const { rail } = setup;
 console.log(`guard ${guard}\nrail  ${rail}`);
 
 console.log("\n1. A held spend, released by the jury");
@@ -91,9 +99,10 @@ check("pay before the delay is refused", (await tx(agent, rail, "pay", [1], "pay
 console.log("\n4. Follow the adjudication to FINALIZED");
 let last = "";
 for (;;) {
-  const s = await statusOf(adj.hash);
+  const s = await statusOf(adj.hash).catch((e) => ({ status: last, result: "", error: String(e?.message ?? e).slice(0, 120) }));
   if (s.status !== last) {
-    const spend = await readView(principal, guard, "get_spend", [1]);
+    // While an appeal round re-executes, a read of the guard can fail; record it.
+    const spend = await readView(principal, guard, "get_spend", [1]).catch((e) => ({ verdict: "?", authorization: `read failed: ${String(e?.shortMessage ?? e?.message ?? e).slice(0, 60)}` }));
     timeline.push({ at: at(), event: "status", status: s.status, result: s.result, verdict: spend.verdict, authorization: spend.authorization });
     console.log(`  - [${at()}s] ${s.status} ${s.result}  verdict ${spend.verdict} -> ${spend.authorization}`);
     last = s.status;
@@ -101,7 +110,12 @@ for (;;) {
   if (/FINALIZED/.test(s.status) || at() > 3 * 3600) break;
   await sleep(30000);
 }
-const final = await readView(principal, guard, "get_spend", [1]);
+const final = await readFinal("get_spend", [1]);
+// Is the guard still healthy at its current (non-final) state?
+const health = {};
+health.nonfinal_read = await readView(principal, guard, "get_spend", [1]).then(() => "ok").catch((e) => String(e?.details ?? e?.shortMessage ?? e).slice(0, 120));
+health.code = await principal.getContractCode(guard).then((c) => `${c.length} bytes`).catch((e) => String(e?.details ?? e?.shortMessage ?? e).slice(0, 120));
+console.log(`    guard after the appeal: non-final read ${health.nonfinal_read}; code ${health.code}`);
 check("adjudication finalized", /FINALIZED/.test(last), true);
 const outcome = final.authorization === first.authorization ? "upheld" : "overturned";
 console.log(`    the appeal ${outcome} the verdict: ${first.verdict} -> ${final.verdict} (${final.authorization})`);
@@ -111,11 +125,14 @@ const decided = Number(final.decided_at);
 const wait = decided + FINALITY + 10 - Math.floor(Date.now() / 1000);
 if (wait > 0) await sleep(wait * 1000);
 const paid = await tx(agent, rail, "pay", [1], "pay 1 after finality");
+const payload = paid.receipt?.consensus_data?.leader_receipt?.[0]?.result?.payload ?? paid.receipt?.txExecutionResultName ?? "";
+health.pay_result = String(payload).slice(0, 200);
+console.log(`    rail answer: ${health.pay_result}`);
 check(`rail ${final.authorization === "authorized" ? "pays" : "refuses"} the ${final.authorization} spend`, final.authorization === "authorized" ? paid.applied : paid.refused, true);
 
 fs.writeFileSync(
   `appeal-${network}.json`,
-  JSON.stringify({ network, recorded_at: new Date().toISOString(), guard, rail, finality_seconds: FINALITY, adjudicate_tx: adj.hash, appeal, first, final, outcome, timeline, log }, null, 2),
+  JSON.stringify({ network, recorded_at: new Date().toISOString(), guard, rail, finality_seconds: FINALITY, adjudicate_tx: adj.hash, appeal, first, final, outcome, health, timeline, log }, null, 2),
 );
 console.log(`\n${failures} failed checks`);
 process.exit(failures === 0 ? 0 : 1);

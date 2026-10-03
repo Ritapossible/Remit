@@ -1,0 +1,89 @@
+{
+  "network": "studio",
+  "recorded_at": "2026-10-03T13:55:26.378Z",
+  "A": "0x0dAC0b9C6dE46F36377327347b730920046986d9",
+  "B": "0x2810443a3b50d9AA76581b186104F352e3875044",
+  "jury_seconds": 22,
+  "b_idle_avg": 5,
+  "b_during_avg": 7,
+  "log": [
+    {
+      "label": "B spend 0 (A idle)",
+      "hash": "0xa571db0579dffdc35ac937da342f9a09da37e7d0bae059730d2c3659980da556",
+      "consensus": "MAJORITY_AGREE",
+      "applied": true,
+      "started": 1791035611.753,
+      "done": 1791035618.35,
+      "seconds": 7
+    },
+    {
+      "label": "B spend 1 (A idle)",
+      "hash": "0xf31e72df7a2dfdcc1544f6cff96138b05acca2532ee0449a7b47e6733a696312",
+      "consensus": "MAJORITY_AGREE",
+      "applied": true,
+      "started": 1791035618.35,
+      "done": 1791035621.804,
+      "seconds": 3
+    },
+    {
+      "label": "A spend 0",
+      "hash": "0xcfe2c73471d41249cbefb4b54ed91fd738f14c8d9790ff511c0e96b298a4e9d7",
+      "consensus": "MAJORITY_AGREE",
+      "applied": true,
+      "started": 1791035621.804,
+      "done": 1791035628.381,
+      "seconds": 7
+    },
+    {
+      "label": "A spend 1 (held)",
+      "hash": "0x06d4f8b54a87b5c227f0d9c3a13b9273a1039cc849e3ee4469ccda466edcba70",
+      "consensus": "MAJORITY_AGREE",
+      "applied": true,
+      "started": 1791035628.381,
+      "done": 1791035637.94,
+      "seconds": 10
+    },
+    {
+      "label": "B spend 2 (A's jury running)",
+      "hash": "0x6648ad3885025737c0e542b6c01154d04d81af623c8e9ffa1adf154cb1f1771e",
+      "consensus": "MAJORITY_AGREE",
+      "applied": true,
+      "started": 1791035706.005,
+      "done": 1791035712.537,
+      "seconds": 7
+    },
+    {
+      "label": "B spend 3 (A's jury running)",
+      "hash": "0x1bf69c74504ecbc4aebb71c41f85cf04eb6b98d475343d2102e7587fe1371e89",
+      "consensus": "MAJORITY_AGREE",
+      "applied": true,
+      "started": 1791035712.537,
+      "done": 1791035719.058,
+      "seconds": 7
+    },
+    {
+      "label": "A adjudicate (jury)",
+      "hash": "0xe44ccec00b950ed61b6a90059b3a40039088bc9bba19d5cb1cdc2f5f1dc24177",
+      "consensus": "MAJORITY_AGREE",
+      "applied": true,
+      "started": 1791035703.001,
+      "done": 1791035725.306,
+      "seconds": 22
+    },
+    {
+      "check": "every B payment applied",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "B's first payment was accepted while A's jury round was still running",
+      "ok": true,
+      "detail": "13s before A's round ended, 6s before A's round ended"
+    },
+    {
+      "check": "B recorded all four payments, none held",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}
