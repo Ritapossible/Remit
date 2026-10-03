@@ -116,7 +116,7 @@ Natural-language. One boolean question. Convened only when `when` fires.
 | `ask` | The single question. Must be answerable yes/no against the evidence. |
 | `context_uri` / `context_digest` | Supporting material the jury fetches and hash-verifies. Optional; absent means the `ask` stands alone. |
 | `requires_artifact` | If true, a spend that trips this trigger must carry `memo_uri` + `memo_digest`. |
-| `on_breach.tier` | Response tier, capped by the registered `max_tier`. |
+| `on_breach.tier` | What a breach of this rule does, capped by the registered `max_tier`: 1 refuses the payment; 2 also freezes the agent until the principal lifts it; 3 also revokes every unpaid payment requested before the breach. Applies to the guard's own jury and to an upheld challenge. |
 
 ### The standard three
 

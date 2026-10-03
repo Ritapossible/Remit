@@ -1,81 +1,87 @@
 {
-  "address": "0x525301404a503BA851f93B824a9db44AB94d3d6F",
+  "address": "0x4CC1E5c237f064993Ae288B47c274EfeA0c852c8",
   "txs": [
     {
       "label": "spend#0",
-      "hash": "0x22de52b5d83b44889f06d67bfb424d07935ee985584f1929d379044dfc8ae3b9",
+      "hash": "0xec011971fa5b4f7355990d2150e6cca01c4255edf4b3a1521c62a7eca4229461",
       "leader": "return",
       "consensus": "AGREE"
     },
     {
       "label": "spend#1",
-      "hash": "0x15144fdb12998dcb14168df5cba7c1605f1551057a8598d04a7d9dcca6b750f4",
+      "hash": "0xaad6331baa4a83d8528f4febc313ee0c520d5bfefb3e1c2233fa057235ee1706",
       "leader": "return",
       "consensus": "AGREE"
     },
     {
+      "label": "forged-category",
+      "hash": "0x50e26549622a88fc03acedb30eed8b2f06362917e3e33474e58fad6101beaea2",
+      "leader": "contract_error",
+      "consensus": "AGREE"
+    },
+    {
       "label": "spend#2",
-      "hash": "0xad491b807da8f325a80d4d76ef7180cc7c54108888b99250e948527bd51bbda0",
+      "hash": "0x196184310a3e07de6be750296dc038500b890c8d4e294f687c7e4c42cc5cf8bd",
       "leader": "return",
       "consensus": "AGREE"
     },
     {
       "label": "spend#3",
-      "hash": "0xf688a5e592dd6c0308ccc143f4a2a85f2503afc2ba1b22680eff4784e9517864",
+      "hash": "0xcb1176dbfd32b189e93353a77833d8d8c40e15de5d67ffea31bee566cb84221c",
       "leader": "return",
       "consensus": "AGREE"
     },
     {
       "label": "adjudicate-early",
-      "hash": "0x821a9a08d500c4a15bbdb7bbdcee756c7206d4b7bfd376f1431c84c9b5e298fd",
+      "hash": "0x41ba8e4c70c27be14639379e359072008cb1cd9b01c8047f27a35840e337d830",
       "leader": "contract_error",
       "consensus": "AGREE"
     },
     {
       "label": "adjudicate",
-      "hash": "0xfe1b767c9afe53bd194373dd205864798dff6e825ecf0f57a93ac8e7858f07bc",
+      "hash": "0xe4d396ca8d0f3194df6e8cc6b877dfc60fa45c467c73bb279a06747a425e4934",
       "leader": "return",
       "consensus": "AGREE"
     },
     {
       "label": "spend#4",
-      "hash": "0x3cb8ba375dba9607d63059edf5c30fd0985f02c236976755291d3d625241794c",
+      "hash": "0x772781666e621a5c06d064d3f9eaec14e24b93f3e219ae5428e66bcb3a247964",
       "leader": "return",
       "consensus": "AGREE"
     },
     {
       "label": "override_release",
-      "hash": "0xa0798fb0206b726a0f16060aeeb45e5e2cf3dc3722c05879772254172ba22fd9",
+      "hash": "0x240f612aa081d657ae13cf08dfe657f376930d26e5e4cb76020463521cef4668",
       "leader": "return",
       "consensus": "AGREE"
     },
     {
       "label": "pay#0",
-      "hash": "0x377ff5c3ad6f524b4de9bd1f51feee7ec367105dc7be7accad13a846ddac75f5",
+      "hash": "0x7059b1f874fdec50860d6d26d3dcbaf8087b0d5da1b6d649eb91e860f28ad43a",
       "leader": "return",
       "consensus": "AGREE"
     },
     {
       "label": "pay#1",
-      "hash": "0x6a5b807555b7aeac6bf8bbe53b3ce987b112522bd96633e193f0930bf1393fae",
+      "hash": "0xc58ee00adf3b1a9215199fe9234095f34e51e41bb23a827d8fb789e5d2f54323",
       "leader": "contract_error",
       "consensus": "AGREE"
     },
     {
       "label": "pay#2",
-      "hash": "0x6a63aae621212f7954b66dfccf5b6ffbf55e947e01f954313bfee0373bc5c34c",
+      "hash": "0x83c0dcb67026dab04b38b37f3b068c6c2e871a3680d3ab035a122dd26cd426dd",
       "leader": "return",
       "consensus": "AGREE"
     },
     {
       "label": "pay#3",
-      "hash": "0xa259a402f3996f2084b551e93b165dfc8807ff6edab65145a1b9f5c902984f69",
+      "hash": "0x2bc40e4ce578f2b0ef193d7cf09367994b083eac8e7a7a834098ffa2e3960f75",
       "leader": "contract_error",
       "consensus": "AGREE"
     },
     {
       "label": "pay#4",
-      "hash": "0x05a31cd7b9998543528977254cca853c44e9cc63d406b74b46c2f78a048ade51",
+      "hash": "0x67419b8b66422328d59addf901e001a85ab0ade1da401fbeb4c4721362296f4a",
       "leader": "return",
       "consensus": "AGREE"
     }
@@ -86,7 +92,7 @@
       "amount": 50000000000000000,
       "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
       "category": "media",
-      "at": 1791011703,
+      "at": 1791032641,
       "state": "settled",
       "rules": [],
       "memo_uri": "",
@@ -99,7 +105,7 @@
       "artifact": "",
       "outcome": "allowed",
       "tier": 0,
-      "decided_at": 1791011703,
+      "decided_at": 1791032641,
       "authorization": "authorized",
       "shadow": false
     },
@@ -108,7 +114,7 @@
       "amount": 50000000000000000,
       "recipient": "0x00000000000000000000000000000000000000b1",
       "category": "media",
-      "at": 1791011722,
+      "at": 1791032654,
       "state": "refused",
       "rules": [
         "allowlist"
@@ -123,7 +129,7 @@
       "artifact": "",
       "outcome": "refused",
       "tier": 1,
-      "decided_at": 1791011722,
+      "decided_at": 1791032654,
       "authorization": "refused",
       "shadow": false
     },
@@ -132,7 +138,7 @@
       "amount": 150000000000000000,
       "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
       "category": "media",
-      "at": 1791011738,
+      "at": 1791032684,
       "state": "settled",
       "rules": [],
       "memo_uri": "",
@@ -145,7 +151,7 @@
       "artifact": "",
       "outcome": "allowed",
       "tier": 0,
-      "decided_at": 1791011738,
+      "decided_at": 1791032684,
       "authorization": "authorized",
       "shadow": false
     },
@@ -154,7 +160,7 @@
       "amount": 150000000000000000,
       "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
       "category": "media",
-      "at": 1791011755,
+      "at": 1791032703,
       "state": "refused",
       "rules": [
         "structuring"
@@ -162,14 +168,14 @@
       "memo_uri": "",
       "memo_digest": "",
       "claim": "PO-5521 product video",
-      "held_at": 1791011755,
-      "verdict": "out_of_remit",
-      "reason": "structured_to_evade",
+      "held_at": 1791032703,
+      "verdict": "undetermined",
+      "reason": "insufficient_evidence",
       "confidence": 85,
       "artifact": "absent",
       "outcome": "refused",
       "tier": 2,
-      "decided_at": 1791011856,
+      "decided_at": 1791032796,
       "authorization": "refused",
       "shadow": false
     },
@@ -178,7 +184,7 @@
       "amount": 100000000000000000,
       "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
       "category": "media",
-      "at": 1791011971,
+      "at": 1791032838,
       "state": "settled",
       "rules": [
         "structuring"
@@ -186,14 +192,14 @@
       "memo_uri": "",
       "memo_digest": "",
       "claim": "PO-5560 thumbnail set",
-      "held_at": 1791011971,
+      "held_at": 1791032838,
       "verdict": "",
       "reason": "principal_override",
       "confidence": 0,
       "artifact": "absent",
       "outcome": "allowed",
       "tier": 0,
-      "decided_at": 1791011982,
+      "decided_at": 1791032855,
       "authorization": "authorized",
       "shadow": false
     }

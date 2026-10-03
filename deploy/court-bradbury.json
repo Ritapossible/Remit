@@ -1,0 +1,461 @@
+{
+  "network": "bradbury",
+  "recorded_at": "2026-10-03T14:04:01.665Z",
+  "guard": "0xaF0a50157Eb9c74eF0627abCB77605D6011EBF6a",
+  "rail": "0xA8bcf00fFcB08a2f7241569EC55bB70d6bb8ab4F",
+  "registry": "0x3Bc28fF37db197A1c57ED262b8FAC405ee02bAeE",
+  "finality_seconds": 60,
+  "cases": {
+    "A": {
+      "id": 0,
+      "spend": 0,
+      "rule": "structuring",
+      "challenger": "0xef359811497c724ef1942c6c079c64c07d87952d",
+      "bond": 10000000000000000,
+      "statement": "This is one part of a larger order split into small payments.",
+      "opened_at": 1791035448,
+      "state": "dismissed",
+      "memo_uri": "",
+      "memo_digest": "",
+      "verdict": "in_remit",
+      "reason": "matches_rule",
+      "confidence": 90,
+      "artifact": "absent",
+      "tier": 2,
+      "settlement": {
+        "state": "dismissed",
+        "to_challenger": 0,
+        "to_agent": 10000000000000000,
+        "to_treasury": 0,
+        "from_standing": 0,
+        "blocked": false,
+        "losses": 1,
+        "last_loss_at": 1791035606,
+        "freeze": 0
+      },
+      "decided_at": 1791035606
+    },
+    "B": {
+      "id": 1,
+      "spend": 1,
+      "rule": "purpose",
+      "challenger": "0xef359811497c724ef1942c6c079c64c07d87952d",
+      "bond": 20000000000000000,
+      "statement": "The agent's own description says this paid for flight tickets, not media work.",
+      "opened_at": 1791035684,
+      "state": "upheld",
+      "memo_uri": "",
+      "memo_digest": "",
+      "verdict": "out_of_remit",
+      "reason": "outside_stated_purpose",
+      "confidence": 85,
+      "artifact": "absent",
+      "tier": 3,
+      "settlement": {
+        "state": "upheld",
+        "to_challenger": 22000000000000000,
+        "to_agent": 0,
+        "to_treasury": 0,
+        "from_standing": 2000000000000000,
+        "blocked": true,
+        "losses": 0,
+        "last_loss_at": 0,
+        "freeze": 3
+      },
+      "decided_at": 1791035780
+    },
+    "C": {
+      "id": 2,
+      "spend": 3,
+      "rule": "purpose",
+      "challenger": "0xaa34e14a0e0b2fdd8ad10f06bc0907fa0b1d02bd",
+      "bond": 10000000000000000,
+      "statement": "The agent's own description is a personal gym membership - not producing or hosting media.",
+      "opened_at": 1791036089,
+      "state": "upheld",
+      "memo_uri": "",
+      "memo_digest": "",
+      "verdict": "out_of_remit",
+      "reason": "outside_stated_purpose",
+      "confidence": 90,
+      "artifact": "absent",
+      "tier": 3,
+      "settlement": {
+        "state": "upheld",
+        "to_challenger": 11500000000000000,
+        "to_agent": 0,
+        "to_treasury": 30000000000000000,
+        "from_standing": 31500000000000000,
+        "blocked": false,
+        "losses": 0,
+        "last_loss_at": 0,
+        "freeze": 3
+      },
+      "decided_at": 1791036170
+    }
+  },
+  "status": {
+    "guard": "0xaF0a50157Eb9c74eF0627abCB77605D6011EBF6a",
+    "principal": "0xf1827CaD7C88f02a7cAd3627D7CE482A8f2D33C7",
+    "agent": "0x8aA26Fa51a68c583C467463e93db0EBc10f7D509",
+    "finality_seconds": 60,
+    "balance": 440000000000000000,
+    "funded": 300000000000000000,
+    "treasury": 250000000000000000,
+    "paid_total": 80000000000000000,
+    "paid_count": 2,
+    "bond_floor": 10000000000000000,
+    "standing": 66500000000000000,
+    "escrowed": 0,
+    "challenge_count": 3,
+    "open_challenges": 0,
+    "frozen_tier": 0,
+    "frozen_by": -1,
+    "revoked_below": 4
+  },
+  "log": [
+    {
+      "setup": {
+        "engine": "0x6Bbf7978ba6f7A61E29b33D0f13ecc01B9F50CE3",
+        "registry": "0x3Bc28fF37db197A1c57ED262b8FAC405ee02bAeE",
+        "guard": "0xaF0a50157Eb9c74eF0627abCB77605D6011EBF6a",
+        "guard_tx": "0x188877ab02e2bf36e4d58999347efeadedd0cc08b51920c75e9740d22d95ef5c",
+        "rail": "0xA8bcf00fFcB08a2f7241569EC55bB70d6bb8ab4F",
+        "rail_tx": "0x452c491330fdb67d6625e62ec580b79ea29684b2433e044c7edc27f7e15e485f",
+        "attach_rail_tx": "0x68576d128101c4872406ae6aa7fffc20652a0eedcd668c3120cdb293d8cf716c",
+        "register_tx": "0xca444807fa1be42daac4b1dff85b093e7d84a0a791a11699d373ff8561d0483d",
+        "fund_rail_tx": "0xe1518cfefc7cf1a2e725c6388e13885e807e53bd6288e8362c0780d43a34a993"
+      }
+    },
+    {
+      "tx": "agent posts a 0.1 GEN bond",
+      "hash": "0x4086fbe0fb11856b7e3bea92bccd1cabf38a846c473d5f1d2dfc371a53bf811d",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "spend 0",
+      "hash": "0xa95f21e134b9ea34ab43b176d9594bfd913c01437c40793aea9c8f19a8d401e9",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "spend 0 cleared by arithmetic",
+      "actual": "authorized",
+      "expected": "authorized",
+      "ok": true
+    },
+    {
+      "check": "A: eligible",
+      "actual": "",
+      "expected": "",
+      "ok": true
+    },
+    {
+      "tx": "A: challenge (bond 0.01 GEN)",
+      "hash": "0xa618faea2d3c44d1c27d06ad88fad92a5a32379beda4453d7f0f66d66a0b9730",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "A: challenge opened",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "tx": "A: pay 0 while challenged",
+      "hash": "0x68907adaaf2acdfb8abe191403d9e75731c753422e45c6bcfa907dfc655cd550",
+      "consensus": "AGREE",
+      "leader": "contract_error"
+    },
+    {
+      "check": "A: paying while challenged is refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "tx": "A: rule",
+      "hash": "0x547f297b77c1f6499c87b259fbb618512b7da5151d4ec62efc244ba1e6848f98",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "A: ruled",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "A: the bond went to the agent",
+      "actual": "10000000000000000",
+      "expected": "10000000000000000",
+      "ok": true
+    },
+    {
+      "tx": "A: pay 0 after dismissal",
+      "hash": "0x7d77578e713850c4956c2554c65ee93d63fe279f4c5aedbd685fff83d844e419",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "A: dismissed payment now pays",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "A: the losing challenger's next bond doubled",
+      "actual": "20000000000000000",
+      "expected": "20000000000000000",
+      "ok": true
+    },
+    {
+      "tx": "spend 1",
+      "hash": "0xd9c096b01aa0c04a9f2986daa62d39ff3449bad54183f515439fb3bacd3efa21",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "spend 1 cleared by arithmetic (labelled media)",
+      "actual": "authorized",
+      "expected": "authorized",
+      "ok": true
+    },
+    {
+      "check": "B: eligible",
+      "actual": "",
+      "expected": "",
+      "ok": true
+    },
+    {
+      "tx": "B: challenge (bond 0.02 GEN)",
+      "hash": "0x18a62f10f14b3625506e59b3d53a08ba7f5233c69c851a2ec154e2dff87414ac",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "B: challenge opened",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "tx": "spend 2 (unpaid when B is ruled)",
+      "hash": "0x7a9d9ddaecfb72668e95f7b9d4a905959b7ae63b72381a45a03300e11835d88d",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "B: rule",
+      "hash": "0x3e782628ef557dcd70bc733879cdc67cfff87fcb9d30c646aae919460fc070b0",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "B: ruled",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "B: tier",
+      "actual": "3",
+      "expected": "3",
+      "ok": true
+    },
+    {
+      "check": "B: the payment was blocked, not paid",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "B: court froze the agent at tier 3",
+      "actual": "3",
+      "expected": "3",
+      "ok": true
+    },
+    {
+      "check": "B: tier 3 revoked the payments requested before it",
+      "actual": "3",
+      "expected": "3",
+      "ok": true
+    },
+    {
+      "tx": "B: pay 1",
+      "hash": "0xdbe72a51a2153a4c0a218abc74c84cd6337b7331d9304a6c3103438bea5a77ad",
+      "consensus": "AGREE",
+      "leader": "contract_error"
+    },
+    {
+      "check": "B: the rail refuses the clawed-back payment",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "tx": "B: pay 2",
+      "hash": "0x9677d79f10fd241fffcb54bbfa2acadc1c7f7758d78837815f0fe14e40da66e0",
+      "consensus": "AGREE",
+      "leader": "contract_error"
+    },
+    {
+      "check": "B: the rail refuses the revoked payment",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "B: payment_of says revoked",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "tx": "B: spend while frozen",
+      "hash": "0x1117eef103954fbb35c01f8d1bb116c8604a64da145965f5bb1f7aa76e770e01",
+      "consensus": "AGREE",
+      "leader": "contract_error"
+    },
+    {
+      "check": "B: the guard refuses a new spend (frozen)",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "tx": "B: agent lifts",
+      "hash": "0xd27c112840d96b930da1a87e88c6d530d0d82944443a61026219aef325567379",
+      "consensus": "AGREE",
+      "leader": "contract_error"
+    },
+    {
+      "check": "B: the agent cannot lift it",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "tx": "B: principal lifts",
+      "hash": "0x07ac7ccae3985468f6460305a198dc42c1bf8cf9a7d629132c2256250c5f290f",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "B: the principal lifts it",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "tx": "spend 3",
+      "hash": "0x601dc611bc8c23d69e583de4ccd3a6066187f2a3b2a670dbf400b02a2a4dfa8e",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "spend 3 cleared",
+      "actual": "authorized",
+      "expected": "authorized",
+      "ok": true
+    },
+    {
+      "tx": "C: pay 3",
+      "hash": "0x43ded4e8dc9305d08667529af70f8f0115316fa0936774c2498df225832115b0",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "C: rail pays spend 3",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "C: eligible",
+      "actual": "",
+      "expected": "",
+      "ok": true
+    },
+    {
+      "tx": "C: challenge (bond 0.01 GEN)",
+      "hash": "0x865f628710056e54d26b8652964b3b25e6db07bf629b9836f132325bf76e7038",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "C: challenge opened",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "tx": "C: rule",
+      "hash": "0xa500b8f27c46eecf7e431b050eba007d704f802b55b24bdfbdad27a25a552756",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "C: ruled",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "C: not blocked - it was already paid",
+      "actual": "false",
+      "expected": "false",
+      "ok": true
+    },
+    {
+      "check": "C: clawed back into the treasury",
+      "actual": "30000000000000000",
+      "expected": "30000000000000000",
+      "ok": true
+    },
+    {
+      "check": "C: taken from the agent's bond",
+      "actual": "31500000000000000",
+      "expected": "31500000000000000",
+      "ok": true
+    },
+    {
+      "tx": "C: principal lifts",
+      "hash": "0x6d08daca92ddd72f21b3134c6341967493a773a8b11e1c13b50340bf91cc8184",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "D: withdraw bond",
+      "hash": "0x69e97c37a368566da959e7e734098c757a445de3c40d7126d1fa726948876540",
+      "consensus": "AGREE",
+      "leader": "contract_error"
+    },
+    {
+      "check": "D: bond withdrawal inside the clawback window is refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "tx": "D: register by agent",
+      "hash": "0x746c9168dd3e80a845ab6929302248072edab74a296b938efde9e810bb425ec8",
+      "consensus": "AGREE",
+      "leader": "contract_error"
+    },
+    {
+      "check": "D: the agent cannot register the principal's guard",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "D: the registry lists the guard with its rail",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    }
+  ]
+}

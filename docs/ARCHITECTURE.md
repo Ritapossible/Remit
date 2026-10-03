@@ -74,8 +74,9 @@ why, which was established by introspecting the live runtime rather than chosen.
 ```
 
 Every terminal state is a value of `authorization_of(spend_id)`:
-`authorized`, `refused`, or - while held - `pending`. That single view is the
-whole integration surface for a rail.
+`authorized`, `refused`, or - while held - `pending`; and `revoked` once a
+tier-3 breach withdraws an authorization the rail had not yet paid (§6b). That
+single view is the whole integration surface for a rail.
 
 `preview_spend(recipient, amount, category)` runs the same classifier as a free
 view, so a client can say *"this will be held for a jury"* before anything is
@@ -179,8 +180,18 @@ verdicts with a rule that **fails closed** (`validator_agrees` in
 
 A verdict of `in_remit` below confidence 60 is counted as `undetermined`
 (`harden_verdict`), for the leader and every validator alike. Reason codes are
-recorded but not compared. Prose is never compared. When validators disagree,
-the round fails and the hold runs to its deadline default.
+recorded but not compared. Prose is never compared.
+
+**The rule is per validator; the round is decided by majority.** Each
+validator votes with this rule, and GenLayer accepts the leader's answer when a
+majority of validators vote to agree. Fail-closed therefore shapes every vote,
+but one dissenting validator is not a veto. Measured on Studio: invoices forged
+to make a split look like two orders got it released once in three runs, two
+validators agreeing and one dissenting (`deploy/jury-v3-studio.json`). A round
+where a majority disagrees fails, and the hold is convened again or runs to its
+deadline default. What stands between a released payment and the vendor after
+that is time: anyone can appeal the round until it is final, and the rail does
+not pay until `finality_seconds` have passed.
 
 An `UNDETERMINED` verdict resolves to the **registered default**
 (`on_undetermined`), which the principal chose when writing the mandate, and the
@@ -206,11 +217,15 @@ Remit splits deciding from paying.
   `contracts/build/guard.py`) decides. It has no payable method and no
   transfer. It exposes `settlement_of(spend_id)`: the authorization, recipient,
   amount and decision time, ignoring shadow mode.
-- **`RemitRail`** (`contracts/rail.py`) holds GEN and pays. Its one payout,
+- **`RemitRail`** (`contracts/rail_shell.py`, built to `contracts/build/rail.py`)
+  holds GEN, pays, and hosts the court (§6b). Its one payout,
   `pay(spend_id)`, reads `settlement_of` from the guard and reverts unless the
   spend is authorized, unpaid, and decided at least `finality_seconds` ago. It
-  pays exactly the authorized amount to exactly the authorized recipient. The
-  only other value path is `withdraw`, which only the principal may call. A rail
+  pays exactly the authorized amount to exactly the authorized recipient, and
+  never while a challenge holds the spend. The principal's `withdraw` reaches
+  only the treasury, never a bond; every other value path belongs to the court.
+  Accounting is internal (`treasury`, `standing`, `escrowed`), because value
+  sent by `emit_transfer` leaves at finality and the balance lags. A rail
   refuses to bind to a guard it was not deployed by the principal of, or to a
   shadow-mode guard.
 
@@ -235,10 +250,72 @@ finalises. The older note that value sent to a wallet "is destroyed" applied to
 calling `gl.get_contract_at(wallet).emit_transfer`, which treats the wallet as
 an Intelligent Contract; that path is not used.
 
-The engine still resolves amounts on **equality**, never on an inequality, and
-returns credit ledgers whose sums are checked exactly. Those functions are the
-basis for the bonded challenge path on the roadmap; they are not wired into the
-contract today.
+The engine resolves amounts on **equality**, never on an inequality, and
+returns credit ledgers whose sums are checked exactly - including the court's
+settlement below.
+
+## 6b. The court: challenges, clawback and graduated authority
+
+A trigger catches what it was written for. A payment that slipped under every
+trigger - a mislabelled category, a split shaped to avoid the window - would
+otherwise be final. So a payment that **cleared without a jury** stays open to
+a bonded challenge for the mandate's `clawback_window_seconds`.
+
+```
+challenge(spend_id, rule_id, statement)  payable: the bond
+   engine.challenge_terms  -> eligible? which bond?   (challenge_error, challenge_bond)
+        |
+   rail.pay(spend_id) now reverts: "under challenge"
+        |
+respond(challenge_id, uri, digest)       the agent, inside the response window
+        |
+rule(challenge_id)                       anyone, once answered or the window passed
+   prompts.challenge_prompt  -> the rule's own question about this payment,
+                                with the challenger's statement as untrusted text
+   gl.vm.run_nondet          -> fail closed in the challenge's direction
+   engine.challenge_result   -> transfers, loss streak, freeze
+        |
+   UPHELD                         DISMISSED (in_remit or undetermined)
+   unpaid: payment blocked        bond -> the agent (the griefed party, T1)
+   paid:   amount -> treasury     payment payable again
+           from the agent's bond
+   challenger: bond + reward      LAPSED (no decision by the hold deadline)
+   tier 2: agent frozen           bond returned, nobody marked as losing
+   tier 3: frozen + revoke unpaid
+```
+
+- **Who may challenge.** Anyone but the agent, naming one of the mandate's
+  judgment rules. A payment decided by a jury, or by the principal's override,
+  is not challengeable: a jury's verdict is reviewed by GenLayer's own appeal.
+- **The bond** is the engine's curve (`challenge_bond`): 10% of the payment,
+  never below the rail's floor, doubling with each loss in the challenger's
+  streak, one step forgiven per week, cleared by a win.
+- **The jury** answers the challenged rule's own question, with the same
+  evidence handling as a hold. Upholding is the dangerous direction - it takes
+  the agent's bond and can freeze it - so `challenge_agrees` mirrors
+  `validator_agrees`: an upheld ruling stands only on agreement, a validator
+  sure of the breach vetoes a dismissal, and a hesitant breach (confidence under
+  60) counts as undetermined (`harden_challenge`).
+- **The settlement** (`resolve_challenge`) makes the principal whole before the
+  challenger is rewarded, and never takes more than the agent's bond. Its sums
+  are checked exactly.
+- **The agent's bond** is what makes a payment that already left recoverable.
+  The agent can withdraw it only when no challenge is open and every payment
+  that cleared without a jury is past the clawback window.
+
+**Graduated authority.** A breach carries its rule's tier, capped by the
+guard's `max_tier`, from the guard's own jury or from an upheld challenge:
+
+| Tier | Effect |
+| --- | --- |
+| 1 | The payment is refused (or blocked / clawed back). |
+| 2 | Also: the agent is **frozen**. The guard refuses every new spend until the principal lifts it. |
+| 3 | Also: every payment requested before the breach that the rail has not paid is **revoked** (`authorization: revoked`; by spend index, so a payment decided in the same second is on one side or the other). |
+
+The guard holds its own freeze and reads the rail's court freeze
+(`court_freeze`) on every spend, once the principal has called
+`attach_rail`. The principal lifts either with `lift_freeze`; a revocation
+stands. Shadow mode freezes nothing.
 
 ## 7. Deployment topology
 
@@ -258,23 +335,40 @@ RemitGuard  (one instance per agent)
               the guard fetches the question and the outcome table first)
 
 RemitRail   (one per guard, deployed by the guard's principal)
-  constructor(guard, finality_seconds)
-  storage:    guard, principal, agent, finality delay, paid ledger
-  holds:      the GEN the agent may spend
+  constructor(guard, finality_seconds, bond_floor)
+  storage:    treasury, paid ledger, the agent's bond, challenges (one JSON
+              record each), challenger loss streaks, the court's freeze
+  holds:      the GEN the agent may spend, and every bond
+  runs:       the court's jury
+
+RemitRegistry (one per network, shared)
+  constructor(engine)
+  storage:    guard, rail, principal and agent of every registration
 ```
 
-**Why three contracts.** Bradbury caps a transaction at 2^24 gas and a deploy
+**Why separate contracts.** Bradbury caps a transaction at 2^24 gas and a deploy
 costs about 0.96M plus 782 gas per byte of code and arguments, so nothing over
 about 20 KB deploys. The shared contracts are stateless and ownerless: nobody
 can change their behaviour after deployment, and each guard fixes its engine
-address at its own deployment. Studio runs the same three contracts, so there
-is one design to review.
+address at its own deployment. Studio runs the same contracts, so there is one
+design to review. Deployed sizes: engine 18.1 KB, prompts 10.6 KB, guard
+17.4 KB (plus its mandate), rail 16.8 KB, registry 3.0 KB.
 
 One instance per agent is the T6 mitigation and it is structural: transactions
 on one Intelligent Contract execute serially, so a shared instance would let
 one noisy agent stall every other principal. The deployer is the principal.
-Today each guard is deployed directly (the app's *New guard* page does this); a
-factory that deploys and indexes guards is on the roadmap.
+
+**The registry** (`contracts/registry_shell.py`) is where guards are found. A
+principal registers the guard they deployed, with its rail. The registry reads
+the guard rather than trusting the caller - the guard must name the caller as
+its principal and be bound to this network's engine, and a rail must name the
+guard - and binds each agent to one principal's guard at a time; only that
+principal can move it. The app lists every registration and checks the code at
+each address against the published `guard.min.py`, byte for byte
+(`getContractCode`), before showing it as verified. A factory contract that
+deployed guards itself was the other design: it would have to carry the guard's
+17 KB of code in its own storage and pay for it again in each deploy, under the
+same 2^24 gas cap, so the registry verifies instead of deploying.
 
 ## 8. Build pipeline
 
@@ -287,17 +381,24 @@ contracts/remit_core.py      pure Python. No gl.*, no network, no LLM.
 contracts/remit_prompts.py   prompt construction. Isolated, separately testable.
 contracts/engine_api.py      JSON adapters the engine exposes   (+ engine_shell.py)
 contracts/prompts_api.py     JSON adapter for the jury question (+ prompts_shell.py)
+contracts/jury_common.py     reading a jury's answer (guard and court).
 contracts/contract_shell.py  the guard: storage, entrypoints, consensus blocks.
-contracts/rail.py            the treasury (deployed as written).
+contracts/rail_shell.py      the treasury and the court.
+contracts/registry_shell.py  the registry.
         |
-        +-- deploy/build_contract.py --> contracts/build/{engine,prompts,guard}.py
+        +-- deploy/build_contract.py --> contracts/build/<name>.py
                                          (readable, tested)
-                                    --> contracts/build/{engine,prompts,guard}.min.py
+                                    --> contracts/build/<name>.min.py
                                          (deployed: docstrings, comments and
-                                          unreachable definitions stripped)
+                                          unreachable definitions stripped,
+                                          local and module-level names shortened)
 ```
 
-`tests/direct/test_split.py` holds the split to three promises: the adapters
+`tests/direct/test_built_behaviour.py` and `test_built_court.py` run the
+readable and the minified builds of every contract in a small stand-in for
+GenVM (`tests/direct/genvm_stub.py`) and require identical results, so the
+renaming is proven by execution, not by reading. `tests/direct/test_split.py`
+holds the split to three promises: the adapters
 decide exactly what the engine decides and the guard's assembled prompt is
 byte-identical to the one measured before the split; each `.min.py` is a fresh
 minify of its tested build and uses no undefined name; and each fits the gas

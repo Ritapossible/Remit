@@ -339,11 +339,11 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
           where they conflict. Amounts, recipients and history come from the contract’s own ledger, not from the agent.
         </p>
         <p>
-          The jury fails closed. A payment is released only if the validators who reach a definite answer agree it is
-          in remit; doubt falls to the mandate’s default, which in the templates is to refuse. On Studio, invoices
-          forged to make a split look like two unrelated orders never got it released, on Studio or on the Bradbury
-          testnet - but they did create doubt: some runs ended undetermined and some validators disagreed. That is why
-          doubt refuses rather than releases.
+          Each validator votes fail-closed: it accepts a release only if it reaches the same answer itself, and doubt
+          falls to the mandate’s default, which in the templates is to refuse. The round is decided by a majority of
+          validators, so a convincing forgery can still win: invoices forged to make a split look like two unrelated
+          orders were refused or left in doubt in most runs, and released in one of three on Studio. That is why the
+          rail waits out the appeal window before it pays.
         </p>
       </>
     ),

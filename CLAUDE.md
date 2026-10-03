@@ -26,13 +26,19 @@ Contract: the sender is debited, the wallet is credited nothing, and the
 transaction reports ACCEPTED. Never pay a wallet that way.
 
 The guard (`contracts/contract_shell.py`) has no payable method and no transfer.
-Value lives in `contracts/rail.py`, which pays wallets through an EVM contract
+Value lives in the rail (`contracts/rail_shell.py`, built to
+`contracts/build/rail.py`), which pays wallets through an EVM contract
 interface (`@gl.evm.contract_interface` + `emit_transfer`) - measured on Studio
-to credit the wallet at finality - and only from `pay(spend_id)` after the
-guard authorized it, or `withdraw` by the principal.
+to credit the wallet at finality. Four transfer sites, each pinned by a test:
+`pay(spend_id)` after the guard authorized it; `withdraw` by the principal,
+from the treasury only; `withdraw_bond` by the agent, from its own bond once
+nothing is challengeable; and the court's `_send` of a settlement the engine
+computed. Accounting is internal (`treasury`, `standing`, `escrowed`), never the
+balance, which lags value already sent.
 
 > Tests: `test_no_emit_transfer_in_contract_source` greps the **built** guard;
-> `tests/direct/test_rail_structure.py` pins the rail's two value paths.
+> `tests/direct/test_rail_structure.py` pins the rail's value paths;
+> `tests/direct/test_built_court.py` runs them.
 
 ### 2. Resolve entitlement on equality, never an inequality
 
@@ -228,13 +234,15 @@ network defect. Check guard ordering before blaming the network.
 - **Integers only.** All amounts in the smallest unit. No floats anywhere -
   not in the engine, not in tests, not in fixtures.
 - **Build, do not hand-edit.** `contracts/build/` is generated. Edit
-  `remit_core.py`, `remit_prompts.py` or `contract_shell.py` and rebuild.
+  `remit_core.py`, `remit_prompts.py`, `jury_common.py` or a `*_shell.py` and
+  rebuild with `python3 deploy/build_contract.py`.
 - **The engine is chain-free.** `remit_core.py` imports no `gl.*`, touches no
   network, calls no LLM. If a decision can be made deterministically, it lives
   there and is tested in milliseconds.
-- **One guard instance per agent**, deployed by its principal (a factory is on
-  the roadmap, not built). There is no shared-instance path - a shared instance
-  reintroduces head-of-line blocking (T6).
+- **One guard instance per agent**, deployed by its principal and registered in
+  the shared `RemitRegistry`, which binds each agent to one principal's guard.
+  There is no shared-instance path - a shared instance reintroduces
+  head-of-line blocking (T6).
 - **Never claim what is not on chain.** Every claim in the README and docs is
   backed by a recorded transaction in `deploy/*.json` or a test, or is labelled
   as not built. A review found the opposite once; it cost a rewrite.

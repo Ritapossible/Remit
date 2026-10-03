@@ -7,21 +7,36 @@ framework's wallet - and for agents that call Remit directly.
 ## Use the rail
 
 The safest integration is to not write one: deploy **`RemitRail`**
-(`contracts/rail.py`) next to the guard and fund it instead of the agent's
-wallet.
+(`contracts/build/rail.min.py`) next to the guard, attach it, and fund it
+instead of the agent's wallet.
 
 ```text
-deploy  RemitRail(guard_address, finality_seconds)   # by the guard's principal
-fund()                payable; anyone may top it up
+deploy  RemitRail(guard, finality_seconds, bond_floor)   # by the guard's principal
+guard.attach_rail(rail)  principal, once: the guard obeys the rail's court
+registry.register(guard, rail)   principal: binds the agent to this guard
+
+fund()                payable; anyone may top up the treasury
 pay(spend_id)         anyone may call; pays the authorized recipient the
                       authorized amount, once, or reverts
-withdraw(amount)      principal only
-status()              balance, funded, paid_total, paid_count
-payment_of(spend_id)  {"paid": bool, "amount": int, "paid_at": int}
+withdraw(amount)      principal only; treasury only, never a bond
+status()              treasury, bonds, challenges, the court's freeze
+payment_of(spend_id)  {"paid", "amount", "paid_at", "revoked", "challenge", "upheld_by"}
+
+post_bond()                          payable: the agent's standing bond
+withdraw_bond(amount)                agent; only when nothing is challengeable
+bond_quote(spend_id, rule_id, who)   {"error", "bond"}: may `who` challenge, for what
+challenge(spend_id, rule_id, statement)   payable: the bond
+respond(challenge_id, uri, digest)   agent: evidence for the jury
+rule(challenge_id)                   anyone: convene the jury
+lapse(challenge_id)                  anyone, after the hold deadline: bond returned
+lift_freeze()                        principal
+challenges()                         every challenge, as JSON records
+court_freeze()                       the tier the court has frozen the agent at
 ```
 
 `pay` reverts unless the guard's `settlement_of` says `authorized`, the spend is
-unpaid, the rail holds enough, and the decision is at least `finality_seconds`
+unpaid, no challenge holds it or clawed it back, no tier-3 ruling revoked it,
+the treasury holds enough, and the decision is at least `finality_seconds`
 old. Set `finality_seconds` to at least the network's appeal window. The rail
 refuses to bind to a shadow-mode guard, or to a guard whose principal is not
 the deployer. `deploy/rail_scenario.mjs` exercises every one of these on chain.
@@ -30,7 +45,7 @@ the deployer. `deploy/rail_scenario.mjs` exercises every one of these on chain.
 
 ```python
 settlement_of(spend_id: int) -> str   # JSON
-# {"authorization": "authorized" | "refused" | "pending",
+# {"authorization": "authorized" | "refused" | "pending" | "revoked",
 #  "recipient": "0x...", "amount": int, "decided_at": int,
 #  "shadow": bool, "principal": "0x...", "agent": "0x..."}
 ```
@@ -49,7 +64,7 @@ s = json.loads(gl.get_contract_at(Address(REMIT_GUARD)).view().settlement_of(spe
 if s["authorization"] != "authorized":
     raise gl.vm.UserError("[EXPECTED] spend is not authorized")
 # check s["decided_at"] against a finality delay, mark it paid, then pay
-# s["amount"] to s["recipient"] - see contracts/rail.py
+# s["amount"] to s["recipient"] - see contracts/rail_shell.py
 ```
 
 ### From anywhere else
@@ -100,16 +115,22 @@ estimate before you sign.
 | `adjudicate(spend_id)` | anyone | Convenes the jury on a held spend. Refused while the response window is open and no evidence is committed. |
 | `resolve_deadline(spend_id)` | anyone | After the hold deadline, applies the registered default. |
 | `override_release(spend_id)` / `override_refuse(spend_id)` | principal | Decides a held spend directly. The principal always outranks Remit. |
+| `attach_rail(rail)` | principal, once | The rail whose court this guard obeys: its freeze is read on every spend. |
+| `lift_freeze()` | principal | Lifts a tier-2/3 freeze imposed by this guard's jury. A tier-3 revocation stands. |
+
+A jury verdict of `out_of_remit` under a rule at tier 2 freezes the agent:
+`request_spend` reverts until the principal lifts it. At tier 3 every payment
+requested before the breach that the rail has not paid becomes `revoked`.
 
 ### Views
 
 | Method | Returns |
 | --- | --- |
-| `authorization_of(spend_id)` | `"authorized"`, `"refused"` or `"pending"`. |
+| `authorization_of(spend_id)` | `"authorized"`, `"refused"`, `"pending"` or `"revoked"`. |
 | `preview_spend(recipient, amount, category)` | JSON `{state, rules}` - what `request_spend` would do right now. Runs the same classifier; costs nothing. |
 | `get_spend(spend_id)` | JSON summary of one spend, including verdict, reason, evidence state and the agent's claim. |
 | `docket()` | JSON list of every spend. |
-| `mandate_info()` | JSON: principal, agent, tier, mode, defaults, typed rules, vendor lists. |
+| `mandate_info()` | JSON: principal, agent, tier, mode, defaults, typed rules, vendor lists, `rail`, `frozen_tier`, `frozen_by`, `revoked_below`, `release`. |
 
 Views return JSON text rendered by Python, so integers are exact in the text.
 Amounts in atto-GEN exceed 2^53 - parse them as big integers, not as JavaScript

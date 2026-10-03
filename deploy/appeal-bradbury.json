@@ -1,0 +1,15 @@
+{
+  "network": "bradbury",
+  "status": "inconclusive - stopped after about 75 minutes",
+  "guard": "0x5a4148881cB81bfE20051Fe71f2f0BaDAeB59348",
+  "rail": "0x1341d594D87B06A983dAA723d7101fb0d7846a05",
+  "finality_seconds": 2400,
+  "timeline": [
+    { "at": 210, "event": "adjudicate", "consensus": "TIMEOUT", "note": "the jury round did not decide; the spend stayed held (pending)" },
+    { "at": 515, "event": "appeal submitted", "min_bond": "0" },
+    { "at": 530, "event": "rail.pay(1) during the appeal", "result": "refused" },
+    { "at": 531, "event": "status", "status": "COMMITTING", "result": "IDLE", "authorization": "pending" },
+    { "at": 4500, "event": "stopped", "note": "still COMMITTING with no decided round; the spend never left pending and the rail paid nothing" }
+  ],
+  "source": "deploy logs of appeal_scenario.mjs bradbury; this file was written by hand because the run was stopped before the script wrote its record"
+}

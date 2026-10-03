@@ -138,7 +138,7 @@ claimed. Every point checked out against the code. What changed:
       - not that it is true; the ledger wins.
 - [x] **Dead designs removed.** The defensibility prompt and its parser are gone;
       ARCHITECTURE, THREAT-MODEL and CLAUDE.md describe the rule that runs.
-- [x] **The rail** (`contracts/rail.py`): holds GEN, pays only what the guard
+- [x] **The rail** (now `contracts/rail_shell.py`): holds GEN, pays only what the guard
       authorized, once, after a finality delay; the agent cannot withdraw.
       `deploy/rail-studio.json`: paid and reverted cases, balances read after.
 - [x] **Payable and wallet transfers measured.** The old note "no payable; value
@@ -148,8 +148,7 @@ claimed. Every point checked out against the code. What changed:
 - [x] **Jury measured on evidence that cuts both ways** (fresh guard per case):
       a plain invoice for one split order, invoices forged to claim two orders,
       genuinely separate purchases, and no evidence.
-- [ ] Injection corpus (one adversarial artifact is not a corpus) - Phase 6
-- [ ] Appeal reversing a verdict while a payout waits - Phase 6
+- [x] Injection corpus and an appeal while a payout waits - done in Phase 6
 
 ## Phase 5 - Testnet: Bradbury `[x]`
 
@@ -167,24 +166,45 @@ claimed. Every point checked out against the code. What changed:
 - [x] The app waits for a decided round too: a receipt still IDLE is polled,
       not reported as "no consensus"
 
-## Phase 6 - Hardening `[ ]`
+## Phase 6 - Hardening and the court `[~]`
 
-- [ ] Injection corpus fixture and the T4 suite against the live prompt
-- [ ] Appeal path: bind on accept, reverse on appeal, confirm the reversal is free
-- [ ] Isolation test: a held case on guard A does not delay guard B
-- [ ] Direct-mode contract tests with `mock_llm`, `mock_web`, `warp` (Python 3.12)
+- [x] **Injection.** `neutralize()` disarms headings and markers in every piece
+      of untrusted text; a category must be a plain label (`is_category`).
+      Corpus `tests/fixtures/injections.json` run as claim, artifact, category
+      and challenge statement (`tests/direct/test_injection.py`); on chain, a
+      forged category is refused at the gate and `injected_claim` runs in the
+      jury scenarios.
+- [x] **The court** in the rail: bonded challenges to payments that cleared
+      without a jury, for the clawback window; the agent answers with pinned
+      evidence; the jury rules failing closed in the challenge's direction;
+      upheld blocks an unpaid payment or claws a paid one back from the agent's
+      bond; dismissed pays the bond to the agent; undecided lapses with the
+      bond returned. `deploy/court-*.json`.
+- [x] **Tiers 2 and 3 enforced**: freeze, and revoke what the rail has not
+      paid, from the guard's own jury or an upheld challenge; the principal
+      lifts. `deploy/walkthrough-*.json`, `deploy/court-*.json`.
+- [x] **Registry**: one agent, one principal's guard; the app verifies each
+      registered guard's code against the published build.
+- [~] **Appeal while a payout waits**: an adjudication appealed at once; the
+      rail refused to pay during it on both networks. Studio upheld the release
+      but then served the appealed guard as "Contract not deployed" at its
+      non-final state, so the payout failed closed; on Bradbury the round was
+      still committing after 75 minutes. A reversal is not yet observed.
+      `deploy/appeal-*.json`.
+- [x] **Direct-mode contract tests**: `tests/direct/genvm_stub.py` runs every
+      built contract - readable and deployed bytes - with a scripted model,
+      web and clock, and requires identical behaviour.
+- [x] **47 mutants**, all killed, across the engine, the prompt layer, the
+      guard, the rail and the registry.
+- [x] **Isolation** measured on Studio: guard B's payments were accepted while
+      guard A's jury round was running (`deploy/isolation-studio.json`).
+- [ ] Jury sample on Bradbury at the size of the Studio one (3 runs per case).
 
 ## Beyond v1
 
 Not scheduled. Listed so the direction is visible and nobody mistakes it for
 something already built.
 
-- **Bonded challenges.** Let anyone contest a settled spend within the clawback
-  window. The bond curve, decay and settlement are already implemented and
-  tested in the engine; the contract entrypoint is not.
-- **Tier 2 and 3 enforcement.** Freeze the agent pending principal review; slash
-  a standing bond. Today these tiers are recorded as severity only.
-- **Guard factory and index.** Deploy and discover guards per principal.
 - **Mandate republishing.** New versions for new spends, with open cases pinned
   to the version they were raised under.
 - **Agent SDKs.** TypeScript and Python clients so agent frameworks call
