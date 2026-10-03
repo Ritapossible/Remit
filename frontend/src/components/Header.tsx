@@ -181,11 +181,21 @@ function WalletControl() {
   const connectButton = (
     <button
       className="btn primary"
-      disabled={busy || ext.connecting || !ext.available}
-      title={ext.available ? "" : "No wallet found in this browser"}
-      onClick={() => run(ext.connect)}
+      // Never disabled for the wallet's own state: a stale session can leave
+      // AppKit "reconnecting" indefinitely on a phone, and a dead button gives
+      // the user no way out. Opening the picker again is the way out.
+      disabled={busy}
+      onClick={() =>
+        run(async () => {
+          if (!ext.available)
+            throw new Error(
+              "No wallet in this browser. Open this page in your wallet app's browser, or use the Studio burner.",
+            );
+          await ext.connect();
+        })
+      }
     >
-      {ext.connecting ? <Spinner /> : null} Connect wallet
+      {ext.connecting || busy ? <Spinner /> : null} Connect wallet
     </button>
   );
 
