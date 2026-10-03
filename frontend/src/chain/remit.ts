@@ -1,5 +1,5 @@
 import contractSource from "../../../contracts/build/guard.min.py?raw";
-import railSource from "../../../contracts/rail.py?raw";
+import railSource from "../../../contracts/build/rail.min.py?raw";
 import type { Client } from "./wallet";
 import type { MandateInfo } from "../lib/mandate";
 import { parseLossless } from "../lib/money";
@@ -37,7 +37,8 @@ export function compactJson(text: string): string {
   }
   return out;
 }
-/** The treasury that pays only what a guard authorized. Imported, never copied. */
+/** The treasury that pays only what a guard authorized, and the court for
+ *  what it paid. The deployed bytes, imported, never copied. */
 export const RAIL_CODE = railSource;
 
 export interface SpendView {
@@ -257,17 +258,20 @@ export async function deployGuard(
   return settle(c, hash, pollMs);
 }
 
+/** The smallest bond a challenge to this rail's payments can post: 0.01 GEN. */
+export const BOND_FLOOR = 10n ** 16n;
+
 /** Deploy a RemitRail bound to a guard. Only the guard's principal can; the
- *  contract checks. */
+ *  contract checks. The guard must then ``attach_rail`` it to obey its court. */
 export async function deployRail(
   c: Client,
-  p: { guard: string; finalitySeconds: number },
+  p: { guard: string; finalitySeconds: number; bondFloor?: bigint },
   pollMs: number,
   onHash?: (hash: string) => void,
 ): Promise<TxOutcome> {
   const hash = (await c.deployContract({
     code: RAIL_CODE,
-    args: [p.guard, p.finalitySeconds],
+    args: [p.guard, p.finalitySeconds, p.bondFloor ?? BOND_FLOOR],
     leaderOnly: false,
   } as never)) as string;
   onHash?.(hash);

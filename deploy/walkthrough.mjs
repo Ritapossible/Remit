@@ -102,6 +102,21 @@ check("a verdict was recorded", s.verdict !== "", true);
 check("case resolved", ["settled", "refused"].includes(s.state), true);
 check("authorization decided", ["authorized", "refused"].includes(s.authorization), true);
 
+// --- 5b: graduated authority - a tier-2 breach freezes the agent ----------
+const infoOf = async () => {
+  const raw = await retry("mandate_info", () => principal.readContract({ address, functionName: "mandate_info", args: [] }), 4);
+  return typeof raw === "string" ? JSON.parse(raw) : raw;
+};
+if (s.verdict === "out_of_remit") {
+  console.log("\n[5b] the split breached a tier-2 rule: the agent is frozen until the principal lifts it");
+  const frozen = (await readUntil(infoOf, (x) => Number(x.frozen_tier) >= 2, { seconds: 120 })).value;
+  check("guard frozen at tier 2", frozen.frozen_tier, 2);
+  const blocked = await send(agent, "request_spend", [vendorB, GEN(0.01), "media", "", "", "anything"], "spend-while-frozen");
+  check("a spend while frozen is refused", blocked.st, "contract_error");
+  await send(principal, "lift_freeze", [], "lift_freeze");
+  check("principal lifted the freeze", (await readUntil(infoOf, (x) => Number(x.frozen_tier) === 0, { seconds: 120 })).value.frozen_tier, 0);
+}
+
 // --- 6: the principal always outranks Remit ------------------------------
 console.log("\n[6] override - the principal lifts a live hold in one transaction");
 await send(agent, "request_spend", [vendorA, GEN(0.1), "media", "", "", "PO-5560 thumbnail set"], "spend#4");

@@ -1,13 +1,15 @@
 // Builds the demo mandate. Amounts are atto-scale GEN (value x 10^18), the
 // cross-chain standard the GenLayer docs specify for money.
 //
-// The scenario mirrors docs: a 0.2 GEN per-spend cap and a 0.5 GEN daily cap,
-// against a 0.45 GEN purchase split into 3 x 0.15. Every threshold is
-// satisfied; only judgment resolves it.
+// A 0.2 GEN per-spend cap and a 0.5 GEN daily cap. Two judgment rules: a
+// payment that takes one vendor's 24-hour total past the per-spend cap is held
+// (structuring, tier 2), and so is a category outside the agent's stated work
+// (purpose, tier 3) - which a challenger may also name for a payment that
+// cleared.
 import fs from "node:fs";
 import { accountFor } from "./lib.mjs";
 
-const GEN = (n) => (BigInt(Math.round(n * 1000)) * (10n ** 15n)).toString();
+const GEN = (n) => BigInt(Math.round(n * 1000)) * 10n ** 15n;
 
 const vendorA = accountFor("vendor").address;
 const vendorB = accountFor("challenger").address; // a second allowlisted vendor
@@ -33,22 +35,29 @@ const mandate = {
     {
       id: "structuring",
       type: "judgment",
-      when: { spend_count_gte: { count: 3, seconds: 3600 } },
-      ask: "Are these separate purchases, or one purchase split across several payments to stay under the per-payment cap?",
+      when: { recipient_total_gte: { amount: GEN(0.2) + 1n, seconds: 86400 } },
+      ask: "Are these payments to the same recipient separate purchases, or one purchase split across several payments to stay under the per-payment cap?",
       requires_artifact: false,
       on_breach: { tier: 2 },
+    },
+    {
+      id: "purpose",
+      type: "judgment",
+      when: { category_not_in: ["media", "hosting"] },
+      ask: "Is this payment for the agent's stated work - producing and hosting media for the principal's campaigns - or for something else?",
+      requires_artifact: false,
+      on_breach: { tier: 3 },
     },
   ],
 };
 
-// The engine takes non-negative ints; JSON cannot carry a bigint, so atto
-// amounts travel as decimal strings and are coerced on the contract side.
-const asInt = (o) => JSON.parse(JSON.stringify(o), (k, v) =>
-  (k === "amount_lte" || k === "daily_total_lte") ? Number(v) : v);
+// Atto amounts exceed 2^53, so they are bigints here and written as exact JSON
+// integers - never through Number(), which would round them.
+const exactJson = (o) =>
+  JSON.stringify(o, (k, v) => (typeof v === "bigint" ? `__BIG__${v}` : v), 2).replace(/"__BIG__(\d+)"/g, "$1");
 
-fs.writeFileSync("../mandates/demo-studio.json", JSON.stringify(asInt(mandate), null, 2));
+for (const network of ["studio", "bradbury"]) fs.writeFileSync(`../mandates/demo-${network}.json`, exactJson(mandate) + "\n");
 console.log("vendorA   ", vendorA);
 console.log("vendorB   ", vendorB);
-console.log("per-spend ", GEN(0.2), "(0.2 GEN)");
-console.log("daily-cap ", GEN(0.5), "(0.5 GEN)");
-console.log("spend     ", GEN(0.15), "(0.15 GEN) x 3 = 0.45 GEN");
+console.log("per-spend ", String(GEN(0.2)), "(0.2 GEN)");
+console.log("daily-cap ", String(GEN(0.5)), "(0.5 GEN)");

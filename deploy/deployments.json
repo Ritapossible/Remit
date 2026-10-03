@@ -1,17 +1,22 @@
 {
   "studio": {
-    "address": "0xAb490172DbeA48632aEbF8D1E9F2e44EA1CDfEc5",
-    "deploy_tx": "0x59f3237e80222c2706407f8be1ee100b2e64d4d36f50dd79c4226c66df1b7696",
+    "prompts": "0xba3Aa01E33bE3e464B2D9b6630a1851e411b51A5",
+    "prompts_tx": "0x0fd28a2e209ba427976f93dfa03134a3e351eefb4adca4f0183f456c9f42b737",
+    "engine": "0xC54324E0127BC5ce3E314467a1c2Eec9F9bEC515",
+    "engine_tx": "0xa6b9975e02f47c8824f8c310bafd9a8cc9678b0c5e6e50f5470a3dcb7ca2c575",
+    "registry": "0xC55Dcbf923da53Fd5746De792b6991c9b9144dE0",
+    "registry_tx": "0xa720660866bcb4d0480787a2fe985027e1253cf7a7b9e7442c4da0fa3962a362",
+    "address": "0x02197e58554CAe3B3Fd356d11Ee65EA3adE4741C",
+    "deploy_tx": "0xb3d16cb745ef1e2881b0db548d1c88171b9587d137683afc76bf667f7bd4fe80",
     "agent": "0x8aA26Fa51a68c583C467463e93db0EBc10f7D509",
-    "max_tier": 2,
+    "max_tier": 3,
     "shadow": false,
-    "at": "2026-10-03T07:13:14.014Z",
-    "rail": "0x6C2a4cF62E050B4D0E3d8B1bc5Fe66BBFB194292",
+    "at": "2026-10-03T12:38:30.862Z",
+    "rail": "0x270DDC8bcad3736EF45422671427CB312D0D3960",
+    "rail_tx": "0x57d7f9260c5f9bbc443a83641af8fba82682da5f1c125437c4be5555377fc25c",
     "rail_finality_seconds": 60,
-    "prompts": "0xc3f3FBb14992DbE9eaDCadFFc145E0B0fee6ecA7",
-    "prompts_tx": "0x4a9a02045f15b25f46d56381ebafaea507e6768b6420bbbc8fea31d4c8b14848",
-    "engine": "0x244B21F741564EFd8285D6a93f024d4004338EA7",
-    "engine_tx": "0xa5bf497b2e880cc83d77e67ba2517f1bba2bc2ffd460313ddce26252e9a6512e"
+    "bond_floor": "10000000000000000",
+    "agent_bond": "200000000000000000"
   },
   "bradbury": {
     "prompts": "0x3063e174fF4Ee41325a51A0B91a8a64804a7154E",

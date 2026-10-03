@@ -61,6 +61,21 @@
       "on_breach": {
         "tier": 2
       }
+    },
+    {
+      "id": "purpose",
+      "type": "judgment",
+      "when": {
+        "category_not_in": [
+          "media",
+          "hosting"
+        ]
+      },
+      "ask": "Is this payment for the agent's stated work - producing and hosting media for the principal's campaigns - or for something else?",
+      "requires_artifact": false,
+      "on_breach": {
+        "tier": 3
+      }
     }
   ]
 }

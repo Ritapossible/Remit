@@ -103,17 +103,67 @@ export async function deployFile(client, code, args, label) {
   return { address: o.address, hash };
 }
 
-/** The shared contracts for a network: reuse the recorded ones, or deploy. */
+/**
+ * The shared contracts for a network - prompts, engine, registry: reuse the
+ * recorded ones, or deploy. ``fresh`` redeploys all three (a new engine needs
+ * a registry bound to it).
+ */
 export async function sharedContracts(network, client, { fresh = false } = {}) {
   const path = new URL("./deployments.json", import.meta.url);
   const all = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, "utf8")) : {};
-  const rec = all[network] ?? {};
-  if (!fresh && rec.engine && rec.prompts) return { engine: rec.engine, prompts: rec.prompts };
-  const prompts = await deployFile(client, readBuild("prompts"), [], "deploy prompts");
-  const engine = await deployFile(client, readBuild("engine"), [prompts.address], "deploy engine");
-  all[network] = { ...rec, prompts: prompts.address, prompts_tx: prompts.hash, engine: engine.address, engine_tx: engine.hash };
-  fs.writeFileSync(path, JSON.stringify(all, null, 2));
-  return { engine: engine.address, prompts: prompts.address };
+  const rec = { ...(all[network] ?? {}) };
+  const save = () => {
+    all[network] = rec;
+    fs.writeFileSync(path, JSON.stringify(all, null, 2));
+  };
+  if (fresh || !rec.engine || !rec.prompts) {
+    const prompts = await deployFile(client, readBuild("prompts"), [], "deploy prompts");
+    Object.assign(rec, { prompts: prompts.address, prompts_tx: prompts.hash });
+    save();
+    const engine = await deployFile(client, readBuild("engine"), [prompts.address], "deploy engine");
+    Object.assign(rec, { engine: engine.address, engine_tx: engine.hash });
+    delete rec.registry;
+    save();
+  }
+  if (!rec.registry) {
+    const registry = await deployFile(client, readBuild("registry"), [rec.engine], "deploy registry");
+    Object.assign(rec, { registry: registry.address, registry_tx: registry.hash });
+    save();
+  }
+  return { engine: rec.engine, prompts: rec.prompts, registry: rec.registry };
+}
+
+/** Send a write and wait for its decided receipt. ``{hash, receipt, ...outcome}``. */
+export async function sendTx(client, address, functionName, args, label, value = 0n) {
+  const hash = await retry(label, () => client.writeContract({ address, functionName, args, value }), 4);
+  let receipt = await retry(`${label} receipt`, () =>
+    client.waitForTransactionReceipt({ hash, status: WAIT, retries: 400, interval: 3000 }), 4);
+  receipt = await settledReceipt(client, hash, receipt);
+  return { hash, receipt, ...outcome(receipt) };
+}
+
+/** Read a view; JSON results are parsed. */
+export async function readView(client, address, functionName, args = []) {
+  const raw = await retry(functionName, () => client.readContract({ address, functionName, args }), 4);
+  return typeof raw === "string" && /^[[{]/.test(raw) ? JSON.parse(raw) : raw;
+}
+
+/** A new guard, its rail (attached and registered) - the full per-agent setup. */
+export async function deployAgentSetup(network, principal, { agent, mandate, maxTier = 3, finality, bondFloor, fund = 0n }) {
+  const { engine, registry } = await sharedContracts(network, principal);
+  const guard = await deployFile(principal, readBuild("guard"), [agent, mandate, maxTier, false, engine], "deploy guard");
+  const rail = await deployFile(principal, readBuild("rail"), [guard.address, finality, bondFloor], "deploy rail");
+  const steps = { guard: guard.address, guard_tx: guard.hash, rail: rail.address, rail_tx: rail.hash };
+  for (const [label, address, fn, args, value] of [
+    ["attach rail", guard.address, "attach_rail", [rail.address], 0n],
+    ["register", registry, "register", [guard.address, rail.address], 0n],
+    ...(fund > 0n ? [["fund rail", rail.address, "fund", [], fund]] : []),
+  ]) {
+    const o = await sendTx(principal, address, fn, args, label, value);
+    if (!o.applied) throw new Error(`${label} failed: ${o.consensus} ${o.leader}`);
+    steps[label.replace(" ", "_") + "_tx"] = o.hash;
+  }
+  return { engine, registry, ...steps };
 }
 
 /**

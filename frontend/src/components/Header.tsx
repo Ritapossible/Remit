@@ -7,10 +7,10 @@ import { balanceOf, createBurner, forgetBurner, fundOnStudio } from "../chain/wa
 import { networkIdOfChain } from "../chain/appkit";
 import { Addr, Gen, Spinner, explainError } from "./ui";
 
-const APP_TABS: { route: Route; label: string }[] = [
+const APP_TABS: { route: Route; label: string; short?: string }[] = [
   { route: { name: "overview" }, label: "Mandate" },
   { route: { name: "docket" }, label: "Docket" },
-  { route: { name: "spend" }, label: "Request a spend" },
+  { route: { name: "spend" }, label: "Request a spend", short: "Spend" },
   { route: { name: "new" }, label: "New guard" },
 ];
 
@@ -77,8 +77,15 @@ export function AppBar() {
           {APP_TABS.map((l) => {
             const active = l.route.name === route.name || (l.route.name === "docket" && route.name === "case");
             return (
-              <a key={l.label} href={href(l.route)} aria-current={active ? "page" : undefined}>
-                {l.label}
+              <a key={l.label} href={href(l.route)} aria-current={active ? "page" : undefined} aria-label={l.label}>
+                {l.short ? (
+                  <>
+                    <span className="tab-long">{l.label}</span>
+                    <span className="tab-short">{l.short}</span>
+                  </>
+                ) : (
+                  l.label
+                )}
               </a>
             );
           })}
@@ -201,7 +208,7 @@ function WalletControl() {
 
   if (wallet.kind === "none") {
     return (
-      <div className="row">
+      <div className="row connect-row">
         {network === "studio" && (
           <button
             className="btn"
@@ -226,14 +233,14 @@ function WalletControl() {
 
   if (wallet.kind === "wallet") {
     return (
-      <div className="row">
+      <div className="row wallet-row">
         <button
           className="btn wallet-chip"
           onClick={() => (ext.via === "appkit" ? run(ext.manage) : undefined)}
           title={ext.via === "appkit" ? "Account, network and disconnect" : wallet.name}
         >
           <span className={`dot ${walletOnNetwork ? "ok" : "bad"}`} aria-hidden />
-          <span className="small muted">{wallet.name}</span>
+          <span className="small muted wallet-name">{wallet.name}</span>
           <Addr value={address} />
           {walletOnNetwork && <span className="small">{balance === null ? "…" : <Gen atto={balance} />}</span>}
         </button>
@@ -246,7 +253,7 @@ function WalletControl() {
   }
 
   return (
-    <div className="row">
+    <div className="row wallet-row">
       <span className="small muted">Studio burner</span>
       <Addr value={address} />
       <span className="small">{balance === null ? "…" : <Gen atto={balance} />}</span>

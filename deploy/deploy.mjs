@@ -1,17 +1,23 @@
+// Deploy the reference guard for a network: the shared contracts (prompts,
+// engine, registry) if not recorded yet, then a guard and its rail - the rail
+// attached to the guard, both registered, the rail funded, the agent's
+// standing bond posted.
+//
+//   node deploy.mjs [studio|bradbury] [--fresh-shared] [--no-rail] [--shadow]
 import fs from "node:fs";
-import { clientFor, accountFor, retry, outcome, WAIT, compactJson, readBuild, sharedContracts } from "./lib.mjs";
+import { clientFor, accountFor, compactJson, readBuild, sharedContracts, deployFile, deployAgentSetup, sendTx, readView } from "./lib.mjs";
 
 const network = process.argv[2] || "studio";
 const shadow = process.argv.includes("--shadow");
-// --rail also deploys a RemitRail bound to the new guard and funds it.
-const withRail = process.argv.includes("--rail");
+const withRail = !shadow && !process.argv.includes("--no-rail");
 // Bradbury finalises a transaction 27-31 minutes after creation (measured: still
 // ACCEPTED at 1609 s, FINALIZED by 1852 s), so its rail waits 40 minutes.
 const RAIL_FINALITY = Number(process.env.RAIL_FINALITY ?? (network === "studio" ? 60 : 2400));
 const RAIL_FUND = BigInt(process.env.RAIL_FUND_MILLI ?? 500) * 10n ** 15n;
-const MAX_TIER = 2;
+const AGENT_BOND = BigInt(process.env.AGENT_BOND_MILLI ?? 200) * 10n ** 15n;
+const BOND_FLOOR = BigInt(process.env.BOND_FLOOR_MILLI ?? 10) * 10n ** 15n;
+const MAX_TIER = 3;
 
-const code = readBuild("guard");
 const mandate = compactJson(fs.readFileSync(`../mandates/demo-${network}.json`, "utf8"));
 const agent = accountFor("agent").address;
 const client = clientFor(network, "principal");
@@ -20,55 +26,50 @@ console.log(`network   ${network}`);
 console.log(`principal ${accountFor("principal").address}`);
 console.log(`agent     ${agent}`);
 console.log(`max_tier  ${MAX_TIER}   shadow ${shadow}`);
-console.log(`guard     ${code.length} bytes + mandate ${mandate.length} bytes`);
+console.log(`guard     ${readBuild("guard").length} bytes + mandate ${mandate.length} bytes`);
 
-// The shared, stateless engine and prompts contracts: reused if recorded for
-// this network, deployed once otherwise (--fresh-shared forces new ones).
 const shared = await sharedContracts(network, client, { fresh: process.argv.includes("--fresh-shared") });
-console.log(`engine    ${shared.engine}`);
-console.log(`prompts   ${shared.prompts}`);
+console.log(`engine    ${shared.engine}\nprompts   ${shared.prompts}\nregistry  ${shared.registry}`);
 
-const hash = await retry("deploy", () =>
-  client.deployContract({ code, args: [agent, mandate, MAX_TIER, shadow, shared.engine], leaderOnly: false }), 5);
-console.log("\ndeploy tx:", hash);
-
-const receipt = await retry("receipt", () =>
-  client.waitForTransactionReceipt({ hash, status: WAIT, retries: 300, interval: 3000 }), 5);
-const address = outcome(receipt).address;
-console.log("status:", receipt?.status, "address:", address);
-
-if (!address) {
-  console.log("DEPLOY FAILED - receipt follows:");
-  console.log(JSON.stringify(receipt, null, 2).slice(0, 3000));
-  process.exit(1);
-}
-
-const info = await retry("mandate_info", () =>
-  client.readContract({ address, functionName: "mandate_info", args: [] }), 5);
-const parsed = typeof info === "string" ? JSON.parse(info) : info;
-console.log("\n=== registered mandate ===");
-console.log("principal ", parsed.principal);
-console.log("agent     ", parsed.agent);
-console.log("max_tier  ", parsed.max_tier, " shadow", parsed.shadow);
-console.log("rules     ", parsed.rules.map(r => `${r.id}(${r.type})`).join(" "));
-console.log("defaults  ", JSON.stringify(parsed.defaults));
-
-let rail;
+let rec;
 if (withRail) {
-  const railHash = await retry("deploy rail", () =>
-    client.deployContract({ code: fs.readFileSync("../contracts/rail.py"), args: [address, RAIL_FINALITY], leaderOnly: false }), 5);
-  const rr = outcome(await retry("rail receipt", () => client.waitForTransactionReceipt({ hash: railHash, status: WAIT, retries: 300, interval: 3000 }), 5));
-  if (!rr.applied) throw new Error(`rail deploy failed: ${rr.consensus} ${rr.leader}`);
-  rail = rr.address;
-  const fundHash = await retry("fund rail", () => client.writeContract({ address: rail, functionName: "fund", args: [], value: RAIL_FUND }), 5);
-  const fr = outcome(await retry("fund receipt", () => client.waitForTransactionReceipt({ hash: fundHash, status: WAIT, retries: 300, interval: 3000 }), 5));
-  if (!fr.applied) throw new Error(`rail funding failed: ${fr.consensus} ${fr.leader}`);
-  console.log(`\nrail      ${rail}  finality ${RAIL_FINALITY}s  funded ${Number(RAIL_FUND) / 1e18} GEN`);
+  rec = await deployAgentSetup(network, client, {
+    agent, mandate, maxTier: MAX_TIER, finality: RAIL_FINALITY, bondFloor: BOND_FLOOR, fund: RAIL_FUND,
+  });
+  const bond = await sendTx(clientFor(network, "agent"), rec.rail, "post_bond", [], "agent bond", AGENT_BOND);
+  if (!bond.applied) throw new Error(`agent bond failed: ${bond.consensus} ${bond.leader}`);
+  rec.agent_bond_tx = bond.hash;
+  console.log(`\nguard     ${rec.guard}\nrail      ${rec.rail}  finality ${RAIL_FINALITY}s  funded ${Number(RAIL_FUND) / 1e18} GEN`);
+  console.log(`          bond floor ${Number(BOND_FLOOR) / 1e18} GEN, agent bond ${Number(AGENT_BOND) / 1e18} GEN`);
+} else {
+  const g = await deployFile(client, readBuild("guard"), [agent, mandate, MAX_TIER, shadow, shared.engine], "deploy guard");
+  rec = { guard: g.address, guard_tx: g.hash };
+  const reg = await sendTx(client, shared.registry, "register", [g.address, ""], "register");
+  if (!reg.applied) throw new Error(`register failed: ${reg.consensus} ${reg.leader}`);
+  console.log(`\nguard     ${rec.guard}`);
 }
+
+const info = await readView(client, rec.guard, "mandate_info");
+console.log("\n=== registered mandate ===");
+console.log("principal ", info.principal);
+console.log("agent     ", info.agent);
+console.log("max_tier  ", info.max_tier, " shadow", info.shadow, " rail", info.rail || "(none)");
+console.log("rules     ", info.rules.map((r) => `${r.id}(${r.type}${r.tier ? ` t${r.tier}` : ""})`).join(" "));
 
 const path = "deployments.json";
-const all = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, "utf8")) : {};
-all[network] = { ...(all[network] ?? {}), ...shared, address, deploy_tx: hash, agent, max_tier: MAX_TIER, shadow, at: new Date().toISOString(), ...(rail ? { rail, rail_finality_seconds: RAIL_FINALITY } : {}) };
-if (!rail) { delete all[network].rail; delete all[network].rail_finality_seconds; }
+const all = JSON.parse(fs.readFileSync(path, "utf8"));
+const { prompts, prompts_tx, engine, engine_tx, registry, registry_tx } = all[network];
+all[network] = {
+  prompts, prompts_tx, engine, engine_tx, registry, registry_tx,
+  address: rec.guard,
+  deploy_tx: rec.guard_tx,
+  agent,
+  max_tier: MAX_TIER,
+  shadow,
+  at: new Date().toISOString(),
+  ...(withRail
+    ? { rail: rec.rail, rail_tx: rec.rail_tx, rail_finality_seconds: RAIL_FINALITY, bond_floor: String(BOND_FLOOR), agent_bond: String(AGENT_BOND) }
+    : {}),
+};
 fs.writeFileSync(path, JSON.stringify(all, null, 2));
 console.log("\nrecorded in deploy/deployments.json");

@@ -33,7 +33,7 @@ export function Docket() {
 
   return (
     <>
-      <div className="row" style={{ justifyContent: "space-between" }}>
+      <div className="row page-head" style={{ justifyContent: "space-between" }}>
         <div>
           <h1 className="page-title">Docket</h1>
           <p className="lede" style={{ marginBottom: 16 }}>
@@ -69,8 +69,8 @@ export function Docket() {
       )}
 
       {rows.length > 0 && (
-        <div className="table-wrap">
-          <table className="table">
+        <div className="table-wrap stack-wrap">
+          <table className="table stack">
             <thead>
               <tr>
                 <th>#</th>
@@ -92,24 +92,24 @@ export function Docket() {
                     onClick={() => (window.location.hash = href({ name: "case", id: s.id }))}
                     onKeyDown={(e) => e.key === "Enter" && (window.location.hash = href({ name: "case", id: s.id }))}
                   >
-                    <td className="mono">{s.id}</td>
-                    <td className="num">
+                    <td className="mono card-head" data-label="Spend #">{s.id}</td>
+                    <td className="num" data-label="Amount">
                       <Gen atto={s.amount} />
                     </td>
-                    <td onClick={(e) => e.stopPropagation()}>
+                    <td data-label="Recipient" onClick={(e) => e.stopPropagation()}>
                       <Addr value={s.recipient} />
                     </td>
-                    <td>
+                    <td data-label="Decided" className="wide">
                       <div>{PATH_TEXT[path]}</div>
                       <div className="small muted mono">
                         {rule ?? ""}
                         {s.verdict ? ` · ${s.verdict.replace(/_/g, " ")}` : ""}
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Authorization">
                       <Badge kind={s.authorization} />
                     </td>
-                    <td className="small muted">{ago(s.at)}</td>
+                    <td className="small muted" data-label="When">{ago(s.at)}</td>
                   </tr>
                 );
               })}

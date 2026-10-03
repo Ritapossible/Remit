@@ -65,6 +65,7 @@ export function RailPanel() {
   const { client, guard, rail, setRail, mandate, wallet, network, pollMs, canSign } = useApp();
   const { status, error, reload } = useRailStatus();
   const tx = useTx();
+  const attach = useTx();
   const [amount, setAmount] = useState("0.5");
   const [draft, setDraft] = useState("");
   const me = wallet.kind === "none" ? "" : wallet.address;
@@ -103,8 +104,17 @@ export function RailPanel() {
         {tx.outcome?.applied && tx.outcome.address && (
           <div className="notice good">
             Rail deployed at <span className="mono">{tx.outcome.address}</span>.{" "}
-            <button className="btn sm" onClick={() => setRail(tx.outcome!.address!)}>
-              Attach it
+            <button
+              className="btn sm"
+              disabled={!canSign || attach.pending}
+              onClick={() =>
+                attach.run(
+                  (onHash) => write(client, guard, "attach_rail", [tx.outcome!.address!], pollMs, onHash),
+                  async () => setRail(tx.outcome!.address!),
+                )
+              }
+            >
+              {attach.pending ? <Spinner /> : null} Attach it to the guard
             </button>
           </div>
         )}

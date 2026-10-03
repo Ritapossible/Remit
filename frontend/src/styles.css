@@ -464,3 +464,53 @@ dl.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .wallet-chip .dot.ok { background: #22a06b; }
 .wallet-chip .dot.bad { background: var(--refused); }
 .net-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 0 0 12px; }
+
+/* --- phone widths: the app bar, the guard bar and the docket ------------- */
+.page-head { align-items: flex-end; margin-bottom: 8px; }
+.tab-short { display: none; }
+@media (max-width: 719px) {
+  .tab-long { display: none; }
+  .tab-short { display: inline; }
+  .connect-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); width: 100%; }
+  .connect-row > .small { grid-column: 1 / -1; }
+  /* Tabs stay on one line (and scroll sideways if a font makes them wider). */
+  .app-bar .wrap { gap: 10px; }
+  .tabs { flex-wrap: nowrap; overflow-x: auto; width: 100%; scrollbar-width: none; -webkit-overflow-scrolling: touch; margin: 0 -4px; padding: 0 4px; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs a { flex: none; padding: 8px 12px; }
+  /* Network and wallet take the full width, one row each. */
+  .app-bar .right { margin-left: 0; width: 100%; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .app-bar .right select { width: 100%; }
+  .wallet-row { flex-wrap: nowrap; width: 100%; min-width: 0; }
+  .wallet-row > * { min-width: 0; }
+  .wallet-row .wallet-chip { flex: 1 1 auto; justify-content: flex-start; overflow: hidden; white-space: nowrap; }
+  .wallet-row .wallet-name { display: none; }
+  .wallet-row .btn { flex: none; }
+  .wallet-row > .btn:not(.wallet-chip) { flex: 1 1 0; }
+  /* Guard address: input takes the row, buttons beside it. */
+  .guardbar { margin: 16px 0 22px; }
+  .guardbar form { flex: 1 1 100%; flex-wrap: nowrap; }
+  .guardbar input { flex: 1 1 0; min-width: 0; font-size: 13px; text-overflow: ellipsis; }
+  .guardbar form .btn { flex: none; }
+  /* Docket header: the refresh button sits under the text, with room. */
+  .page-head { margin-bottom: 4px; }
+  .page-head .btn { margin-bottom: 8px; }
+  /* Filters scroll sideways on one line. */
+  .filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 14px; padding: 0 16px; }
+  .filters::-webkit-scrollbar { display: none; }
+  .filters .chip { flex: none; }
+  /* A stacked table: each row becomes a card of label/value lines. */
+  .table-wrap.stack-wrap { overflow: visible; border: 0; background: transparent; }
+  .table.stack thead { display: none; }
+  .table.stack, .table.stack tbody, .table.stack tr, .table.stack td { display: block; width: 100%; }
+  .table.stack tr { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); padding: 6px 14px; margin-bottom: 10px; }
+  .table.stack td { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line); text-align: left; overflow-wrap: anywhere; }
+  .table.stack tr td:last-child { border-bottom: 0; }
+  .table.stack td::before { content: attr(data-label); font-size: 12.5px; color: var(--muted); font-family: var(--sans, inherit); }
+  .table.stack td.num { text-align: left; }
+  .table.stack td > * { justify-self: start; min-width: 0; }
+  .table.stack td.card-head { display: flex; gap: 0; font-weight: 600; padding: 10px 0 8px; }
+  .table.stack td.card-head::before { font-size: 14px; color: var(--ink); font-family: inherit; }
+  .table-wrap .table.stack tr:last-child td { border-bottom: 1px solid var(--line); }
+  .table-wrap .table.stack tr:last-child td:last-child { border-bottom: 0; }
+}
