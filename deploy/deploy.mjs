@@ -3,6 +3,10 @@ import { clientFor, accountFor, retry, outcome, WAIT } from "./lib.mjs";
 
 const network = process.argv[2] || "studio";
 const shadow = process.argv.includes("--shadow");
+// --rail also deploys a RemitRail bound to the new guard and funds it.
+const withRail = process.argv.includes("--rail");
+const RAIL_FINALITY = Number(process.env.RAIL_FINALITY ?? (network === "studio" ? 60 : 1800));
+const RAIL_FUND = BigInt(process.env.RAIL_FUND_MILLI ?? 500) * 10n ** 15n;
 const MAX_TIER = 2;
 
 const code = fs.readFileSync("../contracts/build/remit.py");
@@ -41,8 +45,21 @@ console.log("max_tier  ", parsed.max_tier, " shadow", parsed.shadow);
 console.log("rules     ", parsed.rules.map(r => `${r.id}(${r.type})`).join(" "));
 console.log("defaults  ", JSON.stringify(parsed.defaults));
 
+let rail;
+if (withRail) {
+  const railHash = await retry("deploy rail", () =>
+    client.deployContract({ code: fs.readFileSync("../contracts/rail.py"), args: [address, RAIL_FINALITY], leaderOnly: false }), 5);
+  const rr = outcome(await retry("rail receipt", () => client.waitForTransactionReceipt({ hash: railHash, status: WAIT, retries: 300, interval: 3000 }), 5));
+  if (!rr.applied) throw new Error(`rail deploy failed: ${rr.consensus} ${rr.leader}`);
+  rail = rr.address;
+  const fundHash = await retry("fund rail", () => client.writeContract({ address: rail, functionName: "fund", args: [], value: RAIL_FUND }), 5);
+  const fr = outcome(await retry("fund receipt", () => client.waitForTransactionReceipt({ hash: fundHash, status: WAIT, retries: 300, interval: 3000 }), 5));
+  if (!fr.applied) throw new Error(`rail funding failed: ${fr.consensus} ${fr.leader}`);
+  console.log(`\nrail      ${rail}  finality ${RAIL_FINALITY}s  funded ${Number(RAIL_FUND) / 1e18} GEN`);
+}
+
 const path = "deployments.json";
 const all = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, "utf8")) : {};
-all[network] = { address, deploy_tx: hash, agent, max_tier: MAX_TIER, shadow, at: new Date().toISOString() };
+all[network] = { address, deploy_tx: hash, agent, max_tier: MAX_TIER, shadow, at: new Date().toISOString(), ...(rail ? { rail, rail_finality_seconds: RAIL_FINALITY } : {}) };
 fs.writeFileSync(path, JSON.stringify(all, null, 2));
 console.log("\nrecorded in deploy/deployments.json");

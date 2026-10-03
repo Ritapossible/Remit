@@ -4,18 +4,18 @@ Built into a single deployable file by ``deploy/build_contract.py``, which
 prepends the pinned runner header and inlines ``remit_core`` and
 ``remit_prompts``. Do not edit the build output.
 
-**Remit holds no funds.** It authorises; a rail settles. This was forced by a
-measured constraint and is the better design for it: introspection of the live
-runner (see ``docs/ARCHITECTURE.md`` §11) shows the only value-movement
-primitive is ``ContractProxy.emit_transfer``, a contract-to-contract call -
-which is exactly why value sent to an externally owned account is destroyed. A
-gate that never takes custody cannot destroy anything, and a provisional
-refusal that an appeal reverses costs nothing because no value ever moved.
+**Remit holds no funds.** It authorises; a rail settles. ``contracts/rail.py``
+is that rail: it holds GEN and pays a spend only when ``settlement_of`` says it
+is authorized and the decision has had time to finalise. Keeping custody out of
+the gate means a refusal an appeal later reverses costs nothing here, and the
+rail - not the gate - is the one contract that must be audited for value
+handling.
 
 Hard laws enforced here (see CLAUDE.md):
 
-- **Never custody, never push.** There is no ``emit_transfer`` in this file and
-  no payable entrypoint. Structurally, not by convention.
+- **Never custody in the gate.** There is no ``emit_transfer`` in this file and
+  no payable entrypoint. Structurally, not by convention. Value lives in the
+  rail.
 - **The fetch is inline in both closures.** ``genvm-lint`` cannot trace a
   ``gl.nondet.web`` call through a helper, so it is written out twice on
   purpose. Do not refactor it.
@@ -87,6 +87,11 @@ class RemitGuard(gl.Contract):
     # vendor_member; this exists so anyone can read who an agent may pay.
     # Appended last: storage layout is position-sensitive.
     vendor_entries: DynArray[str]
+
+    # When each spend's authorization became final in this contract's state
+    # (the request for reflex decisions, the resolution for held ones). A rail
+    # waits a finality delay after this before paying. Appended last.
+    s_decided_at: TreeMap[u256, u256]
 
     # ----------------------------------------------------------------- init
 
@@ -273,6 +278,7 @@ class RemitGuard(gl.Contract):
         self.s_artifact[key] = artifact
         self.s_confidence[key] = u256(int(confidence))
         self.s_tier[key] = u256(self._tier_for(key) if outcome == OUTCOME_REFUSED else 0)
+        self.s_decided_at[key] = u256(self._now())
 
     # ---------------------------------------------------------- entrypoints
 
@@ -327,6 +333,7 @@ class RemitGuard(gl.Contract):
         self.s_outcome[key] = ""
         self.spend_count = u256(int(self.spend_count) + 1)
 
+        self.s_decided_at[key] = u256(0 if state == SPEND_HELD else now)
         if state == SPEND_REFUSED:
             self.s_outcome[key] = OUTCOME_REFUSED
             self.s_tier[key] = u256(1 if int(self.max_tier) >= 1 else 0)
@@ -386,11 +393,26 @@ class RemitGuard(gl.Contract):
         fired = [r for r in self.s_rules[key].split(",") if r != ""]
         if not fired:
             raise Exception("[EXPECTED] held spend has no fired rule")
-        rule_id = str(fired[0])
-        ask = str(self.rule_ask[rule_id])
+        # Every judgment rule that fired goes to the jury, not just the first:
+        # a second trigger on the same spend is a second question, and
+        # dropping it would let a spend through on the easier of the two.
+        rule_id = ",".join([str(r) for r in fired])
+        ask = [str(self.rule_ask[r]) for r in fired]
         needs_artifact = self._needs_artifact(key)
+        defaults = {
+            "on_deadline": str(self.d_on_deadline),
+            "on_undetermined": str(self.d_on_undetermined),
+            "response_window_seconds": int(self.d_response_window),
+            "hold_deadline_seconds": int(self.d_hold_deadline),
+            "clawback_window_seconds": int(self.d_clawback_window),
+        }
 
-        window_seconds = int(self.rule_b[rule_id]) or 3600
+        window_seconds = 0
+        for r in fired:
+            if int(self.rule_b[r]) > window_seconds:
+                window_seconds = int(self.rule_b[r])
+        if window_seconds == 0:
+            window_seconds = 3600
         history = self._history()
         candidate = Spend(
             amount=int(self.s_amount[key]),
@@ -399,6 +421,7 @@ class RemitGuard(gl.Contract):
             at=int(self.s_at[key]),
         )
         prior = [h for h in history if h.at < candidate.at]
+        to_same = same_recipient(candidate, prior)
         recent = []
         for h in sorted(prior, key=lambda x: -x.at)[:8]:
             if (candidate.at - h.at) <= window_seconds:
@@ -414,6 +437,8 @@ class RemitGuard(gl.Contract):
             window_total=window_total(candidate, prior, window_seconds, candidate.at),
             daily_total=window_total(candidate, prior, DAY_SECONDS, candidate.at),
             rule_id=rule_id,
+            recipient_count=window_count(candidate, to_same, window_seconds, candidate.at),
+            recipient_total=window_total(candidate, to_same, window_seconds, candidate.at),
         )
         claim = str(self.s_claim[key])
         facts = [str(f) for f in facts]
@@ -484,10 +509,8 @@ class RemitGuard(gl.Contract):
             #
             # Asking a validator to grade someone else's answer instead was
             # measured on Studio and is not stable: models split roughly evenly
-            # on "is this defensible?", which fails consensus on exactly the
-            # questions this product exists to answer. Re-answering a narrow,
-            # well-specified question is far more determinate than grading a
-            # verdict.
+            # on "is this defensible?". Re-answering a narrow, well-specified
+            # question is far more determinate than grading a verdict.
             _mine = _parse_verdict(
                 gl.nondet.exec_prompt(
                     build_verdict_prompt(
@@ -500,13 +523,24 @@ class RemitGuard(gl.Contract):
                     )
                 )
             )
-            if _mine["verdict"] == _verdict:
-                return True
-            # A validator that is itself unsure does not get to veto a
-            # colleague who reached a definite answer on the same record. Two
-            # validators reaching opposite DEFINITE answers is a real
-            # disagreement, and that is what the appeal path is for.
-            return _mine["verdict"] == VERDICT_UNDETERMINED
+            # Fail CLOSED (validator_agrees): a leader's refusal may stand over
+            # a validator that is unsure; a leader's authorization stands only
+            # on agreement; a validator sure the spend is in remit vetoes
+            # anything else. Reason codes and confidence are not compared -
+            # confidence has already been applied by _parse_verdict, where a
+            # hesitant in_remit becomes undetermined.
+            _leader_outcome = resolve_hold(
+                verdict=_verdict,
+                artifact=_state,
+                requires_artifact=needs_artifact,
+                defaults=defaults,
+                deadline_reached=False,
+            )
+            return validator_agrees(
+                leader_verdict=_verdict,
+                own_verdict=_mine["verdict"],
+                leader_outcome=_leader_outcome,
+            )
 
         raw = gl.vm.run_nondet(leader, validator, compare_user_errors=True)
         decoded = _as_dict(raw)
@@ -521,7 +555,7 @@ class RemitGuard(gl.Contract):
             verdict=result["verdict"],
             artifact=artifact,
             requires_artifact=needs_artifact,
-            defaults=self._defaults(),
+            defaults=defaults,
             deadline_reached=False,
         )
         self._finalise(key, outcome, artifact, result["confidence"])
@@ -593,6 +627,37 @@ class RemitGuard(gl.Contract):
         if self.shadow:
             return AUTH_AUTHORIZED
         return AUTH_REFUSED
+
+    @gl.public.view
+    def settlement_of(self, spend_id: int) -> str:
+        """Everything a rail needs to pay a spend, in one read.
+
+        A rail must not pay on ``authorization_of`` alone: it also needs who is
+        owed, how much, and when the decision was made, so it can wait for the
+        decision to finalise. ``authorization`` here ignores shadow mode - a
+        shadow guard withholds nothing, so a rail must refuse to bind to one
+        rather than pay refused spends.
+        """
+        key = self._require_spend(spend_id)
+        state = self.s_state[key]
+        if state == SPEND_HELD:
+            auth = AUTH_PENDING
+        elif self.s_outcome[key] == OUTCOME_ALLOWED:
+            auth = AUTH_AUTHORIZED
+        else:
+            auth = AUTH_REFUSED
+        return json.dumps(
+            {
+                "id": int(spend_id),
+                "authorization": auth,
+                "recipient": self.s_recipient[key],
+                "amount": int(self.s_amount[key]),
+                "decided_at": int(self.s_decided_at.get(key, u256(0))),
+                "shadow": bool(self.shadow),
+                "principal": str(self.principal),
+                "agent": str(self.agent),
+            }
+        )
 
     @gl.public.view
     def get_spend(self, spend_id: int) -> str:
@@ -704,6 +769,7 @@ class RemitGuard(gl.Contract):
             "artifact": self.s_artifact[key],
             "outcome": self.s_outcome[key],
             "tier": int(self.s_tier[key]),
+            "decided_at": int(self.s_decided_at.get(key, u256(0))),
             "authorization": authorization,
             "shadow": bool(self.shadow),
         }
@@ -717,36 +783,6 @@ def _is_sha256_hex(value) -> bool:
         if ch not in "0123456789abcdef":
             return False
     return True
-
-
-def _is_defensible(raw) -> bool:
-    """Read a validator review. Anything unreadable is a disagreement.
-
-    Failing closed here is deliberate: an unparseable review must not be
-    allowed to wave a leader's verdict through.
-    """
-    data = raw
-    if isinstance(data, (bytes, bytearray)):
-        data = data.decode("utf-8", "replace")
-    if isinstance(data, str):
-        text = data.strip()
-        start = text.find("{")
-        end = text.rfind("}")
-        if start >= 0 and end > start:
-            text = text[start : end + 1]
-        try:
-            data = json.loads(text)
-        except Exception:
-            return False
-    if not isinstance(data, dict):
-        return False
-    for alias in ("defensible", "valid", "agree", "acceptable"):
-        if alias in data:
-            value = data[alias]
-            if isinstance(value, bool):
-                return value
-            return str(value).strip().lower() in ("true", "yes", "1")
-    return False
 
 
 def _as_dict(value) -> dict:
@@ -829,4 +865,7 @@ def _parse_verdict(raw) -> dict:
     if confidence > 100:
         confidence = 100
 
+    # A hesitant yes is not a yes (harden_verdict). Applied here so the leader,
+    # every validator and the recorded result all follow the same rule.
+    verdict = harden_verdict(verdict, confidence)
     return {"verdict": verdict, "reason": reason, "confidence": confidence}

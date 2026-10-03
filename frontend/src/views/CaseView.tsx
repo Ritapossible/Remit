@@ -1,3 +1,4 @@
+import { CasePayment } from "../components/Rail";
 import { useCallback, useEffect, useState } from "react";
 import { useApp, href } from "../state";
 import { useNow } from "../hooks";
@@ -296,9 +297,9 @@ function Actions({ spend, onChange }: { spend: SpendView; onChange: () => Promis
       <div className="card">
         <h3>Decided</h3>
         <p className="sub" style={{ marginBottom: 0 }}>
-          This case is closed. A settlement rail reads <span className="mono">authorization_of({spend.id})</span> and
-          gets <b>{spend.authorization}</b>.
+          This case is closed. The guard's answer for this spend is <b>{spend.authorization}</b>.
         </p>
+        <CasePayment spend={spend} />
         <TxLine network={network} pending={pending} hash={hash} outcome={outcome} refusalHint={hint} />
       </div>
     );

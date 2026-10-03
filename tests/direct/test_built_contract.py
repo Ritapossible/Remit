@@ -91,28 +91,53 @@ def test_consensus_uses_run_nondet_not_strict_eq(built):
     assert "compare_user_errors=True" in built
 
 
-def test_validator_checks_evidence_exactly_and_judgement_for_defensibility(built):
+def test_validator_checks_evidence_exactly_and_fails_closed_on_judgement(built):
     """Split comparison, and both halves matter.
 
     The artifact state is compared exactly: the validator hash-checked it
-    itself, so a leader cannot lie about the evidence. The judgement is checked
-    for defensibility, because five validators run five different models and
-    demanding an identical judgement makes consensus fail on exactly the
-    questions this product exists to answer - measured on Studio, where a
-    leader's verdict drew three disagreements and the state change was rolled
-    back.
-
-    Neither half may be dropped: exact-only cannot reach consensus, and
-    defensibility-only would let a leader assert any evidence it liked.
+    itself, so a leader cannot lie about the evidence. The judgement is
+    re-answered by the validator and compared through ``validator_agrees``,
+    which fails closed: a leader's refusal may stand over an unsure validator,
+    but a leader's authorization stands only on agreement. The earlier rule let
+    an unsure validator accept anything, so one confident in_remit over an
+    unsure committee released the spend.
     """
     validator = built.index("def validator(")
     after = built.index("gl.vm.run_nondet")
     body = built[validator:after]
     assert 'str(_theirs.get("artifact", "")) != _state' in body, "evidence not compared exactly"
     assert "build_verdict_prompt" in body, "validator does not re-answer the question"
-    assert '_mine["verdict"] == _verdict' in body, "verdicts not compared"
-    assert "VERDICT_UNDETERMINED" in body, "an unsure validator must not veto"
-    assert "confidence" not in body, "confidence must not enter the comparison"
+    assert "validator_agrees(" in body, "judgement not compared through the fail-closed rule"
+    assert "resolve_hold(" in body, "the leader's verdict must be judged by what it would do"
+    assert "== VERDICT_UNDETERMINED" not in body, "an unsure validator must not accept everything"
+    assert '_mine["confidence"]' not in body, "confidence must not enter the comparison"
+
+
+def test_a_hesitant_in_remit_is_undetermined(built):
+    fn = built[built.index("def _parse_verdict(raw) -> dict:"):]
+    assert "harden_verdict(verdict, confidence)" in fn
+
+
+def test_every_fired_rule_reaches_the_jury(built):
+    start = built.index("    def adjudicate(self, spend_id: int) -> None:")
+    body = built[start : built.index("def leader()", start)]
+    assert "fired[0]" not in body, "only the first fired rule would be judged"
+    assert "ask = [str(self.rule_ask[r]) for r in fired]" in body
+
+
+def test_no_dead_defensibility_design_ships(built):
+    assert "build_defensibility_prompt" not in built
+    assert "_is_defensible" not in built
+
+
+def test_settlement_view_ignores_shadow(built):
+    """A rail pays on settlement_of. It must report the real outcome, never the
+    shadow-mode 'authorized' that authorization_of returns for observers."""
+    fn = built[built.index("    def settlement_of(self, spend_id: int) -> str:"):]
+    fn = fn[: fn.index("@gl.public.view", 10)]
+    assert "self.shadow" not in fn.split("return json.dumps")[0]
+    for key in ('"authorization"', '"recipient"', '"amount"', '"decided_at"', '"shadow"'):
+        assert key in fn
 
 
 def test_an_unreadable_llm_response_is_undetermined_not_a_guess(built):
@@ -189,8 +214,10 @@ def test_closure_captures_are_plain_python(built):
     """
     start = built.index("    def adjudicate(self, spend_id: int) -> None:")
     body = built[start : built.index("def leader()", start)]
-    for name in ("memo_uri", "memo_digest", "ask", "claim"):
+    for name in ("memo_uri", "memo_digest", "claim"):
         assert "%s = str(" % name in body, "%s is captured without coercion" % name
+    assert "ask = [str(" in body, "ask is captured without coercion"
+    assert '"on_undetermined": str(self.d_on_undetermined)' in body, "defaults captured without coercion"
     assert "facts = [str(f) for f in facts]" in body
     assert "rule_context = [str(c) for c in" in body
 
@@ -247,12 +274,12 @@ def test_preview_spend_is_a_view_on_the_real_classifier(built):
     assert "spend_count =" not in body
 
 
-def test_vendor_entries_is_the_last_storage_field(built):
+def test_new_storage_fields_are_appended(built):
     """Storage layout is position-sensitive; new fields are appended, never
     inserted."""
     cls = built[built.index("class RemitGuard(gl.Contract):") : built.index("    def __init__(self, agent: str")]
     fields = [l.split(":")[0].strip() for l in cls.splitlines() if re.match(r"^    [a-z_]+: ", l)]
-    assert fields[-1] == "vendor_entries"
+    assert fields[-2:] == ["vendor_entries", "s_decided_at"]
 
 
 def test_claim_reaches_the_summary_view(built):

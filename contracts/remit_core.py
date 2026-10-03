@@ -73,8 +73,22 @@ PREDICATES_INT = (
     "daily_total_lte",
     "daily_total_gte",
 )
-PREDICATES_WINDOW_AMOUNT = ("window_total_lte", "window_total_gte")
-PREDICATES_WINDOW_COUNT = ("spend_count_lte", "spend_count_gte")
+# ``recipient_*`` windows count only payments to the same recipient as the
+# spend being evaluated. That is the shape of a split purchase: one order, one
+# vendor, several payments. An agent-wide count cannot express it, and fires on
+# unrelated spending to different vendors.
+PREDICATES_WINDOW_AMOUNT = (
+    "window_total_lte",
+    "window_total_gte",
+    "recipient_total_lte",
+    "recipient_total_gte",
+)
+PREDICATES_WINDOW_COUNT = (
+    "spend_count_lte",
+    "spend_count_gte",
+    "recipient_count_lte",
+    "recipient_count_gte",
+)
 PREDICATES_LIST_NAME = ("recipient_in", "recipient_not_in")
 PREDICATES_STR_SET = ("category_in", "category_not_in")
 PREDICATES = (
@@ -211,6 +225,13 @@ def window_count(spend, history, seconds, now):
     return 1 + len(_window_slice(history, seconds, now))
 
 
+def same_recipient(spend, history):
+    """Prior spends to the same recipient as ``spend``. Addresses are compared
+    normalised, so case cannot split one vendor into two."""
+    mine = normalize_address(spend.recipient, "recipient")
+    return [h for h in history if normalize_address(h.recipient, "recipient") == mine]
+
+
 # --------------------------------------------------------------------------
 # Predicates
 # --------------------------------------------------------------------------
@@ -260,6 +281,9 @@ def evaluate_predicate(name, operand, spend, history, vendor_lists):
         return window_total(spend, history, DAY_SECONDS, spend.at) <= _require_int(operand, ctx)
     if name == "daily_total_gte":
         return window_total(spend, history, DAY_SECONDS, spend.at) >= _require_int(operand, ctx)
+
+    if name.startswith("recipient_") and name not in PREDICATES_LIST_NAME:
+        history = same_recipient(spend, history)
 
     if name in PREDICATES_WINDOW_AMOUNT:
         limit, seconds = _window_operand(operand, "amount", ctx)
@@ -377,6 +401,47 @@ def artifact_state(*, committed_digest, fetched_digest, held_at, now, response_w
 def _outcome_from_default(token, context):
     _require_one_of(token, DEFAULTS_VOCAB, context)
     return OUTCOME_REFUSED if token == DEFAULT_REFUND else OUTCOME_ALLOWED
+
+
+# Validators whose own reading is "in_remit" at lower confidence than this are
+# counted as unsure. Authorising money on a hesitant yes is the failure mode a
+# gate exists to prevent; refusing on a hesitant no costs only a resubmission.
+MIN_IN_REMIT_CONFIDENCE = 60
+
+
+def harden_verdict(verdict, confidence):
+    """A hesitant "in_remit" is an "undetermined". Applied to every parsed
+    verdict, leader and validator alike, so the rule is symmetric."""
+    _require_one_of(verdict, VERDICTS, "verdict")
+    if verdict == VERDICT_IN_REMIT and int(confidence) < MIN_IN_REMIT_CONFIDENCE:
+        return VERDICT_UNDETERMINED
+    return verdict
+
+
+def validator_agrees(*, leader_verdict, own_verdict, leader_outcome):
+    """Does a validator accept the leader's verdict? The jury fails CLOSED.
+
+    - The same verdict is agreement.
+    - A leader whose verdict REFUSES the spend may stand over a validator that
+      is unsure. Doubt does not release money.
+    - A leader whose verdict ALLOWS the spend stands only on agreement. One
+      confident "in_remit" over a committee of unsure validators is rejected.
+    - A validator that is itself sure the spend is in remit vetoes any other
+      answer. Opposite definite readings are a real disagreement; the round
+      fails and the hold runs to its registered deadline default.
+
+    ``leader_outcome`` is what the leader's verdict resolves to under this
+    mandate's defaults (``resolve_hold``), so an "undetermined" that the
+    mandate maps to release is treated as permissive, not as doubt.
+    """
+    _require_one_of(leader_verdict, VERDICTS, "leader verdict")
+    _require_one_of(own_verdict, VERDICTS, "own verdict")
+    _require_one_of(leader_outcome, OUTCOMES, "leader outcome")
+    if leader_verdict == own_verdict:
+        return True
+    if own_verdict == VERDICT_IN_REMIT:
+        return False
+    return leader_outcome == OUTCOME_REFUSED
 
 
 def resolve_hold(*, verdict, artifact, requires_artifact, defaults, deadline_reached):

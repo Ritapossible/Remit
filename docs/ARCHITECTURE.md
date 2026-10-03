@@ -134,8 +134,14 @@ ones code provably cannot express:
 | `structuring` | Are these separate purchases, or one purchase split under the cap? |
 
 `structuring` is the T7 mitigation and the demo's centrepiece. Its trigger is
-windowed and deterministic - *N spends to related recipients within T* - so it
-cannot be evaded by shrinking amounts.
+deterministic: `recipient_total_gte` holds a payment when the total paid to
+**that same recipient** in the last 24 hours, including this payment, exceeds
+the per-payment cap. A split purchase is one order from one vendor paid in
+pieces, so the payment that crosses the cap is held - at most one cap's worth
+reaches a vendor in a day without a jury, and waiting an hour does not reset
+it. An agent-wide count (`spend_count_gte`) is still in the vocabulary but is
+the wrong trigger for this: it fires on unrelated purchases from different
+vendors and lets the first payments of a split clear.
 
 ## 5. What the jury sees
 
@@ -157,39 +163,82 @@ It returns:
  "confidence": <int 0-100>}
 ```
 
-Compared under the equivalence principle on the **enum and reason code**. Never
-on prose. This is both the injection ceiling (T4) and what makes validator
-agreement achievable at all (T10).
+**How validators agree.** Each validator fetches and hash-checks the artifact
+itself; the artifact state is compared **exactly**, so a leader cannot lie about
+the evidence. Then each validator **re-answers the same question** and compares
+verdicts with a rule that **fails closed** (`validator_agrees` in
+`remit_core.py`):
 
-An `UNDETERMINED` verdict is not a breach. **Unproven is not guilty** - it
-resolves to the registered default, and the case is recorded as undetermined so
-the docket does not silently count it as a win for either side.
+| Leader | Validator | Accepts? |
+| --- | --- | --- |
+| same verdict | same verdict | yes |
+| `out_of_remit` | `undetermined` | yes - a refusal stands over doubt |
+| `undetermined` (mandate default: refund) | `out_of_remit` | yes - both refuse |
+| `in_remit` | anything else | **no** - an authorization needs agreement |
+| anything else | `in_remit` | **no** - a validator sure it is in remit vetoes |
 
-## 6. Remit takes no custody
+A verdict of `in_remit` below confidence 60 is counted as `undetermined`
+(`harden_verdict`), for the leader and every validator alike. Reason codes are
+recorded but not compared. Prose is never compared. When validators disagree,
+the round fails and the hold runs to its deadline default.
 
-This was forced by measurement, and it is the better design for it.
+An `UNDETERMINED` verdict resolves to the **registered default**
+(`on_undetermined`), which the principal chose when writing the mandate, and the
+case is recorded as undetermined so the docket does not count it as a win for
+either side. With the shipped templates the default is `refund`: money does not
+move on doubt.
 
-Introspecting the pinned runner on Studio showed that `gl.advanced` exposes only
-`emit_raw_event`, `gl_call` and `user_error_immediate`; `gl.public` exposes only
-`view` and `write`, with **no `payable`**; and the only way to move value is
-`ContractProxy.emit_transfer`, reached through `gl.get_contract_at(address)`.
-That is a **contract-to-contract** call - which explains a failure measured in
-earlier work in this lineage, where value sent to an externally owned account
-through it was debited from the sender, credited to nobody, and the transaction
-still reported ACCEPTED.
+**What a verified artifact means.** "Verified" means the bytes every validator
+fetched match the digest the agent committed. It proves which document the jury
+read, not that the document is true: the agent chose it. The prompt says so,
+and tells the jury the ledger wins where the two conflict. The adversarial case
+in `deploy/jury-scenarios-studio.json` measures what a self-serving document
+does to the verdict.
 
-A gate that holds nothing cannot destroy anything. So Remit decides and a rail
-settles:
+**Every rule that fired is asked.** If two judgment triggers fire on one spend,
+the jury gets both questions and any breach is `out_of_remit`.
 
-- a GenLayer-native treasury reads `authorization_of` synchronously through
-  `gl.get_contract_at(remit).view()` before it moves funds, or
-- an off-chain rail (a card program, a payment API, an agent framework's
-  wallet) reads the same view over RPC.
+## 6. The gate holds no money; the rail does
 
-The engine still resolves amounts on **equality**, never on an inequality -
-`held >= committed` once restored an already-delivered payout when a residue was
-present - and returns credit ledgers whose sums are checked exactly. Those
-functions are the basis for the bonded challenge path on the roadmap.
+Remit splits deciding from paying.
+
+- **`RemitGuard`** (`contracts/contract_shell.py`, built to
+  `contracts/build/remit.py`) decides. It has no payable method and no
+  transfer. It exposes `settlement_of(spend_id)`: the authorization, recipient,
+  amount and decision time, ignoring shadow mode.
+- **`RemitRail`** (`contracts/rail.py`) holds GEN and pays. Its one payout,
+  `pay(spend_id)`, reads `settlement_of` from the guard and reverts unless the
+  spend is authorized, unpaid, and decided at least `finality_seconds` ago. It
+  pays exactly the authorized amount to exactly the authorized recipient. The
+  only other value path is `withdraw`, which only the principal may call. A rail
+  refuses to bind to a guard it was not deployed by the principal of, or to a
+  shadow-mode guard.
+
+Once a principal funds the rail instead of the agent's wallet, the agent's key
+has no path to the money except through the guard. That is the property a gate
+needs, and `deploy/rail-studio.json` records it on chain: paid on
+authorization, reverted when early, held, refused, or already paid, with
+balances read after each call.
+
+**Why the delay.** A rail that paid the moment a verdict was accepted could pay
+out before an appeal reversed it. GenLayer sends value from `emit_transfer` when
+the paying transaction **finalises**, and the rail additionally waits
+`finality_seconds` after the guard's decision. Set it to at least the network's
+appeal window.
+
+**Sending to a wallet.** Value goes to an externally owned account through an
+EVM contract interface (`@gl.evm.contract_interface`, then
+`.emit_transfer(value=...)`), as GenLayer's value-transfer docs describe.
+Measured on Studio: a payable deposit credits the contract and an
+`emit_transfer` through the interface credits the wallet once the transaction
+finalises. The older note that value sent to a wallet "is destroyed" applied to
+calling `gl.get_contract_at(wallet).emit_transfer`, which treats the wallet as
+an Intelligent Contract; that path is not used.
+
+The engine still resolves amounts on **equality**, never on an inequality, and
+returns credit ledgers whose sums are checked exactly. Those functions are the
+basis for the bonded challenge path on the roadmap; they are not wired into the
+contract today.
 
 ## 7. Deployment topology
 
@@ -197,7 +246,12 @@ functions are the basis for the bonded challenge path on the roadmap.
 RemitGuard  (one instance per agent)
   constructor(agent, mandate_json, max_tier, shadow)
   storage:    mandate pin + version, defaults, typed rules, vendor lists,
-              spend ledger, cases, verdicts
+              spend ledger, cases, verdicts, decision times
+
+RemitRail   (one per guard, deployed by the guard's principal)
+  constructor(guard, finality_seconds)
+  storage:    guard, principal, agent, finality delay, paid ledger
+  holds:      the GEN the agent may spend
 ```
 
 One instance per agent is the T6 mitigation and it is structural: transactions

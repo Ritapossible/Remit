@@ -7,7 +7,7 @@
 **Spending authority for AI agents.**
 
 Arithmetic clears in the same transaction. Judgment goes to a jury.
-The agent spends nothing outside its remit.
+A treasury contract pays only what the gate authorized.
 
 Built on [GenLayer](https://genlayer.com) Intelligent Contracts.
 
@@ -24,12 +24,12 @@ Code can enforce a budget. Code cannot enforce a brief:
 | "No more than $500 per day" | Arithmetic. Any smart contract. |
 | "Only vendors on the allowlist" | Arithmetic. Any smart contract. |
 | "No single payment over $200" | Arithmetic. Any smart contract. |
+| "Never the vendor we dropped" | Arithmetic: a deny list. |
 | **"This purchase serves the campaign brief"** | **Nothing on-chain today.** |
 | **"This invoice matches a deliverable we received"** | **Nothing on-chain today.** |
-| **"This is not the vendor we dropped for quality"** | **Nothing on-chain today.** |
-| **"These three payments are one purchase split to stay under the cap"** | **Nothing on-chain today.** |
+| **"These payments are one purchase split to stay under the cap"** | **Nothing on-chain today.** |
 
-The bottom four are why people cap agent budgets at amounts too small to be
+The bottom three are why people cap agent budgets at amounts too small to be
 useful. No amount of Solidity reaches them. They are not thresholds - they are
 readings of intent against a written mandate, which is exactly what GenLayer's
 Optimistic Democracy adjudicates.
@@ -78,20 +78,23 @@ GenLayer.** Remit exists because that list is non-empty and expensive.
 The obvious shape for this is a monitor: watch the agent, catch violations,
 file a challenge afterwards. That is forensics. The money already left.
 
-Remit refuses before value moves, and that one inversion buys a property the
-monitor shape cannot have:
+Remit refuses before value moves. That only holds if the money has to pass
+through Remit, so it ships in two parts:
 
-> **Withholding makes optimistic action safe.**
+- **The guard** (`contracts/contract_shell.py`) decides. It holds nothing.
+- **The rail** (`contracts/rail.py`) holds the GEN. Its only payout pays a spend
+  the guard authorized - the exact amount, to the exact recipient, once - after
+  a finality delay. The agent's key cannot withdraw from it.
 
-A halt-style module that acts on a provisional verdict has wrongly paused a live
-protocol if the appeal reverses it. Remit withholding an authorization on a
-provisional verdict costs nothing if the appeal reverses it - no value moved in
-either direction. So Remit binds on **round acceptance**, not on finality,
-without taking on the risk that forces alarm-shaped designs to wait.
+Fund the rail instead of the agent's wallet and the agent cannot spend by
+ignoring Remit. Money left in the agent's own wallet, Remit cannot stop; that is
+stated as a limit, not hidden.
 
-Remit holds no funds at all. It decides; a rail - a treasury contract, a card
-program, an agent framework's wallet - reads `authorization_of(spend_id)` and
-settles. See `docs/ARCHITECTURE.md` §6 for why that was measured, not chosen.
+**Why the delay.** The guard decides at round acceptance, so a verdict can still
+be appealed. The rail pays only once the decision is `finality_seconds` old, and
+GenLayer sends the value when the paying transaction finalises. A refusal that
+an appeal reverses costs nothing; a payout waits out the window. See
+`docs/ARCHITECTURE.md` §6.
 
 ## Graduated authority
 
@@ -112,46 +115,67 @@ Three rules hold at every tier:
 
 - **The principal's own key always outranks Remit.** Additive authority, never
   exclusive. A module that can permanently brick you gets adopted by nobody.
-- **Freezes expire.** Every restriction carries a TTL and lifts itself. A stuck
-  court must not become a permanent outage.
-- **Remit never takes custody.** It authorises; a rail settles. See
-  `docs/ARCHITECTURE.md` §6 for the measured reason.
+- **No hold is indefinite.** Every hold has a deadline after which the mandate's
+  registered default applies.
+- **The guard never takes custody.** It authorises; the rail pays.
 
-In this version tiers 2 and 3 are recorded as severity on the docket; agent
-freezing and bond slashing are on the [roadmap](PLAN.md).
+**Not built yet:** tiers 2 and 3 are recorded as severity on the docket and
+refuse exactly like tier 1 - there is no agent freeze and no bond slashing.
+Both are on the [roadmap](PLAN.md).
 
 ## Status
 
-**Running on GenLayer Studio. Testnet is next.**
+**Running on GenLayer Studio.** Bradbury runs the rail (measured); the guard is
+too large for Bradbury's per-transaction gas cap until the engine/guard split
+lands (see the roadmap).
 
-| | |
+Every result below is a real transaction, recorded in `deploy/*.json`, and every
+assertion is on resulting state and the consensus outcome - never on a
+transaction merely being accepted.
+
+**The rail** (`deploy/rail-studio.json`, 0 failed checks). A funded rail paid an
+authorized 0.15 GEN spend to the vendor - balance read after the call - and
+reverted, with balances unchanged, when asked to pay: before the finality delay,
+twice, a held spend, a refused spend, and when the agent tried to withdraw.
+
+**The jury** (`deploy/jury-scenarios-studio.json`, `deploy/jury-repeats-studio.json`).
+Each case is a fresh guard. Two payments to one vendor take its 24-hour total
+past the 0.2 GEN per-payment cap, so the second is held and the first is the
+most that clears. The agent then commits evidence, or none.
+
+| Case | Evidence the agent committed | Runs | Verdicts (confidence) | Money |
+| --- | --- | --- | --- | --- |
+| Honest split | One invoice: one 0.30 GEN order, two payments received. No stated motive. | 1 | out_of_remit (95) | refused |
+| Forged evidence | Two invoices for identical banner sets, "two separate, unrelated orders" | 3 | out_of_remit (85), undetermined (55), undetermined (55) | refused ×3 |
+| Separate purchases | Hosting renewal ordered a month earlier + an ad re-edit this week | 3 | in_remit (95), in_remit (68), in_remit (95) | **released** ×3 |
+| No evidence | none; jury convened after the response window | 1 | undetermined (85) | refused |
+
+The jury released genuinely separate purchases every time and released none of
+the splits. One release came in at confidence 68, close to the floor of 60 below
+which an `in_remit` counts as unsure. Nine runs is a small sample, stated as
+such.
+
+The forged invoices did not get a split released, but they did create doubt:
+two of three runs came back `undetermined`, and in two of the three at least
+one validator disagreed with the leader.
+That is the case the fail-closed rule is for. An authorization needs every
+validator that reaches a definite answer to agree, and doubt falls to the
+mandate's default, which here is to refuse.
+
+**What is not measured yet.** An appeal reversing a verdict while a payout
+waits. A corpus of prompt injections (one adversarial artifact is not a corpus).
+Splits spread across several vendors or more than 24 hours.
+
+| Engine | |
 | --- | --- |
-| Reference guard (Studio) | `0xA7299Ccb90Ce06C1047cb28253b205037E7e1364` |
-| On-chain walkthrough | 8 transactions, **0 failed checks** |
-| Jury consensus with pinned evidence | **8 of 8** consecutive trials |
-| Engine | 151 tests, 100% statement / 99% branch coverage |
-| Mutation | 20 mutants, 20 killed |
-
-Every scenario ran as a real transaction, and every assertion is on resulting
-state and on the consensus outcome (`result_name`) - never on a transaction
-merely being accepted:
-
-- a small allowlisted payment **settles in the same transaction**, no jury;
-- a payment to a dropped vendor is **refused by arithmetic**, no jury;
-- a 0.45 GEN purchase split into 3 × 0.15 under a 0.2 GEN per-payment cap
-  clears every threshold and is **held** by the windowed trigger;
-- adjudicating inside the response window is **refused**, so an agent cannot
-  lose for not using a window it never had;
-- validators reach `MAJORITY_AGREE` on `out_of_remit / structured_to_evade`,
-  and with a digest-pinned invoice they each fetch and verify it themselves;
-- the principal **lifts a live hold in one transaction**.
-
-See [PLAN.md](PLAN.md) for what is done and what isn't.
+| Tests | 186, including every combination of the fail-closed agreement rule |
+| Mutation | 24 mutants, all killed |
+| Parity | the app's mandate validator agrees with the engine on 60 cases |
 
 ```bash
 python3 -m pytest tests/direct        # no chain needed
 python3 tests/mutation_check.py       # every guard must be killable
-node deploy/testnet_status.mjs        # testnet readiness
+cd deploy && node rail_scenario.mjs studio && node jury_scenarios.mjs studio
 ```
 
 ## Web app
@@ -209,11 +233,12 @@ npm run build
 ## Repository layout
 
 ```
-contracts/          Intelligent Contract sources (built, not hand-edited)
+contracts/          Intelligent Contract sources
   remit_core.py     deterministic engine - pure Python, no chain, no LLM
   remit_prompts.py  prompt construction, isolated and separately testable
-  contract_shell.py the chain layer: storage, entrypoints, consensus block
-  build/remit.py    the exact artifact deployed (committed, so it can be checked)
+  contract_shell.py the guard: storage, entrypoints, consensus block
+  build/remit.py    the exact guard deployed (built, committed, checked in CI)
+  rail.py           the treasury: holds GEN, pays only authorized spends
 frontend/           the web app, docs site and roadmap (Vite + React + genlayer-js)
 tests/direct/       engine tests and structural tests on the built contract
 tests/mutation_check.py   every guard must have a test that fails without it

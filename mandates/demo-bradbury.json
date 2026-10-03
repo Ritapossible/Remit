@@ -51,12 +51,12 @@
       "id": "structuring",
       "type": "judgment",
       "when": {
-        "spend_count_gte": {
-          "count": 3,
-          "seconds": 3600
+        "recipient_total_gte": {
+          "amount": 200000000000000001,
+          "seconds": 86400
         }
       },
-      "ask": "Are these separate purchases, or one purchase split across several payments to stay under the per-payment cap?",
+      "ask": "Are these payments to the same recipient separate purchases, or one purchase split across several payments to stay under the per-payment cap?",
       "requires_artifact": false,
       "on_breach": {
         "tier": 2

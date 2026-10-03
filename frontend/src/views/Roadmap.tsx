@@ -23,7 +23,7 @@ function parse(md: string) {
 
   for (const raw of lines) {
     const line = raw.replace(/\s+$/, "");
-    const ph = line.match(/^## (Phase \d+) - (.+?) `\[(x|~| )\]`$/);
+    const ph = line.match(/^## (Phase \d+[a-z]?) - (.+?) `\[(x|~| )\]`$/);
     if (ph) {
       phases.push({ label: ph[1], title: ph[2], status: ph[3] === "x" ? "done" : ph[3] === "~" ? "progress" : "planned", items: [] });
       section = "phase";

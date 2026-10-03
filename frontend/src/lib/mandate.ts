@@ -48,11 +48,18 @@ export interface MandateInfo {
 
 // ----------------------------------------------------------- plain English
 
-const gen = (v: string | number) => `${formatGen(BigInt(v))} GEN`;
+const gen = (v: string | number | bigint) => `${formatGen(BigInt(v))} GEN`;
 const within = (seconds: string | number) => {
   const s = Number(seconds);
   return s === DAY_SECONDS ? "24 hours" : duration(s);
 };
+
+/** "more than X" when the threshold is one smallest unit above a round
+ *  amount (how a "more than the cap" trigger is written), else "X or more". */
+function moreThan(a: number | string | bigint): string {
+  const v = BigInt(a);
+  return v % 1000n === 1n ? `more than ${gen(v - 1n)}` : `${gen(v)} or more`;
+}
 
 /** A rule as a sentence. Reflex rules read as limits; triggers as conditions. */
 export function describePredicate(r: Pick<RuleInfo, "predicate" | "a" | "b" | "s">, asTrigger = false): string {
@@ -74,6 +81,14 @@ export function describePredicate(r: Pick<RuleInfo, "predicate" | "a" | "b" | "s
       return asTrigger ? `${a} or fewer payments within ${within(b)}` : `At most ${a} payments in any ${within(b)}`;
     case "spend_count_gte":
       return asTrigger ? `${a} or more payments within ${within(b)}` : `At least ${a} payments within ${within(b)}`;
+    case "recipient_total_lte":
+      return asTrigger ? `${moreThan(a)} total to one recipient within ${within(b)}`.replace("more than", "at most") : `At most ${gen(a)} to any one recipient in ${within(b)}`;
+    case "recipient_total_gte":
+      return asTrigger ? `${moreThan(a)} paid to the same recipient within ${within(b)}` : `At least ${gen(a)} to one recipient within ${within(b)}`;
+    case "recipient_count_lte":
+      return asTrigger ? `${a} or fewer payments to the same recipient within ${within(b)}` : `At most ${a} payments to any one recipient in ${within(b)}`;
+    case "recipient_count_gte":
+      return asTrigger ? `${a} or more payments to the same recipient within ${within(b)}` : `At least ${a} payments to one recipient within ${within(b)}`;
     case "recipient_in":
       return asTrigger ? `the recipient is on “${s}”` : `Recipient must be on the “${s}” list`;
     case "recipient_not_in":
@@ -241,8 +256,8 @@ export function campaignTemplate(vendors: string[]): string {
     {
       "id": "structuring",
       "type": "judgment",
-      "when": { "spend_count_gte": { "count": 3, "seconds": 3600 } },
-      "ask": "Are these separate purchases, or one purchase split across several payments to stay under the per-payment cap?",
+      "when": { "recipient_total_gte": { "amount": ${(BigInt(G("0.2")) + 1n).toString()}, "seconds": 86400 } },
+      "ask": "Are these payments to the same recipient separate purchases, or one purchase split across several payments to stay under the per-payment cap?",
       "requires_artifact": false,
       "on_breach": { "tier": 2 }
     }

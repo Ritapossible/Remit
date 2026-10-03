@@ -31,8 +31,9 @@ logic lives.
   - [x] Hold-deadline resolution to the registered default (T2)
   - [x] Bond curve: floor, escalation on repeat loss, decay (T1)
   - [x] Withdrawal resolution on **equality**, never an inequality
-- [x] `tests/direct/test_core_*.py` - **134 tests, 100% statement and 99%
-      branch coverage** on the engine, against a 95% target
+- [x] `tests/direct/test_core_*.py` - 134 tests at the end of this phase, 100%
+      statement and 99% branch coverage on the engine, against a 95% target
+      (the suite has grown since; the README carries the current count)
 - [x] Mutation pass - `tests/mutation_check.py`, **20 mutants, 20 killed, 0
       survived**. Every guard has a test that fails when the guard is removed.
 
@@ -104,7 +105,9 @@ Deploy is not the milestone. **Transactions are the milestone.**
       the wallet is asked to switch to Studio or Bradbury, and nothing signs on
       the wrong chain
 - [x] Parity check: UI enums and mandate validator against the Python engine
-- [x] Adjudication stability measured: 8 of 8 consecutive trials reached consensus
+- [x] Adjudication stability: 8 of 8 consecutive trials reached consensus - on
+      **one case**, with an invoice that stated the split. That measured
+      consensus mechanics, not judgment; Phase 4b measures judgment.
 - [x] Docs: getting started, concepts, mandate format, integration, threat model,
       GenVM field notes
 - [ ] Browser end-to-end run of the full flow on Studio, in CI
@@ -112,6 +115,41 @@ Deploy is not the milestone. **Transactions are the milestone.**
 
 **Exit criterion.** A newcomer can go from the landing page to a jury verdict on
 their own guard without reading source code.
+
+## Phase 4b - Answering the review: the check on the money's path `[x]`
+
+An outside review found that the demo proved a narrower thing than the README
+claimed. Every point checked out against the code. What changed:
+
+- [x] **The jury fails closed.** A validator used to accept any leader verdict
+      whenever it was itself unsure, so one confident `in_remit` over a doubtful
+      committee released money. Now an authorization needs agreement, a refusal
+      may stand over doubt, and a validator sure of `in_remit` vetoes anything
+      else (`validator_agrees`). An `in_remit` below confidence 60 counts as
+      undetermined. Every combination is tested; two mutants pin it.
+- [x] **Every fired rule goes to the jury**, not just the first.
+- [x] **The structuring trigger is per recipient.** It was "3 payments to anyone
+      in an hour": it fired on unrelated vendors, let the first two payments of
+      a split clear, and could be waited out. `recipient_total_gte` holds the
+      payment that takes one vendor past the per-payment cap within 24 hours.
+- [x] **The prompt is neutral.** It no longer tells the model that undetermined
+      is "not for a judgement call", says a trigger firing is not evidence, and
+      says a verified artifact proves which document was read - the agent's own
+      - not that it is true; the ledger wins.
+- [x] **Dead designs removed.** The defensibility prompt and its parser are gone;
+      ARCHITECTURE, THREAT-MODEL and CLAUDE.md describe the rule that runs.
+- [x] **The rail** (`contracts/rail.py`): holds GEN, pays only what the guard
+      authorized, once, after a finality delay; the agent cannot withdraw.
+      `deploy/rail-studio.json`: paid and reverted cases, balances read after.
+- [x] **Payable and wallet transfers measured.** The old note "no payable; value
+      sent to a wallet is destroyed" was wrong about the documented path:
+      `gl.public.write.payable` and an EVM-interface `emit_transfer` work on
+      Studio and Bradbury (credited at finality).
+- [x] **Jury measured on evidence that cuts both ways** (fresh guard per case):
+      a plain invoice for one split order, invoices forged to claim two orders,
+      genuinely separate purchases, and no evidence.
+- [ ] Injection corpus (one adversarial artifact is not a corpus) - Phase 6
+- [ ] Appeal reversing a verdict while a payout waits - Phase 6
 
 ## Phase 5 - Testnet `[ ]`
 
@@ -136,8 +174,6 @@ something already built.
   tested in the engine; the contract entrypoint is not.
 - **Tier 2 and 3 enforcement.** Freeze the agent pending principal review; slash
   a standing bond. Today these tiers are recorded as severity only.
-- **Reference treasury.** A GenLayer contract that holds funds and pays only on
-  `authorization_of(...) == "authorized"` - the rail, as code.
 - **Guard factory and index.** Deploy and discover guards per principal.
 - **Mandate republishing.** New versions for new spends, with open cases pinned
   to the version they were raised under.

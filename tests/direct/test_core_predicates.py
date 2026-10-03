@@ -120,3 +120,49 @@ def test_sole_predicate_refuses_an_ambiguous_rule():
 def test_address_normalisation_fails_loudly(bad):
     with pytest.raises(core.RemitError):
         core.normalize_address(bad)
+
+
+# --- same-recipient windows ----------------------------------------------
+#
+# A split purchase is one order from one vendor paid in pieces. An agent-wide
+# count fires on unrelated spending to different vendors and misses a split
+# spread over a longer window; these count only the same recipient.
+
+
+def test_recipient_total_counts_only_the_same_recipient():
+    history = [spend(15000, to=VENDOR_A, at=T0 - 60), spend(90000, to=VENDOR_B, at=T0 - 30)]
+    op = {"amount": 20001, "seconds": 86400}
+    # 15000 to A already + 15000 now = 30000 >= 20001; B's 90000 is ignored.
+    assert ev("recipient_total_gte", op, spend(15000, to=VENDOR_A), history) is True
+    # A first payment to A, with B's large payment in history, does not reach it.
+    assert ev("recipient_total_gte", op, spend(5000, to=VENDOR_A), history[1:]) is False
+    assert ev("recipient_total_lte", op, spend(5000, to=VENDOR_A), history[1:]) is True
+
+
+def test_recipient_total_is_case_insensitive_on_addresses():
+    mixed = "0x" + VENDOR_A[2:].upper()
+    history = [spend(15000, to=mixed, at=T0 - 60)]
+    assert ev("recipient_total_gte", {"amount": 30000, "seconds": 600}, spend(15000, to=VENDOR_A), history) is True
+
+
+def test_recipient_window_excludes_older_payments():
+    history = [spend(15000, to=VENDOR_A, at=T0 - 7200)]
+    op = {"amount": 20001, "seconds": 3600}
+    assert ev("recipient_total_gte", op, spend(15000, to=VENDOR_A), history) is False
+    assert ev("recipient_total_gte", {"amount": 20001, "seconds": 86400}, spend(15000, to=VENDOR_A), history) is True
+
+
+def test_recipient_count_counts_only_the_same_recipient():
+    history = [spend(1, to=VENDOR_B, at=T0 - 10), spend(1, to=VENDOR_B, at=T0 - 20)]
+    op = {"count": 3, "seconds": 3600}
+    assert ev("recipient_count_gte", op, spend(1, to=VENDOR_A), history) is False
+    assert ev("recipient_count_gte", op, spend(1, to=VENDOR_B), history) is True
+    assert ev("recipient_count_lte", {"count": 2, "seconds": 3600}, spend(1, to=VENDOR_B), history) is False
+
+
+def test_three_unrelated_vendors_do_not_look_like_a_split():
+    """The critique's case: an agent-wide count of 3 fires on three payments to
+    three different vendors. The same-recipient trigger does not."""
+    history = [spend(15000, to=VENDOR_B, at=T0 - 60), spend(15000, to=DROPPED, at=T0 - 30)]
+    assert ev("spend_count_gte", {"count": 3, "seconds": 3600}, spend(15000, to=VENDOR_A), history) is True
+    assert ev("recipient_total_gte", {"amount": 20001, "seconds": 86400}, spend(15000, to=VENDOR_A), history) is False

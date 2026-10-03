@@ -4,22 +4,52 @@ Remit authorizes; something else pays. This page is for whoever builds that
 something else - a treasury contract, a payment service, or an agent
 framework's wallet - and for agents that call Remit directly.
 
-## The one call a rail needs
+## Use the rail
 
-```python
-authorization_of(spend_id: int) -> str   # "authorized" | "refused" | "pending"
+The safest integration is to not write one: deploy **`RemitRail`**
+(`contracts/rail.py`) next to the guard and fund it instead of the agent's
+wallet.
+
+```text
+deploy  RemitRail(guard_address, finality_seconds)   # by the guard's principal
+fund()                payable; anyone may top it up
+pay(spend_id)         anyone may call; pays the authorized recipient the
+                      authorized amount, once, or reverts
+withdraw(amount)      principal only
+status()              balance, funded, paid_total, paid_count
+payment_of(spend_id)  {"paid": bool, "amount": int, "paid_at": int}
 ```
 
-Pay only on `authorized`. Treat `pending` as *not yet* and poll; treat anything
-else, including an error, as *no*.
+`pay` reverts unless the guard's `settlement_of` says `authorized`, the spend is
+unpaid, the rail holds enough, and the decision is at least `finality_seconds`
+old. Set `finality_seconds` to at least the network's appeal window. The rail
+refuses to bind to a shadow-mode guard, or to a guard whose principal is not
+the deployer. `deploy/rail_scenario.mjs` exercises every one of these on chain.
+
+## The call a rail needs
+
+```python
+settlement_of(spend_id: int) -> str   # JSON
+# {"authorization": "authorized" | "refused" | "pending",
+#  "recipient": "0x...", "amount": int, "decided_at": int,
+#  "shadow": bool, "principal": "0x...", "agent": "0x..."}
+```
+
+Pay only on `authorized`, only the `amount` to the `recipient`, and only after
+`decided_at` is older than your finality delay. Treat `pending` as *not yet*;
+treat anything else, including an error, as *no*. `settlement_of` reports the
+real outcome even in shadow mode; `authorization_of(spend_id)` returns only the
+status and reports `authorized` for every spend under shadow mode (it is for
+observers, not payers).
 
 ### From a GenLayer contract
 
 ```python
-remit = gl.get_contract_at(Address(REMIT_GUARD))
-if remit.view().authorization_of(spend_id) != "authorized":
+s = json.loads(gl.get_contract_at(Address(REMIT_GUARD)).view().settlement_of(spend_id))
+if s["authorization"] != "authorized":
     raise gl.vm.UserError("[EXPECTED] spend is not authorized")
-# ... move funds ...
+# check s["decided_at"] against a finality delay, mark it paid, then pay
+# s["amount"] to s["recipient"] - see contracts/rail.py
 ```
 
 ### From anywhere else
@@ -31,7 +61,7 @@ import { studionet } from "genlayer-js/chains";
 const client = createClient({ chain: studionet });
 const status = await client.readContract({
   address: REMIT_GUARD,
-  functionName: "authorization_of",
+  functionName: "settlement_of",
   args: [spendId],
 });
 ```

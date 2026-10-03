@@ -22,27 +22,62 @@
     ]
   },
   "rules": [
-    {"id": "daily-cap",   "type": "reflex", "check": {"daily_total_lte": 50000}},
-    {"id": "per-spend",   "type": "reflex", "check": {"amount_lte": 20000}},
-    {"id": "allowlist",   "type": "reflex", "check": {"recipient_in": "vendors"}},
-    {"id": "not-dropped", "type": "reflex", "check": {"recipient_not_in": "dropped"}},
+    {
+      "id": "daily-cap",
+      "type": "reflex",
+      "check": {
+        "daily_total_lte": 50000
+      }
+    },
+    {
+      "id": "per-spend",
+      "type": "reflex",
+      "check": {
+        "amount_lte": 20000
+      }
+    },
+    {
+      "id": "allowlist",
+      "type": "reflex",
+      "check": {
+        "recipient_in": "vendors"
+      }
+    },
+    {
+      "id": "not-dropped",
+      "type": "reflex",
+      "check": {
+        "recipient_not_in": "dropped"
+      }
+    },
     {
       "id": "brief-alignment",
       "type": "judgment",
-      "when": {"amount_gte": 10000},
+      "when": {
+        "amount_gte": 10000
+      },
       "ask": "Does this purchase serve the Q4 campaign brief?",
       "context_uri": "https://example.org/briefs/q4.md",
       "context_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
       "requires_artifact": true,
-      "on_breach": {"tier": 1}
+      "on_breach": {
+        "tier": 1
+      }
     },
     {
       "id": "structuring",
       "type": "judgment",
-      "when": {"spend_count_gte": {"count": 3, "seconds": 3600}},
-      "ask": "Are these separate purchases, or one purchase split across payments to stay under the per-spend cap?",
+      "when": {
+        "recipient_total_gte": {
+          "amount": 20001,
+          "seconds": 86400
+        }
+      },
+      "ask": "Are these payments to the same recipient separate purchases, or one purchase split across several payments to stay under the per-payment cap?",
       "requires_artifact": false,
-      "on_breach": {"tier": 2}
+      "on_breach": {
+        "tier": 2
+      }
     }
   ]
 }

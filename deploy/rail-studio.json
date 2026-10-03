@@ -1,0 +1,190 @@
+{
+  "network": "studio",
+  "guard": "0x044d9C8f19937A41C6267cDcF0ec87293e80E589",
+  "rail": "0xB417b4feb52F85DF73582D96Cd7806903CCf732F",
+  "finality_seconds": 45,
+  "log": [
+    {
+      "tx": "deploy guard",
+      "hash": "0x5b606b53b953b08d84b207ac5efb2b9e2226e7a99d56a519a6865738298f8ae5",
+      "address": "0x044d9C8f19937A41C6267cDcF0ec87293e80E589"
+    },
+    {
+      "tx": "deploy rail",
+      "hash": "0x487c05aed94a742e526f5a9412745e7c5406c4e00a369a0b9fa329b3caa2a8d5",
+      "address": "0xB417b4feb52F85DF73582D96Cd7806903CCf732F"
+    },
+    {
+      "tx": "fund",
+      "hash": "0x1090069c0f5b96690c6aa9410317a44cb9400a00bd073cd14f655ef3419e6b4a",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "fund applied",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "rail balance",
+      "actual": "0.5 GEN",
+      "expected": "0.5 GEN",
+      "ok": true
+    },
+    {
+      "tx": "spend 0",
+      "hash": "0x6c1568dec9f7c5848808cbc263a052c753324989be0c4611d1c79ca2bb7779c4",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "guard says",
+      "actual": "authorized",
+      "expected": "authorized",
+      "ok": true
+    },
+    {
+      "tx": "pay 0 early",
+      "hash": "0xcda6f3b3cf6bd49ffa33c7326bcd65562d37848e1538b3f85a3a670d8c2f26f7",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "contract_error"
+    },
+    {
+      "check": "early pay refused by consensus (agreed on the revert)",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "tx": "pay 0",
+      "hash": "0xba82eaea89febceb2bfd7c99e99cab7a9ed40a0c1db5b90eb07b4d4d75e19da2",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "pay applied",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "vendor received",
+      "actual": "0.15 GEN",
+      "expected": "0.15 GEN",
+      "ok": true
+    },
+    {
+      "check": "rail paid out",
+      "actual": "0.15 GEN",
+      "expected": "0.15 GEN",
+      "ok": true
+    },
+    {
+      "tx": "pay 0 again",
+      "hash": "0x3303029f406ee5fda6c098c7e7520bebfcf67d4d78085cca996ad79879e3f37b",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "contract_error"
+    },
+    {
+      "check": "double pay refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "tx": "spend 1",
+      "hash": "0xb7a5381524eff048ca41328a577981743b45a4468cf4479a66045b4882bb733a",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "guard says",
+      "actual": "pending",
+      "expected": "pending",
+      "ok": true
+    },
+    {
+      "tx": "pay 1 while held",
+      "hash": "0xd32e6fb0d3cac4a771c9a2cfe773f670887d59b7de05c6e1e64f6d0ee0825bba",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "contract_error"
+    },
+    {
+      "check": "paying a held spend refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "rail balance unchanged",
+      "actual": "0.35 GEN",
+      "expected": "0.35 GEN",
+      "ok": true
+    },
+    {
+      "tx": "spend 2",
+      "hash": "0xaebd357de6f1632370637b0f482a7f933ef4249ad4c07f87d282107ceba2b6af",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "check": "guard says",
+      "actual": "refused",
+      "expected": "refused",
+      "ok": true
+    },
+    {
+      "tx": "pay 2 refused",
+      "hash": "0x15197fa6a89e29674f14a4427a42d5ce42ef10ed032776e97e5de96a0e9e6d96",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "contract_error"
+    },
+    {
+      "check": "paying a refused spend refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "outsider received nothing",
+      "actual": "0 GEN",
+      "expected": "0 GEN",
+      "ok": true
+    },
+    {
+      "tx": "agent withdraw",
+      "hash": "0x20804aab3e3275b32bfd4f590ca3fe08a9976241b6733a8215fb145dc7b1699a",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "contract_error"
+    },
+    {
+      "check": "agent withdraw refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "paid exactly one spend",
+      "actual": "1",
+      "expected": "1",
+      "ok": true
+    },
+    {
+      "check": "rail holds the rest",
+      "actual": "0.35 GEN",
+      "expected": "0.35 GEN",
+      "ok": true
+    }
+  ],
+  "status": {
+    "guard": "0x044d9C8f19937A41C6267cDcF0ec87293e80E589",
+    "principal": "0xf1827CaD7C88f02a7cAd3627D7CE482A8f2D33C7",
+    "agent": "0x8aA26Fa51a68c583C467463e93db0EBc10f7D509",
+    "finality_seconds": 45,
+    "balance": 350000000000000000,
+    "funded": 500000000000000000,
+    "paid_total": 150000000000000000,
+    "paid_count": 1
+  }
+}

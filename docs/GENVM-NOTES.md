@@ -35,15 +35,25 @@ Introspected on the pinned runner:
 
 | Namespace | Members |
 | --- | --- |
-| `gl.public` | `view`, `write` - no `payable` |
+| `gl.public` | `view`, `write` (and `gl.public.write.payable`) |
 | `gl.advanced` | `emit_raw_event`, `gl_call`, `user_error_immediate` |
 | `gl.wasi` | `get_balance`, `get_self_balance`, `gl_call`, `storage_read`, `storage_write` |
 | `gl.ContractProxy` | `address`, `balance`, `emit`, `emit_transfer`, `view` |
 
-The only way to move value is `ContractProxy.emit_transfer`, a
-contract-to-contract call - which is why value sent through it to a wallet is
-destroyed. The clock is `datetime.datetime.now()`; GenVM makes it
-deterministic.
+**Correction.** An earlier version of this table said "no `payable`" because
+introspection looked for it on `gl.public`. It lives on `gl.public.write`, as
+GenLayer's value-transfer docs show, and it works on this runner. Measured with
+a probe contract on Studio and Bradbury:
+
+| Step | Studio | Bradbury |
+| --- | --- | --- |
+| `@gl.public.write.payable` deposit of 0.01 GEN | contract balance 0.01 | contract balance 0.01 |
+| `emit_transfer` of 0.004 GEN to a fresh wallet through `@gl.evm.contract_interface` | wallet credited ~30 s later, at finality | message emitted with `onAcceptance: false`; credited at finality (after the appeal window) |
+
+What destroys value is calling `gl.get_contract_at(wallet).emit_transfer`,
+which treats a wallet as an Intelligent Contract. Wallets are paid through an
+EVM contract interface; `contracts/rail.py` does exactly that. The clock is
+`datetime.datetime.now()`; GenVM makes it deterministic.
 
 ## Consensus
 

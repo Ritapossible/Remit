@@ -1,10 +1,12 @@
 {
   "studio": {
-    "address": "0xA7299Ccb90Ce06C1047cb28253b205037E7e1364",
-    "deploy_tx": "0x2ce5ece73cf6ba8ea2fca4e9de9d6de29a9250555100b4bfe4a067c4f28fa1d4",
+    "address": "0x19908B77Ae8Ace8fDe99ff774762c418dB7F8A96",
+    "deploy_tx": "0xf5696e1e6c52ce9f6a82c0c6e398b278b5ead9412ff94050b439c7ec5a5353eb",
     "agent": "0x8aA26Fa51a68c583C467463e93db0EBc10f7D509",
     "max_tier": 2,
     "shadow": false,
-    "at": "2026-09-30T16:50:41.872Z"
+    "at": "2026-10-03T00:14:51.711Z",
+    "rail": "0xd192b531eD94f3380e8D3C14b9BD2dbB4B4E1AD5",
+    "rail_finality_seconds": 60
   }
 }

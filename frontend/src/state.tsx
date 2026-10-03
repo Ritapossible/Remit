@@ -69,6 +69,9 @@ interface AppState {
   canSign: boolean;
   guard: string;
   setGuard(g: string): void;
+  /** The RemitRail that pays this guard's authorized spends, if one is known. */
+  rail: string;
+  setRail(r: string): void;
   client: Client;
   mandate: MandateInfo | null;
   mandateError: string;
@@ -79,17 +82,29 @@ interface AppState {
 
 const Ctx = createContext<AppState | null>(null);
 
-function readQuery(): { net?: NetworkId; guard?: string } {
+function readQuery(): { net?: NetworkId; guard?: string; rail?: string } {
   const q = new URLSearchParams(window.location.search);
   const net = q.get("net");
-  return { net: net === "studio" || net === "bradbury" ? net : undefined, guard: q.get("guard") ?? undefined };
+  return {
+    net: net === "studio" || net === "bradbury" ? net : undefined,
+    guard: q.get("guard") ?? undefined,
+    rail: q.get("rail") ?? undefined,
+  };
 }
 
-function writeQuery(net: NetworkId, guard: string) {
+/** The reference rail belongs to the reference guard only. */
+function defaultRailFor(net: NetworkId, guard: string): string {
+  const n = NETWORKS[net];
+  return n.defaultRail && sameAddr(guard, n.defaultGuard) ? n.defaultRail : "";
+}
+
+function writeQuery(net: NetworkId, guard: string, rail: string) {
   const q = new URLSearchParams(window.location.search);
   q.set("net", net);
   if (guard) q.set("guard", guard);
   else q.delete("guard");
+  if (rail && rail !== defaultRailFor(net, guard)) q.set("rail", rail);
+  else q.delete("rail");
   window.history.replaceState(null, "", `${window.location.pathname}?${q}${window.location.hash}`);
 }
 
@@ -102,6 +117,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const extRef = useRef(ext);
   extRef.current = ext;
   const [guard, setGuardRaw] = useState<string>(initial.guard ?? NETWORKS[initial.net ?? "studio"].defaultGuard ?? "");
+  const [rail, setRailRaw] = useState<string>(
+    () => initial.rail ?? defaultRailFor(initial.net ?? "studio", initial.guard ?? NETWORKS[initial.net ?? "studio"].defaultGuard ?? ""),
+  );
   const [mandate, setMandate] = useState<MandateInfo | null>(null);
   const [mandateError, setMandateError] = useState("");
 
@@ -114,7 +132,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  useEffect(() => writeQuery(network, guard), [network, guard]);
+  useEffect(() => writeQuery(network, guard, rail), [network, guard, rail]);
 
   const setNetwork = useCallback((n: NetworkId) => {
     setNetworkRaw(n);
@@ -125,9 +143,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // A burner exists only on Studio. Never carry one onto the testnet.
     setWallet((w) => (n === "studio" ? (w.kind === "none" ? loadBurner() : w) : w.kind === "burner" ? { kind: "none" } : w));
     setGuardRaw(NETWORKS[n].defaultGuard ?? "");
+    setRailRaw(defaultRailFor(n, NETWORKS[n].defaultGuard ?? ""));
   }, []);
 
-  const setGuard = useCallback((g: string) => setGuardRaw(g.trim()), []);
+  // A rail belongs to one guard: changing the guard drops it unless the new
+  // guard is the reference one with its reference rail.
+  const setGuard = useCallback(
+    (g: string) => {
+      setGuardRaw(g.trim());
+      setRailRaw(defaultRailFor(network, g.trim()));
+    },
+    [network],
+  );
+  const setRail = useCallback((r: string) => setRailRaw(r.trim()), []);
 
   const wallet: Wallet = useMemo(
     () =>
@@ -200,6 +228,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     canSign,
     guard,
     setGuard,
+    rail,
+    setRail,
     client,
     mandate,
     mandateError,

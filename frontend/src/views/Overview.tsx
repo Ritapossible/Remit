@@ -1,3 +1,4 @@
+import { RailPanel } from "../components/Rail";
 import { useApp, href } from "../state";
 import { useDocket } from "../hooks";
 import { describePredicate, type RuleInfo } from "../lib/mandate";
@@ -117,6 +118,9 @@ export function Overview() {
           )}
         </section>
       </div>
+
+      <h2 className="app-h2">Where the money is</h2>
+      <RailPanel />
 
       <h2 className="app-h2">Authority</h2>
       <div className="grid-2">

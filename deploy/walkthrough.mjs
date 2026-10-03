@@ -7,7 +7,7 @@ import fs from "node:fs";
 import { clientFor, accountFor, retry, outcome, WAIT } from "./lib.mjs";
 
 const network = process.argv[2] || "studio";
-const { address } = JSON.parse(fs.readFileSync("deployments.json", "utf8"))[network];
+const { address, rail } = JSON.parse(fs.readFileSync("deployments.json", "utf8"))[network];
 const agent = clientFor(network, "agent");
 const principal = clientFor(network, "principal");
 const vendorA = accountFor("vendor").address;
@@ -65,12 +65,14 @@ check("rule that refused it", JSON.stringify(s.rules), '["allowlist"]');
 check("no jury convened", s.verdict === "", true);
 
 // --- 3: structuring - the scenario the product exists for -----------------
-console.log("\n[3] structuring - payments that clear every threshold");
-await send(agent, "request_spend", [vendorA, GEN(0.15), "media", "", "", "campaign asset 1"], "spend#2");
+// The trigger is per recipient: the payment that takes one vendor's 24-hour
+// total past the 0.2 GEN per-payment cap is held. Payments to other vendors
+// do not count, and the first payment of a split is the most that clears.
+console.log("\n[3] structuring - the payment that crosses the cap for one vendor is held");
+await send(agent, "request_spend", [vendorA, GEN(0.15), "media", "", "", "PO-5521 product video"], "spend#2");
 let e2 = await spendOf(2);
-check("spend#2 settles (2nd in window)", e2.state, "settled");
-
-await send(agent, "request_spend", [vendorB, GEN(0.15), "media", "", "", "campaign asset 2"], "spend#3");
+check("spend#2 settles (vendor total 0.20, at the cap)", e2.state, "settled");
+await send(agent, "request_spend", [vendorA, GEN(0.15), "media", "", "", "PO-5521 product video"], "spend#3");
 s = await spendOf(3);
 check("state", s.state, "held");
 check("authorization withheld", s.authorization, "pending");
@@ -78,7 +80,6 @@ check("trigger that fired", JSON.stringify(s.rules), '["structuring"]');
 // The refused spend#1 is deliberately absent from the window: a spend that
 // never moved value must not count against a later one.
 check("refused spend did not count toward the window", s.rules.includes("structuring"), true);
-
 // --- 4: T9 - cannot adjudicate before the agent has had its window -------
 console.log("\n[4] T9 - adjudicating inside the response window must be refused");
 const early = await send(principal, "adjudicate", [3], "adjudicate-early");
@@ -100,7 +101,7 @@ check("authorization decided", ["authorized", "refused"].includes(s.authorizatio
 
 // --- 6: the principal always outranks Remit ------------------------------
 console.log("\n[6] override - the principal lifts a live hold in one transaction");
-await send(agent, "request_spend", [vendorA, GEN(0.15), "media", "", "", "campaign asset 3"], "spend#4");
+await send(agent, "request_spend", [vendorA, GEN(0.1), "media", "", "", "PO-5560 thumbnail set"], "spend#4");
 let held = await spendOf(4);
 check("spend#4 held by the trigger", held.state, "held");
 if (held.state === "held") {
@@ -108,6 +109,20 @@ if (held.state === "held") {
   const after = await spendOf(4);
   check("override released it", after.authorization, "authorized");
   check("recorded as an override", after.reason, "principal_override");
+}
+
+// --- 7: the rail pays what the guard authorized, and nothing else --------
+if (rail) {
+  console.log(`\n[7] rail ${rail} - pay every spend; only authorized ones move money`);
+  const st = JSON.parse(await retry("rail status", () => principal.readContract({ address: rail, functionName: "status", args: [] }), 4));
+  await sleep((st.finality_seconds + 5) * 1000);
+  for (let id = 0; id < 5; id++) {
+    const auth = (await spendOf(id)).authorization;
+    const h = await retry(`pay#${id}`, () => principal.writeContract({ address: rail, functionName: "pay", args: [id], value: 0n }), 4);
+    const r = outcome(await retry(`pay#${id} receipt`, () => principal.waitForTransactionReceipt({ hash: h, status: WAIT, retries: 300, interval: 2500 }), 4));
+    txs.push({ label: `pay#${id}`, hash: h, leader: r.leader, consensus: r.consensus });
+    check(`pay #${id} (${auth}) ${auth === "authorized" ? "paid" : "reverted"}`, auth === "authorized" ? r.applied : r.refused, true);
+  }
 }
 
 // --- record --------------------------------------------------------------

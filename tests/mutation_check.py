@@ -22,6 +22,30 @@ TARGET = os.path.join(ROOT, "contracts", "remit_core.py")
 # (name, what it breaks, original fragment, mutated fragment)
 MUTATIONS = [
     (
+        "jury-fails-open",
+        "an unsure validator must not accept a leader that releases money",
+        "    if own_verdict == VERDICT_IN_REMIT:\n        return False\n    return leader_outcome == OUTCOME_REFUSED",
+        "    if own_verdict == VERDICT_IN_REMIT:\n        return False\n    return own_verdict == VERDICT_UNDETERMINED or leader_outcome == OUTCOME_REFUSED",
+    ),
+    (
+        "in-remit-validator-loses-veto",
+        "a validator sure the spend is in remit vetoes any other answer",
+        "    if own_verdict == VERDICT_IN_REMIT:\n        return False\n",
+        "",
+    ),
+    (
+        "hesitant-yes-counts",
+        "an in_remit below the confidence floor is undetermined",
+        "    if verdict == VERDICT_IN_REMIT and int(confidence) < MIN_IN_REMIT_CONFIDENCE:",
+        "    if verdict == VERDICT_IN_REMIT and int(confidence) < 0:",
+    ),
+    (
+        "recipient-window-sees-everyone",
+        "same-recipient predicates must ignore other recipients",
+        "        history = same_recipient(spend, history)",
+        "        history = history",
+    ),
+    (
         "equality-to-inequality",
         "hard law 2: settle on equality, never an inequality",
         "    if escrow != committed:\n        raise RemitError",

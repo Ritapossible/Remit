@@ -14,7 +14,9 @@ const REF = process.argv[2];
 const BASE = process.argv[3] ?? "http://localhost:4173";
 const SHOTS = new URL("../../docs/screenshots/", import.meta.url).pathname;
 mkdirSync(SHOTS, { recursive: true });
-const INVOICE = "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/invoice-INV-88.json";
+// An ordinary invoice: one order of 0.30 GEN, two payments received. It states
+// no motive - the jury must read the split from the ledger and the document.
+const INVOICE = "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/invoice-INV-91.json";
 
 let failures = 0;
 const check = (label, ok, detail = "") => {
@@ -42,7 +44,7 @@ await waitText("only what you");
 await waitText("Live · GenLayer Studio", 60000);
 check("landing shows a live case from the reference guard", true);
 await page.getByText("Does Remit hold my agent’s money?").click();
-check("FAQ expands", (await page.locator("main").innerText()).includes("contract-to-contract"));
+check("FAQ expands", (await page.locator("main").innerText()).includes("no way to withdraw"));
 await shot("00-home");
 await page.getByRole("button", { name: /Switch to dark theme/ }).click();
 check("theme toggles to dark", (await page.evaluate(() => document.documentElement.dataset.theme)) === "dark");
@@ -115,21 +117,19 @@ async function spend(amount, claim, expect) {
   await waitText(expect.result, 300000);
 }
 
-console.log("\n[flow] three payments of 0.15 GEN - one 0.45 purchase, split");
-await spend("0.15", "invoice INV-88, part 1 of 3", { preview: "Authorized instantly", result: "authorized." });
+console.log("\n[flow] two payments of 0.15 GEN to one vendor - one 0.30 order, split");
+await spend("0.15", "PO-5521 product video", { preview: "Authorized instantly", result: "authorized." });
 check("payment 1 authorized in the same transaction", true);
-await spend("0.15", "invoice INV-88, part 2 of 3", { preview: "Authorized instantly", result: "authorized." });
-check("payment 2 authorized in the same transaction", true);
 
 await page.goto(page.url().replace(/#.*$/, "#/app/spend"));
 await page.getByLabel("Amount (GEN)").fill("0.15");
-await page.getByPlaceholder("e.g. invoice INV-88, part 3 of 3").fill("invoice INV-88, part 3 of 3");
+await page.getByPlaceholder("e.g. invoice INV-88, part 3 of 3").fill("PO-5521 product video");
 await waitText("Held for the jury", 60000);
 check("preview predicts the hold before signing", (await text()).includes("one purchase split"));
 await shot("05-preview-held");
 await page.getByRole("button", { name: "Request authorization" }).click();
 await waitText("held for the jury.", 300000);
-check("payment 3 held", true);
+check("payment 2 held - it takes the vendor past the per-payment cap", true);
 await page.getByText("Open the case →").click();
 await waitText("Act on this case");
 
@@ -164,7 +164,34 @@ if (verdictOrRetry === "no-consensus") {
 t = await text();
 check("jury verdict recorded", /Outside the remit|Within the remit|Undetermined/.test(t));
 check("verdict is out of remit", t.includes("Outside the remit"));
+check("the rail would not pay it", t.includes("The rail will not pay") || t.includes("No rail is attached"));
 await shot("07-case-verdict");
+const caseUrl = page.url();
+
+console.log("\n[flow] a rail: deploy, fund, pay what was authorized");
+await page.goto(caseUrl.replace(/#.*$/, "#/app"));
+await page.getByRole("button", { name: "Deploy a rail for this guard" }).click();
+await page.getByRole("button", { name: "Attach it" }).waitFor({ timeout: 300000 });
+check("rail deployed through the UI", true);
+await page.getByRole("button", { name: "Attach it" }).click();
+await waitText("The agent cannot withdraw.", 60000);
+await page.getByLabel("GEN to add").fill("0.3");
+await page.getByRole("button", { name: "Add GEN" }).click();
+await waitText("Funds added to the rail.", 300000);
+check("rail funded", true);
+await page.goto(page.url().replace(/#.*$/, "#/app/case/0"));
+await page.getByRole("button", { name: /Pay .* from the rail/ }).waitFor({ timeout: 60000 });
+await page.waitForFunction(() => ![...document.querySelectorAll("button")].find((b) => /from the rail/.test(b.textContent))?.disabled, null, { timeout: 120000 });
+await page.getByRole("button", { name: /Pay .* from the rail/ }).click();
+await waitText("Paid. The recipient", 300000);
+check("authorized spend paid from the rail", true);
+await page.reload();
+await waitText("The rail sent", 60000);
+check("payment recorded on the rail", true);
+await page.goto(page.url().replace(/#.*$/, "#/app/case/1"));
+await waitText("The rail will not pay this spend", 60000);
+check("refused spend shown as unpayable", true);
+await shot("11-rail");
 
 // ----------------------------------------------------------------- mobile
 console.log("\n[layout] phone width");

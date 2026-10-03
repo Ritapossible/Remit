@@ -19,16 +19,20 @@ Canonical references, in this order:
 Breaking any of these has already cost real money or real days. Each has a
 structural test; if the test is missing, write it before the code.
 
-### 1. Never push value. Ever.
+### 1. The gate never holds value; only the rail moves it
 
-`emit_transfer` credits a **contract**. It does **not** credit an externally
-owned account. Measured on Studio: the sender is debited, the wallet is credited
-nothing, the value is destroyed, and the transaction reports ACCEPTED.
+`gl.get_contract_at(wallet).emit_transfer` treats a wallet as an Intelligent
+Contract: the sender is debited, the wallet is credited nothing, and the
+transaction reports ACCEPTED. Never pay a wallet that way.
 
-Every payout is `owed[address] += amount` plus a `withdraw()` the recipient
-calls. Vendor payouts, refunds, bond returns, slash proceeds - no exceptions.
+The guard (`contracts/contract_shell.py`) has no payable method and no transfer.
+Value lives in `contracts/rail.py`, which pays wallets through an EVM contract
+interface (`@gl.evm.contract_interface` + `emit_transfer`) - measured on Studio
+to credit the wallet at finality - and only from `pay(spend_id)` after the
+guard authorized it, or `withdraw` by the principal.
 
-> Test: `test_no_emit_transfer_in_contract_source` greps the **built** source.
+> Tests: `test_no_emit_transfer_in_contract_source` greps the **built** guard;
+> `tests/direct/test_rail_structure.py` pins the rail's two value paths.
 
 ### 2. Resolve entitlement on equality, never an inequality
 
@@ -92,22 +96,20 @@ binary search over the module to find.
 > Test: `test_runner_is_pinned_to_the_documented_hash` plus the build's own
 > preamble ordering.
 
-### 9. There is no transfer primitive on `gl.advanced`
+### 9. Value: payable is on `gl.public.write`; wallets are paid via an EVM interface
 
-Introspected on the live runner: `gl.advanced` has only `emit_raw_event`,
-`gl_call`, `user_error_immediate`. `gl.public` has only `view` and `write` -
-**no `payable`**. `gl.wasi` has only `get_balance` / `get_self_balance`, both
-read-only.
+`gl.public.write.payable` exists on the pinned runner (an earlier note here said
+it did not; it was looked for on `gl.public`). `gl.message.value` holds the
+amount. To an Intelligent Contract, send with
+`gl.get_contract_at(addr).emit_transfer(value=...)`; to a wallet, declare an
+`@gl.evm.contract_interface` class and call `.emit_transfer(value=...)` on it.
+Value sent this way arrives when the sending transaction finalises.
 
-The one way to move value is `ContractProxy.emit_transfer(*, value, on=...)`,
-reached through `gl.get_contract_at(addr)`. It is a **contract-to-contract**
-call, which is exactly why value routed through it to an externally owned
-account is destroyed.
-
-Remit therefore takes no custody at all. A gate that holds nothing cannot
-destroy anything.
+The guard still holds nothing: a refusal an appeal reverses then costs nothing
+there, and only the rail must be audited for value handling.
 
 > Test: `test_no_emit_transfer_in_contract_source`, `test_no_payable_entrypoint`
+> (guard); `tests/direct/test_rail_structure.py` (rail)
 
 ### 10. A leader's value reaches the validator as a wrapper object
 
@@ -150,13 +152,15 @@ split is:
 - **deterministic evidence** (the artifact's hash-checked state) - compared
   **exactly**; the validator fetched it itself, so a leader cannot lie about it;
 - **the judgement** - the validator answers the same question from its own
-  evidence, and agrees if the verdicts match, or if its own answer is
-  `undetermined` (a validator that is itself unsure does not veto a colleague
-  who reached a definite answer; two opposite *definite* answers is a real
-  disagreement, which is what appeals are for).
+  evidence and compares through `validator_agrees`, which **fails closed**: a
+  leader's refusal may stand over an unsure validator; a leader's authorization
+  stands only on agreement; a validator sure the spend is in remit vetoes
+  anything else. A hesitant `in_remit` (confidence below 60) counts as
+  `undetermined`.
 
-Neither half may be dropped: exact-only cannot reach consensus,
-defensibility-only lets a leader assert any evidence it likes.
+Neither half may be dropped. And never let an unsure validator accept
+everything: that let one confident `in_remit` release money over a committee of
+doubters.
 
 ### 13. Coerce storage reads before capturing them in a closure
 
@@ -228,8 +232,12 @@ network defect. Check guard ordering before blaming the network.
 - **The engine is chain-free.** `remit_core.py` imports no `gl.*`, touches no
   network, calls no LLM. If a decision can be made deterministically, it lives
   there and is tested in milliseconds.
-- **One guard instance per agent.** Factory-deployed. There is no shared-instance
-  path - a shared instance reintroduces head-of-line blocking (T6).
+- **One guard instance per agent**, deployed by its principal (a factory is on
+  the roadmap, not built). There is no shared-instance path - a shared instance
+  reintroduces head-of-line blocking (T6).
+- **Never claim what is not on chain.** Every claim in the README and docs is
+  backed by a recorded transaction in `deploy/*.json` or a test, or is labelled
+  as not built. A review found the opposite once; it cost a rewrite.
 - **Keys never enter the repository.** Deployment keys live outside the working
   tree, `chmod 600`. `*.key` and `keys/` are in `.gitignore`.
 - **The clock is `datetime.datetime.now()`.** GenVM makes it deterministic;

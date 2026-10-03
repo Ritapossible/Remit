@@ -305,12 +305,13 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
     a: (
       <>
         <p>
-          No. Remit only decides. Your treasury contract, card program or agent wallet reads{" "}
-          <code className="mono">authorization_of(spend)</code> and pays on “authorized”.
+          The gate doesn’t. A separate contract, the <b>rail</b>, holds it. The rail’s only payout pays a spend the
+          guard authorized - the exact amount, to the exact recipient, once - and only after the decision has had time
+          to finalise. The agent’s key has no way to withdraw from it.
         </p>
         <p>
-          That’s deliberate: on GenLayer the only value primitive is a contract-to-contract transfer, and a gate that
-          holds nothing can’t lose anything. A provisional refusal also costs nothing to reverse.
+          Fund the rail instead of the agent’s wallet and the check sits on the path the money takes. Money you leave
+          in the agent’s own wallet, Remit cannot stop.
         </p>
       </>
     ),
@@ -334,8 +335,15 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
           recorded, and answers the mandate’s question independently.
         </p>
         <p>
-          The agent’s note is shown to them labelled as untrusted and can’t override the mandate. Amounts, recipients
-          and history come from the contract’s own ledger, not from the agent.
+          The agent’s note and any document it attaches are shown to them as the agent’s own evidence: the ledger wins
+          where they conflict. Amounts, recipients and history come from the contract’s own ledger, not from the agent.
+        </p>
+        <p>
+          The jury fails closed. A payment is released only if the validators who reach a definite answer agree it is
+          in remit; doubt falls to the mandate’s default, which in the templates is to refuse. On Studio, invoices
+          forged to make a split look like two unrelated orders never got it released in three runs - but they did
+          create doubt: two runs ended undetermined and some validators disagreed. That is why doubt refuses rather
+          than releases.
         </p>
       </>
     ),

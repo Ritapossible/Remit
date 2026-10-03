@@ -73,6 +73,8 @@ surface area and an unevaluable one is worse than a missing one:
 | `daily_total_lte` / `daily_total_gte` | integer |
 | `window_total_lte` / `window_total_gte` | `{"amount": int, "seconds": int}` |
 | `spend_count_lte` / `spend_count_gte` | `{"count": int, "seconds": int}` |
+| `recipient_total_lte` / `recipient_total_gte` | `{"amount": int, "seconds": int}` - payments to **this spend's recipient** only |
+| `recipient_count_lte` / `recipient_count_gte` | `{"count": int, "seconds": int}` - payments to **this spend's recipient** only |
 | `recipient_in` / `recipient_not_in` | vendor list name |
 | `category_in` / `category_not_in` | list of category strings |
 
@@ -135,11 +137,18 @@ individual amounts does not evade it:
 {
   "id": "structuring",
   "type": "judgment",
-  "when": {"spend_count_gte": {"count": 3, "seconds": 3600}},
-  "ask": "Are these separate purchases, or one purchase split across payments to stay under the per-spend cap?",
+  "when": {"recipient_total_gte": {"amount": 200000000000000001, "seconds": 86400}},
+  "ask": "Are these payments to the same recipient separate purchases, or one purchase split across several payments to stay under the per-payment cap?",
   "on_breach": {"tier": 2}
 }
 ```
+
+The trigger is **one smallest unit above the per-payment cap** (here 0.2 GEN),
+summed over payments to the **same recipient** in 24 hours. A split purchase is
+one order from one seller, so the payment that crosses the cap is held: the
+first payment is the most that clears without a jury, and waiting an hour does
+not reset it. An agent-wide `spend_count_gte` would fire on unrelated vendors
+and let the first payments of a split through.
 
 This is the T7 mitigation and the reason the product exists. A pure-code system
 cannot answer it at any threshold.
@@ -198,8 +207,8 @@ And one advisory that is not a rejection:
     {
       "id": "structuring",
       "type": "judgment",
-      "when": {"spend_count_gte": {"count": 3, "seconds": 3600}},
-      "ask": "Are these separate purchases, or one purchase split across payments to stay under the per-spend cap?",
+      "when": {"recipient_total_gte": {"amount": 200000000000000001, "seconds": 86400}},
+      "ask": "Are these payments to the same recipient separate purchases, or one purchase split across several payments to stay under the per-payment cap?",
       "on_breach": {"tier": 2}
     }
   ]

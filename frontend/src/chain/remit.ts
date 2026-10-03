@@ -1,4 +1,5 @@
 import contractSource from "../../../contracts/build/remit.py?raw";
+import railSource from "../../../contracts/rail.py?raw";
 import type { Client } from "./wallet";
 import type { MandateInfo } from "../lib/mandate";
 import { parseLossless } from "../lib/money";
@@ -6,6 +7,8 @@ import type { ArtifactState, Authorization, SpendState, Verdict } from "../lib/c
 
 /** The exact artifact the test suite verified. Imported, never copied. */
 export const CONTRACT_CODE = contractSource;
+/** The treasury that pays only what a guard authorized. Imported, never copied. */
+export const RAIL_CODE = railSource;
 
 export interface SpendView {
   id: number;
@@ -27,6 +30,26 @@ export interface SpendView {
   tier: number;
   authorization: Authorization;
   shadow: boolean;
+  /** When the outcome became final in the guard; 0 while held. Absent on guards built before the rail. */
+  decided_at?: number;
+}
+
+export interface RailStatus {
+  guard: string;
+  principal: string;
+  agent: string;
+  finality_seconds: number;
+  balance: string;
+  funded: string;
+  paid_total: string;
+  paid_count: number;
+}
+
+export interface RailPayment {
+  id: number;
+  paid: boolean;
+  amount: string;
+  paid_at: number;
 }
 
 export interface Preview {
@@ -72,6 +95,16 @@ export async function readDocket(c: Client, guard: string): Promise<SpendView[]>
 export async function readSpend(c: Client, guard: string, id: number): Promise<SpendView> {
   const raw = await c.readContract({ address: guard as Addr, functionName: "get_spend", args: [id] });
   return parseLossless<SpendView>(raw);
+}
+
+export async function readRail(c: Client, rail: string): Promise<RailStatus> {
+  const raw = await c.readContract({ address: rail as Addr, functionName: "status", args: [] });
+  return parseLossless<RailStatus>(raw);
+}
+
+export async function readPayment(c: Client, rail: string, id: number): Promise<RailPayment> {
+  const raw = await c.readContract({ address: rail as Addr, functionName: "payment_of", args: [id] });
+  return parseLossless<RailPayment>(raw);
 }
 
 /** The contract's own classifier, run as a view. Costs nothing, signs nothing. */
@@ -156,12 +189,13 @@ export async function write(
   args: unknown[],
   pollMs: number,
   onHash?: (hash: string) => void,
+  value: bigint = 0n,
 ): Promise<TxOutcome> {
   const hash = (await c.writeContract({
     address: guard as Addr,
     functionName,
     args: args as never,
-    value: 0n,
+    value,
   })) as string;
   onHash?.(hash);
   return settle(c, hash, pollMs);
@@ -178,6 +212,23 @@ export async function deployGuard(
   const hash = (await c.deployContract({
     code: CONTRACT_CODE,
     args: [p.agent, p.mandateText, p.maxTier, p.shadow],
+    leaderOnly: false,
+  } as never)) as string;
+  onHash?.(hash);
+  return settle(c, hash, pollMs);
+}
+
+/** Deploy a RemitRail bound to a guard. Only the guard's principal can; the
+ *  contract checks. */
+export async function deployRail(
+  c: Client,
+  p: { guard: string; finalitySeconds: number },
+  pollMs: number,
+  onHash?: (hash: string) => void,
+): Promise<TxOutcome> {
+  const hash = (await c.deployContract({
+    code: RAIL_CODE,
+    args: [p.guard, p.finalitySeconds],
     leaderOnly: false,
   } as never)) as string;
   onHash?.(hash);
