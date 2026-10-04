@@ -195,6 +195,28 @@ class RemitRail(gl.Contract):
         if self._now() - decided_at < int(self.finality_seconds):
             raise Exception("[EXPECTED] decision is not yet past the finality delay")
 
+        # A split is one purchase. If a later payment to this vendor was held
+        # as a possible split of this one, this slice waits for that ruling,
+        # and falls with it. Spends are numbered in time order, so the scan
+        # stops at the widest split window.
+        info = self._info()
+        reach = max([0] + list(split_windows(info["rules"]).values()))
+        if reach > 0:
+            me = self._spend(spend_id)
+            later = []
+            j = int(spend_id) + 1
+            while j < int(info["spend_count"]):
+                other = self._spend(j)
+                if int(other["at"]) - int(me["at"]) >= reach:
+                    break
+                later.append(other)
+                j += 1
+            link = split_hold(me, later, info["rules"])
+            if link == SPLIT_PENDING:
+                raise Exception("[EXPECTED] waits: a later payment to this vendor is held as a split of it")
+            if link == SPLIT_REFUSED:
+                raise Exception("[EXPECTED] refused with the split it belongs to")
+
         amount = int(s["amount"])
         if amount <= 0:
             raise Exception("[EXPECTED] nothing to pay")

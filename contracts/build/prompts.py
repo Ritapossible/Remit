@@ -370,6 +370,69 @@ def classify_spend(mandate, spend, history):
 
 
 # --------------------------------------------------------------------------
+# A split is one purchase: its first slice waits for the ruling on the rest
+# --------------------------------------------------------------------------
+
+SPLIT_PREDICATES = ("recipient_total_lte", "recipient_total_gte", "recipient_count_lte", "recipient_count_gte")
+SPLIT_PENDING = "pending"
+SPLIT_REFUSED = "refused"
+
+
+def split_windows(rules):
+    """``{rule_id: seconds}`` for the judgment rules that ask whether payments
+    to one vendor are one purchase split under the cap. ``rules`` are the
+    guard's flattened rules (``predicate`` and window ``b``)."""
+    out = {}
+    for r in rules:
+        if r.get("type") == RULE_JUDGMENT and r.get("predicate") in SPLIT_PREDICATES:
+            out[str(r["id"])] = _require_int(r.get("b"), "rule %s window" % r.get("id"))
+    return out
+
+
+def split_hold(spend, later, rules):
+    """Whether an authorized payment must wait for, or fall with, a later one.
+
+    The structuring trigger holds the payment that takes a vendor over the cap.
+    The payment under the cap was authorized first, and without this the rail
+    would pay it: the gate caught the second slice, not the split. So a
+    payment is linked to every later payment to the same vendor that a split
+    rule held, inside that rule's window:
+
+    - while a linked payment is still held, this one waits (``pending``);
+    - if a linked payment was refused, and split rules were the only rules it
+      fired, this one is refused with it (``refused``): the ruling was that
+      they are one purchase;
+    - otherwise it pays (``""``). A refusal that also involved another rule
+      (purpose, say) is not read as a ruling on the split.
+
+    ``spend`` and ``later`` are guard summaries (``id``, ``recipient``, ``at``,
+    ``state``, ``rules``, ``outcome``).
+    """
+    windows = split_windows(rules)
+    mine = normalize_address(spend["recipient"], "recipient")
+    result = ""
+    for other in later:
+        if int(other["id"]) <= int(spend["id"]):
+            continue
+        if normalize_address(other["recipient"], "recipient") != mine:
+            continue
+        fired = [str(r) for r in other["rules"]]
+        reach = 0
+        for r in fired:
+            if windows.get(r, 0) > reach:
+                reach = windows[r]
+        # Windows are half-open: a payment counts toward a later one while
+        # later.at - seconds < payment.at.
+        if reach <= 0 or int(other["at"]) - int(spend["at"]) >= reach:
+            continue
+        if other["state"] == SPEND_HELD:
+            result = SPLIT_PENDING if result == "" else result
+        elif other["outcome"] == OUTCOME_REFUSED and all(r in windows for r in fired):
+            return SPLIT_REFUSED
+    return result
+
+
+# --------------------------------------------------------------------------
 # Artifact provenance
 # --------------------------------------------------------------------------
 

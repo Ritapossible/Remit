@@ -15,54 +15,109 @@ _H = 'in_remit'
 _I = 'out_of_remit'
 _J = 'undetermined'
 _K = (_H, _I, _J)
+_L = 'refused'
+_M = 'judgment'
 
-class _L(ValueError):
+class _N(ValueError):
  pass
 
-def _M(value, allowed, context):
- if value not in allowed:
-  raise _L('%s: expected one of %s, got %r' % (context, list(allowed), value))
+def _O(value, context):
+ if isinstance(value, bool) or not isinstance(value, int):
+  raise _N('%s: expected int, got %r' % (context, type(value).__name__))
+ if value < 0:
+  raise _N('%s: expected non-negative, got %d' % (context, value))
  return value
-_N = 'open'
-_O = 'upheld'
-_P = 'lapsed'
-_Q = 60
-_R = 3
 
-def _S(verdict, confidence):
- _M(verdict, _K, 'verdict')
- if verdict == _I and int(confidence) < _Q:
+def _P(value, context):
+ if not isinstance(value, str) or value == '':
+  raise _N('%s: expected non-empty str' % context)
+ return value
+
+def _Q(value, allowed, context):
+ if value not in allowed:
+  raise _N('%s: expected one of %s, got %r' % (context, list(allowed), value))
+ return value
+
+def _R(value, context='address'):
+ _b = _P(value, context).strip().lower()
+ if not _b.startswith('0x') or len(_b) < 3:
+  raise _N('%s: not an address: %r' % (context, value))
+ for ch in _b[2:]:
+  if ch not in '0123456789abcdef':
+   raise _N('%s: not hex: %r' % (context, value))
+ return _b
+_S = ('recipient_total_lte', 'recipient_total_gte', 'recipient_count_lte', 'recipient_count_gte')
+_T = 'pending'
+_U = 'refused'
+
+def _V(rules):
+ _a = {}
+ for r in rules:
+  if r.get('type') == _M and r.get('predicate') in _S:
+   _a[str(r['id'])] = _O(r.get('b'), 'rule %s window' % r.get('id'))
+ return _a
+
+def _W(spend, later, rules):
+ _g = _V(rules)
+ _b = _R(spend['recipient'], 'recipient')
+ _f = ''
+ for _c in later:
+  if int(_c['id']) <= int(spend['id']):
+   continue
+  if _R(_c['recipient'], 'recipient') != _b:
+   continue
+  _a = [str(r) for r in _c['rules']]
+  _e = 0
+  for r in _a:
+   if _g.get(r, 0) > _e:
+    _e = _g[r]
+  if _e <= 0 or int(_c['at']) - int(spend['at']) >= _e:
+   continue
+  if _c['state'] == _B:
+   _f = _T if _f == '' else _f
+  elif _c['outcome'] == _L and all((r in _g for r in _a)):
+   return _U
+ return _f
+_X = 'open'
+_Y = 'upheld'
+_Z = 'lapsed'
+_AA = 60
+_AB = 3
+
+def _AC(verdict, confidence):
+ _Q(verdict, _K, 'verdict')
+ if verdict == _I and int(confidence) < _AA:
   return _J
  return verdict
 
-def _T(*, leader_verdict, own_verdict):
- _M(leader_verdict, _K, 'leader verdict')
- _M(own_verdict, _K, 'own verdict')
+def _AD(*, leader_verdict, own_verdict):
+ _Q(leader_verdict, _K, 'leader verdict')
+ _Q(own_verdict, _K, 'own verdict')
  if leader_verdict == own_verdict:
   return True
  if leader_verdict == _I:
   return False
  return own_verdict != _I
 
-def _U(*, spend_id, revoked_below):
+def _AE(*, spend_id, revoked_below):
  return int(spend_id) < int(revoked_below)
-_V = '<<<REMIT_DELIVERABLE>>>'
+_AF = '<<<REMIT_DELIVERABLE>>>'
 
-def _W(text):
- _a = str(text).replace('\r', '').replace(_V, '[removed]')
+def _AG(text):
+ _a = str(text).replace('\r', '').replace(_AF, '[removed]')
  while '===' in _a or '---' in _a:
   _a = _a.replace('===', '= = =').replace('---', '- - -')
  return _a
 
-def _X(artifact_state, artifact_text, notes):
+def _AH(artifact_state, artifact_text, notes):
  _a = [notes.get(artifact_state, notes['unverified'])]
  if artifact_state == 'verified' and artifact_text:
   _a.append('--- begin artifact ---')
-  _a.append(_W(artifact_text))
+  _a.append(_AG(artifact_text))
   _a.append('--- end artifact ---')
  return '\n'.join(_a)
 
-def _Y(value) -> bool:
+def _AI(value) -> bool:
  _b = str(value).strip().lower()
  if len(_b) != 64:
   return False
@@ -71,7 +126,7 @@ def _Y(value) -> bool:
    return False
  return True
 
-def _Z(value) -> dict:
+def _AJ(value) -> dict:
  _b = value
  if isinstance(_b, (bytes, bytearray)):
   _b = _b.decode('utf-8', 'replace')
@@ -93,8 +148,8 @@ def _Z(value) -> dict:
    return {}
  return _b if isinstance(_b, dict) else {}
 
-def _AA(raw) -> dict:
- _c = _Z(raw)
+def _AK(raw) -> dict:
+ _c = _AJ(raw)
  _e = ''
  for _a in ('verdict', 'answer', 'decision', 'result', 'label'):
   if _a in _c and isinstance(_c[_a], str):
@@ -133,7 +188,7 @@ class _Payee:
 
  class Write:
   pass
-_AB = 'authorized'
+_AL = 'authorized'
 
 class RemitRail(gl.Contract):
  guard: Address
@@ -205,7 +260,7 @@ class RemitRail(gl.Contract):
   if int(challenge_id) < 0 or int(challenge_id) >= int(self.challenge_count):
    raise Exception('[EXPECTED] unknown challenge')
   _a = json.loads(self.c[u256(int(challenge_id))])
-  if _a['state'] != _N:
+  if _a['state'] != _X:
    raise Exception('[EXPECTED] the challenge is already decided')
   return _a
 
@@ -227,31 +282,48 @@ class RemitRail(gl.Contract):
 
  @gl.public.write
  def pay(self, spend_id: int) -> None:
-  _d = u256(int(spend_id))
-  if int(self.paid_amount.get(_d, u256(0))) > 0:
+  _f = u256(int(spend_id))
+  if int(self.paid_amount.get(_f, u256(0))) > 0:
    raise Exception('[EXPECTED] spend already paid')
-  if int(self.open_on.get(_d, u256(0))) > 0:
+  if int(self.open_on.get(_f, u256(0))) > 0:
    raise Exception('[EXPECTED] spend is under challenge; it pays only if the challenge is dismissed')
-  if int(self.upheld_on.get(_d, u256(0))) > 0:
+  if int(self.upheld_on.get(_f, u256(0))) > 0:
    raise Exception('[EXPECTED] an upheld challenge clawed this spend back')
   s = json.loads(str(self._guard().settlement_of(int(spend_id))))
   _b = str(s['authorization'])
-  if _b != _AB:
+  if _b != _AL:
    raise Exception('[EXPECTED] spend is ' + _b + '; the rail pays only authorized spends')
   _c = int(s['decided_at'])
   if _c <= 0:
    raise Exception('[EXPECTED] the guard recorded no decision time')
-  if _U(spend_id=int(spend_id), revoked_below=int(self.revoked_below)):
+  if _AE(spend_id=int(spend_id), revoked_below=int(self.revoked_below)):
    raise Exception('[EXPECTED] spend was revoked by a tier-3 ruling')
   if self._now() - _c < int(self.finality_seconds):
    raise Exception('[EXPECTED] decision is not yet past the finality delay')
+  _d = self._info()
+  _k = max([0] + list(_V(_d['rules']).values()))
+  if _k > 0:
+   me = self._spend(spend_id)
+   _g = []
+   j = int(spend_id) + 1
+   while j < int(_d['spend_count']):
+    _j = self._spend(j)
+    if int(_j['at']) - int(me['at']) >= _k:
+     break
+    _g.append(_j)
+    j += 1
+   _h = _W(me, _g, _d['rules'])
+   if _h == _T:
+    raise Exception('[EXPECTED] waits: a later payment to this vendor is held as a split of it')
+   if _h == _U:
+    raise Exception('[EXPECTED] refused with the split it belongs to')
   _a = int(s['amount'])
   if _a <= 0:
    raise Exception('[EXPECTED] nothing to pay')
   if int(self.treasury) < _a:
    raise Exception('[EXPECTED] rail balance is below the authorized amount')
-  self.paid_amount[_d] = u256(_a)
-  self.paid_at[_d] = u256(self._now())
+  self.paid_amount[_f] = u256(_a)
+  self.paid_at[_f] = u256(self._now())
   self.paid_total = u256(int(self.paid_total) + _a)
   self.paid_count = u256(int(self.paid_count) + 1)
   self.treasury = u256(int(self.treasury) - _a)
@@ -286,7 +358,7 @@ class RemitRail(gl.Contract):
   _d = int(self._info()['defaults']['clawback_window_seconds'])
   _a = self._now()
   for s in json.loads(str(self._guard().docket())):
-   if s['authorization'] == _AB and s['verdict'] == '' and (s['reason'] == ''):
+   if s['authorization'] == _AL and s['verdict'] == '' and (s['reason'] == ''):
     if _a - int(s['decided_at']) <= _d:
      raise Exception('[EXPECTED] a payment is still inside its clawback window')
   self.standing = u256(int(self.standing) - _c)
@@ -307,7 +379,7 @@ class RemitRail(gl.Contract):
   if _a < int(_e['bond']):
    raise Exception('[EXPECTED] the bond for this challenge is %d' % int(_e['bond']))
   _c = int(self.challenge_count)
-  self.c[u256(_c)] = json.dumps({'id': _c, 'spend': int(spend_id), 'rule': str(rule_id), 'challenger': _b.lower(), 'bond': _a, 'statement': str(statement)[:1000], 'opened_at': self._now(), 'state': _N, 'memo_uri': '', 'memo_digest': ''})
+  self.c[u256(_c)] = json.dumps({'id': _c, 'spend': int(spend_id), 'rule': str(rule_id), 'challenger': _b.lower(), 'bond': _a, 'statement': str(statement)[:1000], 'opened_at': self._now(), 'state': _X, 'memo_uri': '', 'memo_digest': ''})
   self.challenge_count = u256(_c + 1)
   self.open_count = u256(int(self.open_count) + 1)
   self.escrowed = u256(int(self.escrowed) + _a)
@@ -318,7 +390,7 @@ class RemitRail(gl.Contract):
   _a = self._open(challenge_id)
   if gl.message.sender_address != self.agent:
    raise Exception('[EXPECTED] only the agent may respond to a challenge')
-  if not _Y(digest):
+  if not _AI(digest):
    raise Exception('[EXPECTED] digest must be 64 hex characters')
   _a['memo_uri'] = str(uri)
   _a['memo_digest'] = str(digest).strip().lower()
@@ -362,8 +434,8 @@ class RemitRail(gl.Contract):
       _f = _c.decode('utf-8', 'replace')[:3000]
     except Exception:
      _e = _D
-   _b = _AA(gl.nondet.exec_prompt(_af.replace(_V, _X(_e, _f, _s)), response_format='json'))
-   _b['verdict'] = _S(_b['verdict'], _b['confidence'])
+   _b = _AK(gl.nondet.exec_prompt(_af.replace(_AF, _AH(_e, _f, _s)), response_format='json'))
+   _b['verdict'] = _AC(_b['verdict'], _b['confidence'])
    _b['artifact'] = _e
    return json.dumps(_b)
 
@@ -382,17 +454,17 @@ class RemitRail(gl.Contract):
       _f = _c.decode('utf-8', 'replace')[:3000]
     except Exception:
      _e = _D
-   _g = _Z(leader_result)
+   _g = _AJ(leader_result)
    if not _g or str(_g.get('artifact', '')) != _e:
     return False
    _h = str(_g.get('verdict', ''))
    if _h not in _K:
     return False
-   _a = _AA(gl.nondet.exec_prompt(_af.replace(_V, _X(_e, _f, _s)), response_format='json'))
-   return _T(leader_verdict=_h, own_verdict=_S(_a['verdict'], _a['confidence']))
-  _k = _Z(gl.vm.run_nondet(leader, validator, compare_user_errors=True))
-  _y = _AA(_k)
-  _ai = _S(_y['verdict'], _y['confidence'])
+   _a = _AK(gl.nondet.exec_prompt(_af.replace(_AF, _AH(_e, _f, _s)), response_format='json'))
+   return _AD(leader_verdict=_h, own_verdict=_AC(_a['verdict'], _a['confidence']))
+  _k = _AJ(gl.vm.run_nondet(leader, validator, compare_user_errors=True))
+  _y = _AK(_k)
+  _ai = _AC(_y['verdict'], _y['confidence'])
   _i = str(_k.get('artifact', _E))
   if _i not in _G:
    _i = _D
@@ -408,13 +480,13 @@ class RemitRail(gl.Contract):
   self.streak[_x['challenger']] = json.dumps([int(_aa['losses']), int(_aa['last_loss_at'])])
   self.standing = u256(int(self.standing) - int(_aa['from_standing']))
   self.treasury = u256(int(self.treasury) + int(_aa['to_treasury']))
-  if _aa['state'] == _O:
+  if _aa['state'] == _Y:
    self.upheld_on[_ad] = u256(int(_x['id']) + 1)
    _m = int(_aa['freeze'])
    if _m > int(self.frozen_tier):
     self.frozen_tier = u256(_m)
     self.frozen_by = u256(int(_x['id']) + 1)
-   if _m >= _R:
+   if _m >= _AB:
     self.revoked_below = u256(int(_o['spend_count']))
   _x['verdict'] = _ai
   _x['reason'] = _y['reason']
@@ -432,7 +504,7 @@ class RemitRail(gl.Contract):
   _a = int(self._info()['defaults']['hold_deadline_seconds'])
   if self._now() - int(_b['opened_at']) < _a:
    raise Exception('[EXPECTED] deadline not reached')
-  self._close(_b, _P)
+  self._close(_b, _Z)
   self._send(_b['challenger'], int(_b['bond']))
 
  @gl.public.write
@@ -458,7 +530,7 @@ class RemitRail(gl.Contract):
  def payment_of(self, spend_id: int) -> str:
   _b = u256(int(spend_id))
   _a = int(self.paid_amount.get(_b, u256(0)))
-  return json.dumps({'id': int(spend_id), 'paid': _a > 0, 'revoked': _a == 0 and _U(spend_id=int(spend_id), revoked_below=int(self.revoked_below)), 'amount': _a, 'paid_at': int(self.paid_at.get(_b, u256(0))), 'challenge': int(self.open_on.get(_b, u256(0))) - 1, 'upheld_by': int(self.upheld_on.get(_b, u256(0))) - 1})
+  return json.dumps({'id': int(spend_id), 'paid': _a > 0, 'revoked': _a == 0 and _AE(spend_id=int(spend_id), revoked_below=int(self.revoked_below)), 'amount': _a, 'paid_at': int(self.paid_at.get(_b, u256(0))), 'challenge': int(self.open_on.get(_b, u256(0))) - 1, 'upheld_by': int(self.upheld_on.get(_b, u256(0))) - 1})
 
  @gl.public.view
  def challenges(self) -> str:

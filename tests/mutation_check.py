@@ -315,6 +315,38 @@ MUTATIONS = [
         RAIL,
     ),
     (
+        "first-slice-of-split-paid",
+        "the rail must not pay a slice while a later slice of the split is held",
+        "            if link == SPLIT_PENDING:",
+        "            if False:",
+        RAIL,
+    ),
+    (
+        "refused-split-first-slice-paid",
+        "a slice falls with the split it belongs to",
+        "            if link == SPLIT_REFUSED:",
+        "            if False:",
+        RAIL,
+    ),
+    (
+        "split-window-ignored",
+        "a payment outside the split rule's window is not linked",
+        "        if reach <= 0 or int(other[\"at\"]) - int(spend[\"at\"]) >= reach:",
+        "        if reach <= 0:",
+    ),
+    (
+        "mixed-refusal-read-as-split",
+        "a refusal that also involved another rule is not a ruling on the split",
+        "        elif other[\"outcome\"] == OUTCOME_REFUSED and all(r in windows for r in fired):",
+        "        elif other[\"outcome\"] == OUTCOME_REFUSED:",
+    ),
+    (
+        "split-across-vendors",
+        "only payments to the same vendor are slices of one purchase",
+        "        if normalize_address(other[\"recipient\"], \"recipient\") != mine:\n            continue",
+        "",
+    ),
+    (
         "registry-lets-agent-move",
         "another principal must not take over a registered agent",
         "            if self.r_principal[old] != who:",
