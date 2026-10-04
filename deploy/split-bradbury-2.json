@@ -1,0 +1,226 @@
+{
+  "network": "bradbury",
+  "decided_by": "principal (override)",
+  "finality_seconds": 2400,
+  "started": "2026-10-04T18:07:54.327Z",
+  "txs": [
+    {
+      "tx": "attach rail",
+      "hash": "0xc948afa455e6880639deac87755915b1b8023ab815a5e27edc879c58de45553b",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "fund rail",
+      "hash": "0x1fd24d49d75697fa7e31caa52692cdac88f0e18ff5ce1cce3fe9bab9f3e02cf4",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "spend 0",
+      "hash": "0xe5f90614acbf11830373f6e2e1d06b1897e9eadc2a462b795103e54ff6e1cc12",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "spend 1",
+      "hash": "0xcdd3a5cf58430fc8b51f9fb538d5b3313e5f71c5d85c97dea5ca412b42b8c555",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "pay 0 while 1 held",
+      "hash": "0xc2024b3de2dfd2bf3cb51a20410e4f22db2a3e95a9d80d3849049a2192e133f0",
+      "consensus": "AGREE",
+      "leader": "contract_error",
+      "error": "[EXPECTED] waits: a later payment to this vendor is held as a split of it"
+    },
+    {
+      "tx": "override_refuse 1",
+      "hash": "0xe76490cdb610d330e97857ef4e3665f6ed8c2a6e8c2c3712b9c4abeded0a2031",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "pay 0 after refusal",
+      "hash": "0x91b780ef64f1597ea528a30275736307a86968b50e0946b74eab0435b6498b08",
+      "consensus": "AGREE",
+      "leader": "contract_error",
+      "error": "[EXPECTED] refused with the split it belongs to"
+    },
+    {
+      "tx": "spend 2",
+      "hash": "0xce20914e9bce5f7e74a50fa81c31986c97d71995d8b79da17496934f97651e7e",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "spend 3",
+      "hash": "0xe4a2537f495eb68c0729ff6315549e6eece731af02832e6eac2d60424aa3aff8",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "pay 2 while 3 held",
+      "hash": "0x89dd2c0c69c0df16830851f90978a84a41fb19e9387864f48cafb8b9e21abf75",
+      "consensus": "AGREE",
+      "leader": "contract_error",
+      "error": "[EXPECTED] waits: a later payment to this vendor is held as a split of it"
+    },
+    {
+      "tx": "override_release 3",
+      "hash": "0xf54d7da2a9ae0389438504b41f26bddb7cf51aae86c0abfd5701a3f755f56e46",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "pay 2",
+      "hash": "0x3c177cd5cc25bb63eb130cc1f4eb95fb0e76ba6d4fe9c703609337234fbe1bfd",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "pay 3",
+      "hash": "0xd76d7ac4c1c9b4a6a531446f6f02f3fb7929cd262a9acbe33114587f0d883fb2",
+      "consensus": "AGREE",
+      "leader": "return"
+    }
+  ],
+  "checks": [
+    {
+      "check": "attach rail",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "fund rail 0.5 GEN",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "spend 0 authorized",
+      "actual": "authorized",
+      "expected": "authorized",
+      "ok": true
+    },
+    {
+      "check": "spend 1 held",
+      "actual": "held",
+      "expected": "held",
+      "ok": true
+    },
+    {
+      "check": "spend 1 rules",
+      "actual": "[\"structuring\"]",
+      "expected": "[\"structuring\"]",
+      "ok": true
+    },
+    {
+      "check": "pay 0 while the split is held: refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "  because the split is held",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "refuse spend 1 (principal)",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "pay 0 after the split is refused: refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "  because the split was refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "spend 0 unpaid on the rail",
+      "actual": "false",
+      "expected": "false",
+      "ok": true
+    },
+    {
+      "check": "spend 2 authorized",
+      "actual": "authorized",
+      "expected": "authorized",
+      "ok": true
+    },
+    {
+      "check": "spend 3 held",
+      "actual": "held",
+      "expected": "held",
+      "ok": true
+    },
+    {
+      "check": "pay 2 while spend 3 held: refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "  because the split is held",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "release spend 3 (principal)",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "pay 2 after release",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "pay 3 after release",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    }
+  ],
+  "guard": "0x0f29232975e83435C930A3f5C1d9f7278a407fce",
+  "guard_tx": "0xe94d8a7a27d768d5a005f2a8b9eb0fc50c8cc185e8b191e2f2465754b82ee9b3",
+  "rail": "0x3f2E6619E6711c0840A3CB7CDB3e6529517dBC40",
+  "rail_tx": "0xe1e64874fef1ba260bbbb1ad00b947b46f9a86b0f99aa00ab557f9eac67e0d15",
+  "vendor": "0x3F55971f7fd2594A90871Db489fBb82f1DB4d747",
+  "other": "0xeF359811497c724Ef1942c6C079c64C07d87952D",
+  "rail_status": {
+    "guard": "0x0f29232975e83435C930A3f5C1d9f7278a407fce",
+    "principal": "0xf1827CaD7C88f02a7cAd3627D7CE482A8f2D33C7",
+    "agent": "0x8aA26Fa51a68c583C467463e93db0EBc10f7D509",
+    "finality_seconds": 2400,
+    "balance": 500000000000000000,
+    "funded": 500000000000000000,
+    "treasury": 350000000000000000,
+    "paid_total": 150000000000000000,
+    "paid_count": 1,
+    "bond_floor": 10000000000000000,
+    "standing": 0,
+    "escrowed": 0,
+    "challenge_count": 0,
+    "open_challenges": 0,
+    "frozen_tier": 0,
+    "frozen_by": -1,
+    "revoked_below": 0
+  },
+  "finished": "2026-10-04T20:22:21.042Z",
+  "failures": 0
+}

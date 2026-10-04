@@ -26,7 +26,7 @@ const agentAddr = accountFor("agent").address;
 const GEN = (n) => BigInt(Math.round(n * 1000)) * 10n ** 15n;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const JURY = process.env.JURY === "1";
-const OUT = `split-${JURY ? "jury-" : ""}${network}.json`;
+const OUT = process.env.SPLIT_OUT ?? `split-${JURY ? "jury-" : ""}${network}.json`;
 const record = { network, decided_by: JURY ? "jury (adjudicate)" : "principal (override)", finality_seconds: FINALITY, started: new Date().toISOString(), txs: [], checks: [] };
 const save = () => fs.writeFileSync(OUT, JSON.stringify(record, null, 2) + "\n");
 let failures = 0;
@@ -46,9 +46,22 @@ async function reason(client, hash) {
   return (text.match(/Exception: (\[EXPECTED\][^"\\]*)/) || [, ""])[1];
 }
 
+// Bradbury's receipts carry no stderr, but a simulated call does: simulate a
+// payout just before sending it, against the same state.
+async function simulated(client, address, fn, args) {
+  if (fn !== "pay") return "";
+  try {
+    await client.simulateWriteContract({ address, functionName: fn, args });
+    return "";
+  } catch (e) {
+    return (String(e?.message ?? e).match(/Exception: (\[EXPECTED\][^"\\\n]*)/) || [, ""])[1];
+  }
+}
+
 async function send(client, address, fn, args, label, value = 0n) {
+  const sim = await simulated(client, address, fn, args);
   const o = await sendTx(client, address, fn, args, label, value);
-  const error = o.refused ? await reason(client, o.hash) : "";
+  const error = o.refused ? (await reason(client, o.hash)) || sim : "";
   record.txs.push({ tx: label, hash: o.hash, consensus: o.consensus, leader: o.leader, ...(o.refused ? { error } : {}) });
   save();
   console.log(`    ${label}: ${o.consensus} ${o.leader} ${o.hash}`);

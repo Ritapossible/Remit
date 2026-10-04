@@ -1,0 +1,229 @@
+{
+  "network": "bradbury",
+  "finality_seconds": 2400,
+  "started": "2026-10-04T16:14:26.057Z",
+  "txs": [
+    {
+      "tx": "attach rail",
+      "hash": "0xd37d0239403206d0e0a2f06b198ae81a0c91a2f67f8bdc27ecf8e9c10997384b",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "fund rail",
+      "hash": "0xa9ab348e721ab8f1660999a862f6e69d2ab404b50882c7094cbad8ae20170f6f",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "spend 0",
+      "hash": "0x68bf080e30b731f8ce9a4f6bfdd474245adb5428fa17a6fb0d408f4a66e585b6",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "spend 1",
+      "hash": "0xe747907db03744473cd4d78729906e2e448a5d8b5ec70e728a0e477a21bb781d",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "pay 0 while 1 held",
+      "hash": "0xc63cef98918deadf440b43ff85f1a0f968963b6bf2f46b4664388fa7497a11fd",
+      "consensus": "AGREE",
+      "leader": "contract_error",
+      "error": ""
+    },
+    {
+      "tx": "override_refuse 1",
+      "hash": "0xf5e80b491891c9e289f1832443d2497f5e44a2bacb9638a35c6ca5bbdc367c3b",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "pay 0 after refusal",
+      "hash": "0xd880c9847394bf83d43c164f88faf36b6d004e4be563d7db86a2316bcf61b101",
+      "consensus": "AGREE",
+      "leader": "contract_error",
+      "error": ""
+    },
+    {
+      "tx": "spend 2",
+      "hash": "0xe624a886ed2207f87d334964b0cd746d1087c5d5c47dc75c3ccf421f575d690c",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "spend 3",
+      "hash": "0x50e3c56fbb8df81f3e897e515cb4b2e8a5055e60d4cb1b5afe8b0b6e038669e1",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "pay 2 while 3 held",
+      "hash": "0x795a30ce723127e7d33586e2bd8ba02e00c0ba678c1ba4be7042f016147c0082",
+      "consensus": "AGREE",
+      "leader": "contract_error",
+      "error": ""
+    },
+    {
+      "tx": "override_release 3",
+      "hash": "0xff857bc5538b4a156ad47a733cd9f48229fb7955fd2d3184f25eed5252b184e4",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "pay 2",
+      "hash": "0x16447ce106cd306e235d2cf8a0a934e0322f00e03b1df2cc69d838b62acbe423",
+      "consensus": "AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "pay 3",
+      "hash": "0xb364642338df394d7cb9a708669dfc75c295a76ab47cec6029aa48b148dcfe11",
+      "consensus": "AGREE",
+      "leader": "return"
+    }
+  ],
+  "checks": [
+    {
+      "check": "attach rail",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "fund rail 0.5 GEN",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "spend 0 authorized",
+      "actual": "authorized",
+      "expected": "authorized",
+      "ok": true
+    },
+    {
+      "check": "spend 1 held",
+      "actual": "held",
+      "expected": "held",
+      "ok": true
+    },
+    {
+      "check": "spend 1 rules",
+      "actual": "[\"structuring\"]",
+      "expected": "[\"structuring\"]",
+      "ok": true
+    },
+    {
+      "check": "pay 0 while the split is held: refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "  because the split is held",
+      "actual": "no message on this node",
+      "expected": "true",
+      "ok": false
+    },
+    {
+      "check": "refuse spend 1 (principal)",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "pay 0 after the split is refused: refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "  because the split was refused",
+      "actual": "no message on this node",
+      "expected": "true",
+      "ok": false
+    },
+    {
+      "check": "spend 0 unpaid on the rail",
+      "actual": "false",
+      "expected": "false",
+      "ok": true
+    },
+    {
+      "check": "spend 2 authorized",
+      "actual": "authorized",
+      "expected": "authorized",
+      "ok": true
+    },
+    {
+      "check": "spend 3 held",
+      "actual": "held",
+      "expected": "held",
+      "ok": true
+    },
+    {
+      "check": "pay 2 while spend 3 held: refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "  because the split is held",
+      "actual": "no message on this node",
+      "expected": "true",
+      "ok": false
+    },
+    {
+      "check": "release spend 3 (principal)",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "pay 2 after release",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "pay 3 after release",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    }
+  ],
+  "guard": "0xbAf955d975653Ff283AB5f5EeD54bB2654BF16d2",
+  "guard_tx": "0xaad455d72c07a0657d8be9435ba3d5b21ebcabc7a4c7a34edb09aaf99c57e395",
+  "rail": "0x929AC026c8c239E5beDfB325A389B028278e3e22",
+  "rail_tx": "0xcce0598cf9315d4b1225b5ede84bd3632311c57cc4a4c779157951063e754246",
+  "vendor": "0x3F55971f7fd2594A90871Db489fBb82f1DB4d747",
+  "other": "0xeF359811497c724Ef1942c6C079c64C07d87952D",
+  "rail_status": {
+    "guard": "0xbAf955d975653Ff283AB5f5EeD54bB2654BF16d2",
+    "principal": "0xf1827CaD7C88f02a7cAd3627D7CE482A8f2D33C7",
+    "agent": "0x8aA26Fa51a68c583C467463e93db0EBc10f7D509",
+    "finality_seconds": 2400,
+    "balance": 500000000000000000,
+    "funded": 500000000000000000,
+    "treasury": 270000000000000000,
+    "paid_total": 230000000000000000,
+    "paid_count": 2,
+    "bond_floor": 10000000000000000,
+    "standing": 0,
+    "escrowed": 0,
+    "challenge_count": 0,
+    "open_challenges": 0,
+    "frozen_tier": 0,
+    "frozen_by": -1,
+    "revoked_below": 0
+  },
+  "finished": "2026-10-04T18:18:51.516Z",
+  "failures": 3,
+  "note": "The 3 failed checks are the revert-reason checks: Bradbury's transaction records carry no stderr, so the reason could not be read (every pay revert was agreed by all 5 validators). Every value check passed. A simulated pay(0) against this rail after the run returned '[EXPECTED] refused with the split it belongs to'. split-bradbury-2.json repeats the run, simulating each payout before sending it to record the reason.",
+  "simulated_after": {
+    "pay(0)": "[EXPECTED] refused with the split it belongs to"
+  }
+}

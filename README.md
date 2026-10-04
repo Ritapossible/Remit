@@ -222,8 +222,13 @@ Bradbury runs are in `deploy/jury-json-*.json` and `deploy/jury-split-*.json`.
   jury (`deploy/split-jury-studio.json`, 20 of 20: `adjudicate` on the ledger
   alone, undetermined at 90, three `agree` and one `idle`, refunded by the
   mandate's default - and the first slice refused with it). Each revert's
-  reason is recorded. These runs use their own guard and rail, not the
-  reference pair; the Bradbury run is in progress.
+  reason is recorded. On Bradbury, decided by the principal, with its 40-minute
+  delay: `deploy/split-bradbury-2.json`, 18 of 18 checks, reasons included. The
+  first Bradbury run (`deploy/split-bradbury.json`) passed every value check;
+  its 3 reason checks failed because Bradbury's receipts omit the revert text,
+  so the script now simulates each payout first to read it. These runs use
+  their own guard and rail, not the reference pair. The jury-decided case has
+  run on Studio only.
   **What it does not cover.** A slice already paid before the next one is
   requested: an agent that waits out the delay between slices (60 s on Studio,
   40 min on Bradbury) gets the first one paid, and clawing it back needs a
