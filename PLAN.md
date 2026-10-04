@@ -205,7 +205,7 @@ claimed. Every point checked out against the code. What changed:
       payment while a later payment to the same vendor, inside a split rule's
       window, is held, and refuses it if that payment is refused under split
       rules alone (`split_hold` in the core; 17 tests, 5 mutants;
-      `deploy/split-studio.json`; Bradbury in progress). Not covered: a slice paid
+      `deploy/split-studio.json`, principal; `deploy/split-jury-studio.json`, jury; Bradbury in progress). Not covered: a slice paid
       before the next is requested - a rail with `finality_seconds` as long as
       the window closes that, at the cost of every payment waiting as long.
 - [ ] An appeal that **reverses** a verdict, observed on either network.

@@ -1,0 +1,256 @@
+{
+  "network": "studio",
+  "decided_by": "jury (adjudicate)",
+  "finality_seconds": 60,
+  "started": "2026-10-04T16:54:51.009Z",
+  "txs": [
+    {
+      "tx": "attach rail",
+      "hash": "0x1113fdb59d870984aa3ca525c6eab70fcd6b5b1cb28a41c53bc0075ddc874e65",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "fund rail",
+      "hash": "0xa8d2706332bbd0b83a9c875d516c30385950ffb8f6059dff9a0b95805aeafbb9",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "spend 0",
+      "hash": "0x9903011a90d91784f3455850890cbd26700bc897b0a9f9cd56cd7aae0b934b3e",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "spend 1",
+      "hash": "0xc5209662f8c1785ef43b8094891cf6b9cebb3ac67d0470f080a3ecb15190f7bf",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "pay 0 while 1 held",
+      "hash": "0xc7b115793750e9d3f81c3ec09944f86ef32d515af3784774328417c31f33b6bc",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "contract_error",
+      "error": "[EXPECTED] waits: a later payment to this vendor is held as a split of it"
+    },
+    {
+      "tx": "adjudicate 1",
+      "hash": "0x5e450a09554af1022b0375ecbc17e6d92a8b405ce2c254c0927f014e95a3d889",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "pay 0 after the jury",
+      "hash": "0xb44a09a8454ef17ce2aa407ec95508d69a7946dda8458bad374915dbf69c1685",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "contract_error",
+      "error": "[EXPECTED] refused with the split it belongs to"
+    },
+    {
+      "tx": "spend 2",
+      "hash": "0x63c3b9733af4e91cac5b412f71566fca16cf94cc2ef8bfacad41e9c1205027bc",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "spend 3",
+      "hash": "0xf7ecc3e7a1df60c8dd7104213f372dacee5ca368ebf9e576893c32c36b0b9f5c",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "pay 2 while 3 held",
+      "hash": "0xc77b314ec9d8df4e006dc83148b4df7d4b305b6c4be66d3ab2c7008055d0530f",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "contract_error",
+      "error": "[EXPECTED] waits: a later payment to this vendor is held as a split of it"
+    },
+    {
+      "tx": "override_release 3",
+      "hash": "0x02184626748a96d5404a651ea82e6718250aaf22fa98eaf68b51436497f58699",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "pay 2",
+      "hash": "0x13d8c683a9e7d769ba545cfb516f4bf53c429509724891e73d2ea481ace7a154",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    },
+    {
+      "tx": "pay 3",
+      "hash": "0x44397057f4175b8f4d0b368e58da2dd58fc33903b5844e22ae86dda6a2dbc5ea",
+      "consensus": "MAJORITY_AGREE",
+      "leader": "return"
+    }
+  ],
+  "checks": [
+    {
+      "check": "attach rail",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "fund rail 0.5 GEN",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "spend 0 authorized",
+      "actual": "authorized",
+      "expected": "authorized",
+      "ok": true
+    },
+    {
+      "check": "spend 1 held",
+      "actual": "held",
+      "expected": "held",
+      "ok": true
+    },
+    {
+      "check": "spend 1 rules",
+      "actual": "[\"structuring\"]",
+      "expected": "[\"structuring\"]",
+      "ok": true
+    },
+    {
+      "check": "pay 0 while the split is held: refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "  because the split is held",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "jury round agreed",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "spend 1 decided",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "spend 1 rules unchanged",
+      "actual": "[\"structuring\"]",
+      "expected": "[\"structuring\"]",
+      "ok": true
+    },
+    {
+      "check": "pay 0 after a jury refusal: refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "  because the split was refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "spend 0 unpaid on the rail",
+      "actual": "false",
+      "expected": "false",
+      "ok": true
+    },
+    {
+      "check": "spend 2 authorized",
+      "actual": "authorized",
+      "expected": "authorized",
+      "ok": true
+    },
+    {
+      "check": "spend 3 held",
+      "actual": "held",
+      "expected": "held",
+      "ok": true
+    },
+    {
+      "check": "pay 2 while spend 3 held: refused",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "  because the split is held",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "release spend 3 (principal)",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "pay 2 after release",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    },
+    {
+      "check": "pay 3 after release",
+      "actual": "true",
+      "expected": "true",
+      "ok": true
+    }
+  ],
+  "guard": "0x8C2b44bef18cf709A8c37b94Eb809db373c551F6",
+  "guard_tx": "0x88602f12d205f9686b072b7f76de5eb54ee1a8a82ad9ee7fccb3d323ee85f7d1",
+  "rail": "0xF0Ab0748E49307c9d10e1014A8EFbb595c6124f4",
+  "rail_tx": "0x28abd4e70d08fa4ae122afd35f11d8b79d884a95c75a30e307cedaf247bc309d",
+  "vendor": "0x3F55971f7fd2594A90871Db489fBb82f1DB4d747",
+  "other": "0xeF359811497c724Ef1942c6C079c64C07d87952D",
+  "jury": {
+    "adjudicate_tx": "0x5e450a09554af1022b0375ecbc17e6d92a8b405ce2c254c0927f014e95a3d889",
+    "consensus": "MAJORITY_AGREE",
+    "votes": [
+      "agree",
+      "agree",
+      "agree",
+      "idle"
+    ],
+    "state": "refused",
+    "verdict": "undetermined",
+    "reason": "insufficient_evidence",
+    "confidence": 90,
+    "outcome": "refused",
+    "rules": [
+      "structuring"
+    ]
+  },
+  "rail_status": {
+    "guard": "0x8C2b44bef18cf709A8c37b94Eb809db373c551F6",
+    "principal": "0xf1827CaD7C88f02a7cAd3627D7CE482A8f2D33C7",
+    "agent": "0x8aA26Fa51a68c583C467463e93db0EBc10f7D509",
+    "finality_seconds": 60,
+    "balance": 500000000000000000,
+    "funded": 500000000000000000,
+    "treasury": 270000000000000000,
+    "paid_total": 230000000000000000,
+    "paid_count": 2,
+    "bond_floor": 10000000000000000,
+    "standing": 0,
+    "escrowed": 0,
+    "challenge_count": 0,
+    "open_challenges": 0,
+    "frozen_tier": 0,
+    "frozen_by": -1,
+    "revoked_below": 0
+  },
+  "finished": "2026-10-04T17:01:23.440Z",
+  "failures": 0
+}

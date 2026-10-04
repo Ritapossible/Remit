@@ -191,23 +191,6 @@ Bradbury runs are in `deploy/jury-json-*.json` and `deploy/jury-split-*.json`.
 
 **What did not go as designed, stated plainly.**
 
-- **The first slice of a split cleared - fixed within the rail's delay.** Every
-  jury run above records `first_authorized: true`: the trigger held the payment
-  that took a vendor over the cap, and the one under it was paid after the
-  delay. The rail now checks first. While a later payment to the same vendor,
-  inside a split rule's window, is held, `pay` on the earlier one reverts
-  ("waits"); if the later one is refused under split rules alone, the earlier
-  one is refused with it; a release pays both (`deploy/split-studio.json`,
-  18 of 18 checks, each revert carrying its reason; the Bradbury run is in progress).
-  **What it does not cover:** a slice already paid before the next one is
-  requested. An agent that waits out the delay between slices (60 s on Studio,
-  40 min on Bradbury) gets the first one paid, and clawing it back needs a
-  bonded challenge - court case A *dismissed* a structuring challenge that had
-  no evidence. A principal who wants the whole 24-hour window covered deploys
-  the rail with `finality_seconds` that long, and every payment then waits that
-  long. A refusal that also cited a non-split rule is not read as a ruling on
-  the split, so the earlier slice pays once the later one is decided.
-
 - **A forged document can persuade a jury.** Once in three runs the forged
   invoices got a split released, two validators to one. Each validator votes
   fail-closed, but GenLayer decides a round by majority, so one dissenting
@@ -228,6 +211,28 @@ Bradbury runs are in `deploy/jury-json-*.json` and `deploy/jury-split-*.json`.
   still committing; the spend never left `pending` and the rail paid nothing
   (`deploy/appeal-bradbury.json`, stopped by hand). An appeal reversing a
   verdict has not been observed on either network.
+- **The first slice of a split cleared - now held, within the rail's delay.**
+  Every jury run above records `first_authorized: true`: the trigger held the
+  payment that took a vendor over the cap, and the one under it was paid after
+  the delay. The rail now checks first. While a later payment to the same
+  vendor, inside a split rule's window, is held, `pay` on the earlier one
+  reverts ("waits"); if the later one is refused and fired split rules alone,
+  the earlier one is refused with it; a release pays both. On Studio, decided
+  by the principal (`deploy/split-studio.json`, 18 of 18 checks) and by the
+  jury (`deploy/split-jury-studio.json`, 20 of 20: `adjudicate` on the ledger
+  alone, undetermined at 90, three `agree` and one `idle`, refunded by the
+  mandate's default - and the first slice refused with it). Each revert's
+  reason is recorded. These runs use their own guard and rail, not the
+  reference pair; the Bradbury run is in progress.
+  **What it does not cover.** A slice already paid before the next one is
+  requested: an agent that waits out the delay between slices (60 s on Studio,
+  40 min on Bradbury) gets the first one paid, and clawing it back needs a
+  bonded challenge - court case A *dismissed* a structuring challenge that had
+  no evidence. A principal who wants the whole 24-hour window covered deploys
+  the rail with `finality_seconds` that long, and every payment then waits that
+  long. Slices to two different vendors never link: the hold is per recipient.
+  A refusal that also fired a non-split rule is not read as a ruling on the
+  split, so the earlier slice pays once the later one is decided.
 
 | Engine and contracts | |
 | --- | --- |

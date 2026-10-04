@@ -7,7 +7,11 @@
 // mandate: per-payment cap 0.20 GEN, structuring at more than 0.20 GEN to one
 // vendor in 24 hours.
 //
-//   node split_scenario.mjs [studio|bradbury]
+// JURY=1: the second slice of A is decided by the jury (adjudicate, no
+// artifact, the ledger alone) instead of the principal. The verdict is
+// recorded, not asserted; the rail is checked against whatever was decided.
+//
+//   node split_scenario.mjs [studio|bradbury]        JURY=1 for the jury path
 import fs from "node:fs";
 import { clientFor, accountFor, compactJson, readBuild, sharedContracts, deployFile, sendTx, readView, readUntil } from "./lib.mjs";
 
@@ -21,8 +25,9 @@ const agent = clientFor(network, "agent");
 const agentAddr = accountFor("agent").address;
 const GEN = (n) => BigInt(Math.round(n * 1000)) * 10n ** 15n;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const OUT = `split-${network}.json`;
-const record = { network, finality_seconds: FINALITY, started: new Date().toISOString(), txs: [], checks: [] };
+const JURY = process.env.JURY === "1";
+const OUT = `split-${JURY ? "jury-" : ""}${network}.json`;
+const record = { network, decided_by: JURY ? "jury (adjudicate)" : "principal (override)", finality_seconds: FINALITY, started: new Date().toISOString(), txs: [], checks: [] };
 const save = () => fs.writeFileSync(OUT, JSON.stringify(record, null, 2) + "\n");
 let failures = 0;
 
@@ -78,12 +83,34 @@ await sleep(FINALITY * 1000 + 10000);
 let o = await send(agent, rail, "pay", [0], "pay 0 while 1 held");
 check("pay 0 while the split is held: refused", o.refused, true);
 check("  because the split is held", because(o, "held as a split"), true);
-check("refuse spend 1 (principal)", (await send(principal, guard, "override_refuse", [1], "override_refuse 1")).applied, true);
-await readUntil(() => spend(1), (x) => x.state === "refused", { seconds: 300 });
-o = await send(agent, rail, "pay", [0], "pay 0 after refusal");
-check("pay 0 after the split is refused: refused", o.refused, true);
-check("  because the split was refused", because(o, "refused with the split"), true);
-check("spend 0 unpaid on the rail", (await readView(principal, rail, "payment_of", [0])).paid ?? false, false);
+if (!JURY) {
+  check("refuse spend 1 (principal)", (await send(principal, guard, "override_refuse", [1], "override_refuse 1")).applied, true);
+  await readUntil(() => spend(1), (x) => x.state === "refused", { seconds: 300 });
+  o = await send(agent, rail, "pay", [0], "pay 0 after refusal");
+  check("pay 0 after the split is refused: refused", o.refused, true);
+  check("  because the split was refused", because(o, "refused with the split"), true);
+  check("spend 0 unpaid on the rail", (await readView(principal, rail, "payment_of", [0])).paid ?? false, false);
+} else {
+  // The response window (60 s in the demo mandate) has passed with the delay.
+  const adj = await send(principal, guard, "adjudicate", [1], "adjudicate 1");
+  check("jury round agreed", adj.agreed, true);
+  const s1j = (await readUntil(() => spend(1), (x) => x.state !== "held", { seconds: 600 })).value;
+  const votes = adj.receipt?.consensus_data?.validators?.map((v) => v.vote) ?? adj.receipt?.lastRound?.validatorVotesName ?? [];
+  record.jury = { adjudicate_tx: adj.hash, consensus: adj.consensus, votes, state: s1j.state, verdict: s1j.verdict,
+    reason: s1j.reason, confidence: s1j.confidence, outcome: s1j.outcome, rules: s1j.rules };
+  save();
+  console.log(`   jury: ${s1j.verdict} (${s1j.reason}, ${s1j.confidence}) -> spend 1 ${s1j.state}, outcome ${s1j.outcome}`);
+  check("spend 1 decided", ["settled", "refused"].includes(s1j.state), true);
+  check("spend 1 rules unchanged", JSON.stringify(s1j.rules), JSON.stringify(["structuring"]));
+  o = await send(agent, rail, "pay", [0], "pay 0 after the jury");
+  if (s1j.state === "refused") {
+    check("pay 0 after a jury refusal: refused", o.refused, true);
+    check("  because the split was refused", because(o, "refused with the split"), true);
+    check("spend 0 unpaid on the rail", (await readView(principal, rail, "payment_of", [0])).paid ?? false, false);
+  } else {
+    check("pay 0 after a jury release: paid", o.applied, true);
+  }
+}
 
 console.log("\nB. Control: 0.15 then 0.08 GEN to the other vendor, the second released");
 await send(agent, guard, "request_spend", [OTHER, GEN(0.15).toString(), "hosting", "", "", "PO-5102 hosting renewal"], "spend 2");
