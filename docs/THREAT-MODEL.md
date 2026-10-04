@@ -242,6 +242,12 @@ first-class treatment rather than a mitigation.
   authorized the first two payments of a split and could be waited out.)
 - The judgment rule it convenes asks the one question code cannot:
   *are these separate purchases, or one purchase split?*
+- **The earlier slices wait for that answer.** The rail does not pay a payment
+  while a later payment to the same vendor, inside a split rule's window, is
+  held, and refuses it with the split if the later one is refused under split
+  rules alone (`split_hold`). A slice the rail paid before the next was
+  requested is out of reach of this check; the court below, or a rail whose
+  `finality_seconds` spans the whole window, answers it.
 - **Built:** a payment that cleared without a jury stays challengeable for the
   mandate's clawback window. A challenger names the judgment rule it evaded;
   the jury answers that rule's question about that payment. Upheld before the
@@ -250,8 +256,10 @@ first-class treatment rather than a mitigation.
   tier-3 rule also revokes every unpaid payment requested before the breach.
 
 **Test.** `test_three_unrelated_vendors_do_not_look_like_a_split` and the
-`recipient_*` predicate tests; on chain, every case in
-`deploy/jury-scenarios-studio.json` holds the second payment.
+`recipient_*` predicate tests; `tests/direct/test_core_split_hold.py` and
+`test_built_split.py` for the earlier slices; on chain, every case in
+`deploy/jury-scenarios-studio.json` holds the second payment, and
+`deploy/split-studio.json` shows the first one waiting and refused with it.
 
 **Residual risk, and what answers it.** The standard trigger watches one
 vendor over 24 hours. A split across several vendors (a single purchase has a

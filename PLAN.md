@@ -77,7 +77,7 @@ from one that is not there, so it now has a direct test.
       prepared
 
 **Exit criterion - met.** 149 tests green, 20 of 20 mutants killed, contract
-builds reproducibly. (Counts at the end of Phase 2. Today: 352 tests and 47
+builds reproducibly. (Counts at the end of Phase 2. Today: 369 tests and 52
 mutants, all killed - see Phase 6 and the README.)
 
 ## Phase 3 - On chain: Studio `[x]`
@@ -196,16 +196,18 @@ claimed. Every point checked out against the code. What changed:
 - [x] **Direct-mode contract tests**: `tests/direct/genvm_stub.py` runs every
       built contract - readable and deployed bytes - with a scripted model,
       web and clock, and requires identical behaviour.
-- [x] **47 mutants**, all killed, across the engine, the prompt layer, the
+- [x] **52 mutants**, all killed, across the engine, the prompt layer, the
       guard, the rail and the registry.
 - [x] **Isolation** measured on Studio: guard B's payments were accepted while
       guard A's jury round was running (`deploy/isolation-studio.json`).
 - [ ] Jury sample on Bradbury at the size of the Studio one (3 runs per case).
-- [ ] **Hold the first slice of a split.** Today the payment that crosses the
-      cap is held and the one under it is authorized and paid after the delay;
-      every jury run records `first_authorized: true`. While a payment to a
-      vendor is still inside the rail's delay, a later payment that trips the
-      structuring trigger should hold it too.
+- [x] **Hold the first slice of a split.** The rail's `pay` reverts on a
+      payment while a later payment to the same vendor, inside a split rule's
+      window, is held, and refuses it if that payment is refused under split
+      rules alone (`split_hold` in the core; 17 tests, 5 mutants;
+      `deploy/split-studio.json`; Bradbury in progress). Not covered: a slice paid
+      before the next is requested - a rail with `finality_seconds` as long as
+      the window closes that, at the cost of every payment waiting as long.
 - [ ] An appeal that **reverses** a verdict, observed on either network.
 
 ## Beyond v1

@@ -274,7 +274,7 @@ function Proof({ data }: { data: ReturnType<typeof useReference>["data"] }) {
           <div className="k">consecutive jury trials reached consensus with pinned evidence</div>
         </div>
         <div className="stat">
-          <div className="v">20/20</div>
+          <div className="v">52/52</div>
           <div className="k">mutants killed - every guard has a test that fails without it</div>
         </div>
         <div className="stat">

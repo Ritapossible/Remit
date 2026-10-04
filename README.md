@@ -144,10 +144,10 @@ The app reads these from `deploy/deployments.json` when it is built; nothing has
 | **Engine** - shared: validates mandates, classifies spends, court arithmetic | [`0xC54324E0127BC5ce3E314467a1c2Eec9F9bEC515`](https://explorer-studio.genlayer.com/address/0xC54324E0127BC5ce3E314467a1c2Eec9F9bEC515) | [`0x6Bbf7978ba6f7A61E29b33D0f13ecc01B9F50CE3`](https://explorer-bradbury.genlayer.com/address/0x6Bbf7978ba6f7A61E29b33D0f13ecc01B9F50CE3) |
 | **Prompts** - shared: builds the jury's question | [`0xba3Aa01E33bE3e464B2D9b6630a1851e411b51A5`](https://explorer-studio.genlayer.com/address/0xba3Aa01E33bE3e464B2D9b6630a1851e411b51A5) | [`0x18D3D692481C78f57E488E352155076cf2E091cd`](https://explorer-bradbury.genlayer.com/address/0x18D3D692481C78f57E488E352155076cf2E091cd) |
 | **Registry** - shared: binds each agent to one principal's guard | [`0xC55Dcbf923da53Fd5746De792b6991c9b9144dE0`](https://explorer-studio.genlayer.com/address/0xC55Dcbf923da53Fd5746De792b6991c9b9144dE0) | [`0x3Bc28fF37db197A1c57ED262b8FAC405ee02bAeE`](https://explorer-bradbury.genlayer.com/address/0x3Bc28fF37db197A1c57ED262b8FAC405ee02bAeE) |
-| **Guard (reference)** - decides; holds nothing | [`0x9F4A53576E135aE81949d2525Fa2C4776afDedDc`](https://explorer-studio.genlayer.com/address/0x9F4A53576E135aE81949d2525Fa2C4776afDedDc) | [`0x4CC1E5c237f064993Ae288B47c274EfeA0c852c8`](https://explorer-bradbury.genlayer.com/address/0x4CC1E5c237f064993Ae288B47c274EfeA0c852c8) |
-| **Rail (reference)** - treasury and court for the reference guard | [`0xF8Aca245124d7992Faab116406d68ac97f4D8D1D`](https://explorer-studio.genlayer.com/address/0xF8Aca245124d7992Faab116406d68ac97f4D8D1D) | [`0x697F48EB35FB3EBB3a418bd70a3ae3c90191D411`](https://explorer-bradbury.genlayer.com/address/0x697F48EB35FB3EBB3a418bd70a3ae3c90191D411) |
+| **Guard (reference)** - decides; holds nothing | [`0xB025487E70C98B33062ea40AD059a3d3855013E1`](https://explorer-studio.genlayer.com/address/0xB025487E70C98B33062ea40AD059a3d3855013E1) | [`0xb9E354eeB1B1c43E3416e39472aA4B30eB94DcC8`](https://explorer-bradbury.genlayer.com/address/0xb9E354eeB1B1c43E3416e39472aA4B30eB94DcC8) |
+| **Rail (reference)** - treasury and court for the reference guard | [`0x3a79D5dD360a7112061281E8041FAd2E2eccb610`](https://explorer-studio.genlayer.com/address/0x3a79D5dD360a7112061281E8041FAd2E2eccb610) | [`0x0350eBBbf6752d44BB37E5318F093c1e4DB18225`](https://explorer-bradbury.genlayer.com/address/0x0350eBBbf6752d44BB37E5318F093c1e4DB18225) |
 
-Reference agent `0x8aA26Fa51a68c583C467463e93db0EBc10f7D509` (both networks), max tier 3. Rail finality delay: 60 s on Studio, 2400 s on Bradbury; bond floor 0.01 GEN.
+Reference agent `0x8aA26Fa51a68c583C467463e93db0EBc10f7D509` (both networks), max tier 3. Rail finality delay: 60 s on Studio, 2400 s on Bradbury; bond floor 0.01 GEN. This pair carries the split hold; the walkthrough records (`deploy/walkthrough-*.json`) ran on the previous pair (Studio guard `0x9F4A53576E135aE81949d2525Fa2C4776afDedDc`, Bradbury guard `0x4CC1E5c237f064993Ae288B47c274EfeA0c852c8`), whose rail did not.
 
 
 ## Status
@@ -157,7 +157,7 @@ shared rules engine, a shared prompts contract and a shared registry, and per
 agent a guard and its rail (treasury and court). Bradbury caps a transaction at
 2^24 gas, so nothing over about 20 KB deploys; the split is how everything
 fits. Deployed sizes: engine 18.1 KB, prompts 10.6 KB, guard 17.4 KB plus its
-mandate, rail 16.8 KB, registry 3.0 KB. Addresses are below and in
+mandate, rail 18.8 KB, registry 3.0 KB. Addresses are below and in
 `deploy/deployments.json`.
 
 Every result below is a real transaction, recorded in `deploy/*.json`, and every
@@ -191,13 +191,22 @@ Bradbury runs are in `deploy/jury-json-*.json` and `deploy/jury-split-*.json`.
 
 **What did not go as designed, stated plainly.**
 
-- **The first slice of a split still clears.** Every jury run records
-  `first_authorized: true` and `second_held: true`. The trigger holds the
-  payment that takes a vendor over the cap. The payment under the cap is
-  authorized, and the rail pays it after the delay. Clawing it back needs
-  someone to bond a challenge and win, and court case A *dismissed* a
-  structuring challenge that had no evidence. So the gate catches the
-  second payment; it does not catch the split.
+- **The first slice of a split cleared - fixed within the rail's delay.** Every
+  jury run above records `first_authorized: true`: the trigger held the payment
+  that took a vendor over the cap, and the one under it was paid after the
+  delay. The rail now checks first. While a later payment to the same vendor,
+  inside a split rule's window, is held, `pay` on the earlier one reverts
+  ("waits"); if the later one is refused under split rules alone, the earlier
+  one is refused with it; a release pays both (`deploy/split-studio.json`,
+  18 of 18 checks, each revert carrying its reason; the Bradbury run is in progress).
+  **What it does not cover:** a slice already paid before the next one is
+  requested. An agent that waits out the delay between slices (60 s on Studio,
+  40 min on Bradbury) gets the first one paid, and clawing it back needs a
+  bonded challenge - court case A *dismissed* a structuring challenge that had
+  no evidence. A principal who wants the whole 24-hour window covered deploys
+  the rail with `finality_seconds` that long, and every payment then waits that
+  long. A refusal that also cited a non-split rule is not read as a ruling on
+  the split, so the earlier slice pays once the later one is decided.
 
 - **A forged document can persuade a jury.** Once in three runs the forged
   invoices got a split released, two validators to one. Each validator votes
@@ -222,9 +231,9 @@ Bradbury runs are in `deploy/jury-json-*.json` and `deploy/jury-split-*.json`.
 
 | Engine and contracts | |
 | --- | --- |
-| Tests | 352, including every built contract run from its deployed bytes (`tests/direct/genvm_stub.py`) |
+| Tests | 369, including every built contract run from its deployed bytes (`tests/direct/genvm_stub.py`) |
 | Injection corpus | 12 strings, as claim, artifact, category and challenge statement |
-| Mutation | 47 mutants across engine, prompts, guard, rail and registry, all killed |
+| Mutation | 52 mutants across engine, prompts, guard, rail and registry, all killed |
 | Parity | the app's mandate validator agrees with the engine on 60 cases |
 
 ```bash

@@ -144,6 +144,12 @@ it. An agent-wide count (`spend_count_gte`) is still in the vocabulary but is
 the wrong trigger for this: it fires on unrelated purchases from different
 vendors and lets the first payments of a split clear.
 
+The payments before the one that crosses the cap are settled when they are
+made, so the rail holds them instead (§6): `pay` reverts while a later payment
+to the same vendor, inside a split rule's window, is held, and refuses the
+earlier one when the later is refused under split rules alone. A refusal that
+also cited another rule is not taken as a ruling on the split.
+
 ## 5. What the jury sees
 
 Three provenance-labelled blocks, never merged:
@@ -220,7 +226,9 @@ Remit splits deciding from paying.
 - **`RemitRail`** (`contracts/rail_shell.py`, built to `contracts/build/rail.py`)
   holds GEN, pays, and hosts the court (§6b). Its one payout,
   `pay(spend_id)`, reads `settlement_of` from the guard and reverts unless the
-  spend is authorized, unpaid, and decided at least `finality_seconds` ago. It
+  spend is authorized, unpaid, and decided at least `finality_seconds` ago, and
+  unless a later payment to the same vendor is held, or was refused, as a split
+  of it (read from the guard's `mandate_info` and `get_spend`). It
   pays exactly the authorized amount to exactly the authorized recipient, and
   never while a challenge holds the spend. The principal's `withdraw` reaches
   only the treasury, never a bond; every other value path belongs to the court.

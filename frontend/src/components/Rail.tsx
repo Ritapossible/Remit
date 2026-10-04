@@ -260,7 +260,7 @@ export function CasePayment({ spend }: { spend: SpendView }) {
         hash={tx.hash}
         outcome={tx.outcome}
         successText="Paid. The recipient is credited when the transaction finalises."
-        refusalHint="The rail refused to pay."
+        refusalHint="The rail refused to pay. It also holds a payment while a later payment to the same vendor is held as a split of it, and refuses it if that split is refused."
       />
       {tx.err && <div className="notice bad">{tx.err}</div>}
     </div>
