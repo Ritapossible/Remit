@@ -6,9 +6,8 @@ import { readDocket, readMandate, type SpendView } from "../chain/remit";
 import type { MandateInfo } from "../lib/mandate";
 import { formatGen } from "../lib/money";
 import { pathOf } from "../lib/path";
-import { Copy, Eye, Key, Pin, Vault } from "../components/icons";
+import { Eye, Key, Pin, Vault } from "../components/icons";
 
-const REPO = "github.com/Ritapossible/Remit";
 
 /** Reads the reference guard directly, independent of the app's selected
  *  network, so the landing page always shows the same live record. */
@@ -389,23 +388,9 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
 ];
 
 function Faq() {
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(`https://${REPO}`);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1400);
-    } catch {
-      /* clipboard unavailable */
-    }
-  };
   return (
     <section className="section wrap">
-      <h2 className="h2">Frequently asked</h2>
-      <button className="copy-pill" onClick={copy} style={{ margin: "8px 0 40px" }}>
-        <span>{copied ? "Link copied" : REPO}</span>
-        <Copy />
-      </button>
+      <h2 className="h2" style={{ marginBottom: 32 }}>Frequently asked</h2>
       <div className="faq">
         {FAQS.map((f) => (
           <details key={f.q}>
