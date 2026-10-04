@@ -77,7 +77,8 @@ from one that is not there, so it now has a direct test.
       prepared
 
 **Exit criterion - met.** 149 tests green, 20 of 20 mutants killed, contract
-builds reproducibly.
+builds reproducibly. (Counts at the end of Phase 2. Today: 352 tests and 47
+mutants, all killed - see Phase 6 and the README.)
 
 ## Phase 3 - On chain: Studio `[x]`
 
@@ -111,7 +112,8 @@ Deploy is not the milestone. **Transactions are the milestone.**
 - [x] Docs: getting started, concepts, mandate format, integration, threat model,
       GenVM field notes
 - [ ] Browser end-to-end run of the full flow on Studio, in CI
-- [ ] Hosted build published from `main`
+- [x] Hosted build published from `main`: Vercel builds every push
+      (`remit-v1.vercel.app`, serving the current reference guard)
 
 **Exit criterion.** A newcomer can go from the landing page to a jury verdict on
 their own guard without reading source code.
@@ -199,6 +201,12 @@ claimed. Every point checked out against the code. What changed:
 - [x] **Isolation** measured on Studio: guard B's payments were accepted while
       guard A's jury round was running (`deploy/isolation-studio.json`).
 - [ ] Jury sample on Bradbury at the size of the Studio one (3 runs per case).
+- [ ] **Hold the first slice of a split.** Today the payment that crosses the
+      cap is held and the one under it is authorized and paid after the delay;
+      every jury run records `first_authorized: true`. While a payment to a
+      vendor is still inside the rail's delay, a later payment that trips the
+      structuring trigger should hold it too.
+- [ ] An appeal that **reverses** a verdict, observed on either network.
 
 ## Beyond v1
 

@@ -97,7 +97,9 @@ stated as a limit, not hidden.
 be appealed. The rail pays only once the decision is `finality_seconds` old, and
 GenLayer sends the value when the paying transaction finalises. A refusal that
 an appeal reverses costs nothing; a payout waits out the window. See
-`docs/ARCHITECTURE.md` §6.
+`docs/ARCHITECTURE.md` §6. **An appeal reversing a verdict has not yet been
+observed on either network** (below), so the window is the design, not a
+measured undo.
 
 ## Graduated authority
 
@@ -181,17 +183,30 @@ transaction merely being accepted.
 | No evidence | out_of_remit, undetermined ×2 | refused ×3 (default) |
 | Forged invoices ("two unrelated orders") | out_of_remit, undetermined, **in_remit** | refused ×2, **released ×1** |
 
-Earlier builds and Bradbury runs are in `deploy/jury-json-*.json` and
-`deploy/jury-split-*.json`.
+How thin these rounds are: **10 of the 15 were decided by two validators
+agreeing while two sat idle.** That is enough for `MAJORITY_AGREE` on Studio,
+but it is not a five-model jury. Three runs per case are not a rate.
+**Bradbury has not been run at this size.** Earlier builds and smaller
+Bradbury runs are in `deploy/jury-json-*.json` and `deploy/jury-split-*.json`.
 
 **What did not go as designed, stated plainly.**
+
+- **The first slice of a split still clears.** Every jury run records
+  `first_authorized: true` and `second_held: true`. The trigger holds the
+  payment that takes a vendor over the cap. The payment under the cap is
+  authorized, and the rail pays it after the delay. Clawing it back needs
+  someone to bond a challenge and win, and court case A *dismissed* a
+  structuring challenge that had no evidence. So the gate catches the
+  second payment; it does not catch the split.
 
 - **A forged document can persuade a jury.** Once in three runs the forged
   invoices got a split released, two validators to one. Each validator votes
   fail-closed, but GenLayer decides a round by majority, so one dissenting
   validator is not a veto. What remains after a wrong release is the appeal
   window (the rail pays only after `finality_seconds`) and the principal, who
-  can ask for vendor-issued evidence in the rule's question.
+  can ask for vendor-issued evidence in the rule's question. It resisted the
+  forgery twice and paid once, on Studio only; that is not "the jury resists
+  forged invoices".
 - **Appeals.** On Studio an appeal of a released spend upheld the verdict, and
   the rail refused to pay while it ran - as designed. But afterwards Studio
   served the appealed guard as "Contract not deployed" at its non-final state,
