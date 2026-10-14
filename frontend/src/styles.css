@@ -522,11 +522,6 @@ dl.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
   .tabs a { padding: 8px 10px; font-size: 14px; }
 }
 
-/* footer credit and the intro video */
-.site-foot .foot-bottom { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap;
-  margin-top: 32px; font-size: 13px; }
-.foot-credit { display: inline-flex; align-items: center; gap: 10px; }
-.foot-credit img { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--cyan); object-fit: cover; }
-.foot-credit b { color: var(--ink); font-weight: 600; }
+/* the intro video */
 .intro-video video { display: block; width: 100%; aspect-ratio: 16 / 9; margin-top: 16px; border-radius: var(--r-lg);
   border: 1px solid var(--line); background: #021118; box-shadow: var(--shadow); }
