@@ -137,7 +137,7 @@ const isAddress = (v: unknown) =>
 // Milestone 1: the agent cannot be its own witness. Mirrors remit_core.py
 // (_unsafe_url, evidence_prefix_ok, pinned_source_error); scripts/parity.ts
 // checks the two agree.
-const unsafeUrl = (u: string) => ["..", "%2e", "\\", "@", "#", "?", " "].some((x) => u.toLowerCase().includes(x));
+const unsafeUrl = (u: string) => ["..", "%", "\\", "@", "#", "?", " "].some((x) => u.toLowerCase().includes(x));
 
 export function evidencePrefixOk(p: unknown): boolean {
   const s = String(p);

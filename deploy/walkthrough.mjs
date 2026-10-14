@@ -141,8 +141,23 @@ if (rail) {
   console.log(`\n[7] rail ${rail} - pay every spend; only authorized ones move money`);
   const st = JSON.parse(await retry("rail status", () => principal.readContract({ address: rail, functionName: "status", args: [] }), 4));
   await sleep((st.finality_seconds + 5) * 1000);
+  // The rail holds the first slices of a split with the ruling on it
+  // (remit_core.split_hold): an authorized spend falls with a LATER payment to
+  // the same vendor, inside the split rule's window, refused on split rules alone.
+  const all = [];
+  for (let id = 0; id < 5; id++) all.push(await spendOf(id));
+  const splitWindow = 86400;
+  const fallsWithSplit = (me) => all.some((o) => o.id > me.id && o.recipient.toLowerCase() === me.recipient.toLowerCase() &&
+    o.at - me.at < splitWindow && o.outcome === "refused" && o.rules.length > 0 && o.rules.every((r) => r === "structuring"));
   for (let id = 0; id < 5; id++) {
-    const auth = (await spendOf(id)).authorization;
+    const auth = all[id].authorization;
+    if (auth === "authorized" && fallsWithSplit(all[id])) {
+      const h = await retry(`pay#${id}`, () => principal.writeContract({ address: rail, functionName: "pay", args: [id], value: 0n }), 4);
+      const r = outcome(await retry(`pay#${id} receipt`, () => principal.waitForTransactionReceipt({ hash: h, status: WAIT, retries: 300, interval: 2500 }), 4));
+      txs.push({ label: `pay#${id}`, hash: h, leader: r.leader, consensus: r.consensus });
+      check(`pay #${id} (authorized, a slice of the refused split) reverted`, r.refused, true);
+      continue;
+    }
     const h = await retry(`pay#${id}`, () => principal.writeContract({ address: rail, functionName: "pay", args: [id], value: 0n }), 4);
     const r = outcome(await retry(`pay#${id} receipt`, () => principal.waitForTransactionReceipt({ hash: h, status: WAIT, retries: 300, interval: 2500 }), 4));
     txs.push({ label: `pay#${id}`, hash: h, leader: r.leader, consensus: r.consensus });
@@ -158,6 +173,6 @@ console.log("\n=== docket ===");
 for (const e of docket) {
   console.log(`  #${e.id} ${String(e.amount / 1e18).padStart(6)} GEN  ${e.state.padEnd(8)} ${e.authorization.padEnd(10)} rules=${e.rules.join(",") || "-"} ${e.verdict || ""}`);
 }
-fs.writeFileSync(`walkthrough-${network}.json`, JSON.stringify({ address, txs, docket }, null, 2));
+fs.writeFileSync(process.env.OUT ?? `walkthrough-${network}.json`, JSON.stringify({ address, txs, docket }, null, 2));
 console.log(`\n${txs.length} transactions, ${failures} failed checks`);
 process.exit(failures === 0 ? 0 : 1);

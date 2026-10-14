@@ -77,7 +77,7 @@ from one that is not there, so it now has a direct test.
       prepared
 
 **Exit criterion - met.** 149 tests green, 20 of 20 mutants killed, contract
-builds reproducibly. (Counts at the end of Phase 2. Today: 400 tests and 58
+builds reproducibly. (Counts at the end of Phase 2. Today: 403 tests and 59
 mutants, all killed - see Phase 6 and the README.)
 
 ## Phase 3 - On chain: Studio `[x]`
@@ -221,20 +221,24 @@ and a vendor's own invoice still can.
       prefixes its evidence comes from (`evidence_sources`). The guard refuses
       any other document when it is sent or committed, before any fetch or
       model. Prefixes are `https://host/path/` ending in `/`; traversal,
-      encoded dots, userinfo, queries and fragments are refused; a vendor
-      nobody pinned is unrestricted, as before. Engine `remit-engine/4`, guard
+      any percent-encoding (so `%252e`, a dot to a server that decodes
+      twice), userinfo, queries and fragments are refused; a vendor
+      nobody pinned is unrestricted, as before. Engine `remit-engine/5`, guard
       `remit-guard/4`.
-- [x] **Tests.** `tests/direct/test_pinned_evidence.py` (31 tests, the built
-      guard readable and deployed); 400 tests in all; six new mutants, 58 of 58
-      killed.
+- [x] **Tests.** `tests/direct/test_pinned_evidence.py` (34 tests, the built
+      guard readable and deployed); 403 tests in all; seven new mutants, 59 of
+      59 killed.
 - [x] **The app agrees with the guard.** It warns before signing exactly when
-      the guard would refuse; parity covers 74 mandate cases and 33
+      the guard would refuse; parity covers 74 mandate cases and 39
       recipient/URL pairs.
 - [x] **Studio** (`deploy/evidence-studio.json`): the same invoice bytes,
-      three runs each. From the agent's path: refused at commit 3 of 3, paid 0.
-      From the vendor's pinned path: verified 3 of 3, released 3 of 3
-      (in_remit 90, 94, 80). 0 failed checks.
-- [x] **Bradbury** (`deploy/evidence-bradbury.json`): from the agent's
+      three runs each, on `remit-engine/5`. From the agent's path: refused at
+      commit 3 of 3, and a double-encoded path out of the vendor's prefix
+      refused 3 of 3; paid 0. From the vendor's pinned path: verified 3 of 3,
+      released 3 of 3 (in_remit 72, 85, 95). 0 failed checks.
+- [~] **Bradbury, rerun on `remit-engine/5`** (`deploy/evidence-bradbury.json`):
+      in progress. On the first Milestone 1 engine
+      (`deploy/archive/evidence-bradbury-engine4.json`): from the agent's
       path, refused at commit 3 of 3, paid 0 (one jury round ended with every
       validator `NOT_VOTED`; that payment was closed after its response
       window by `resolve_deadline`: refused, `deadline_default`). From the vendor's path: verified 3 of 3, released

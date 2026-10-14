@@ -161,7 +161,7 @@ console.log(`  ${cases.length - failures} agree · engine accepts ${accepted}, r
 const PIN = "https://invoice.vendor.test/i/acct_1/";
 const sources = { [vendors[0]]: [PIN] };
 const uris = [
-  PIN + "inv.json", PIN, PIN + "../acct_2/inv.json", PIN + "%2E%2E/x", PIN + "inv.json?x=1", PIN + "inv.json#a",
+  PIN + "inv.json", PIN, PIN + "../acct_2/inv.json", PIN + "%2E%2E/x", PIN + "%252e%252e/x", PIN + "a%2fb.json", PIN + "inv.json?x=1", PIN + "inv.json#a",
   "https://invoice.vendor.test/i/acct_2/inv.json", "https://invoice.vendor.test.attacker.io/i/acct_1/x",
   "https://agent@invoice.vendor.test/i/acct_1/x", "https://agent-host.test/forged.json", PIN + "a b",
 ];

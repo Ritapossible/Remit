@@ -177,7 +177,7 @@ recipient with no pinned prefix is unrestricted, exactly as before.
 | --- | --- |
 | 1-4 prefixes per address | enough for a vendor's billing hosts, small enough to read |
 | `https://host/path/`, ending with `/` | `https://vendor.com` would also match `https://vendor.com.attacker.io/...` |
-| No `..`, `%2e`, `\`, `@`, `?`, `#` or spaces, in a prefix or in a committed URL | each can make a URL leave the prefix it appears to start with |
+| No `..`, `%` (no percent-encoding at all), `\`, `@`, `?`, `#` or spaces, in a prefix or in a committed URL | each can make a URL leave the prefix it appears to start with; `%` covers `%2e` and `%252e`, which a server that decodes twice reads as a dot |
 
 Pin the **narrowest** prefix the vendor publishes under. On a shared host -
 Stripe's `invoice.stripe.com`, GitHub's `raw.githubusercontent.com` - pin the

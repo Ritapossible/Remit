@@ -173,13 +173,21 @@ a payment or committed later - before any fetch or model - with
 `evidence must come from the vendor, under ...`. A forgery the agent hosts
 itself, or one under another merchant's account on the same shared host, never
 reaches the jury. Prefixes must be `https://host/path/` ending in `/`, and a
-URL with `..`, encoded dots, `@`, `?`, `#` or spaces is refused, so nothing
-walks out of its prefix. A vendor nobody pinned is unrestricted, as in
+URL with `..`, any percent-encoding (`%`: an encoded dot, and a
+double-encoded `%252e` that a server decoding twice reads as a dot), `@`, `?`,
+`#` or spaces is refused, so nothing walks out of its prefix. A vendor nobody pinned is unrestricted, as in
 Release 1. Details: `docs/MANDATE-FORMAT.md`, threat model T4.
 
 **What it does not do.** It does not make a vendor honest: a vendor that lies
 on its own host, or colludes with the agent, is still believed as far as the
 jury believes it. It removes the agent as a witness for itself.
+
+The gate is a check on the URL's text, which is why it refuses anything a
+server could decode into a different path. And in this demo the vendor's
+prefix is a folder in this same repository, so whoever can push to `main` can
+write the "vendor" file: the runs prove the gate, not an independent vendor.
+In production the pinned prefix is a host only the vendor writes to - its
+invoice or billing portal - and the principal chooses it, not the agent.
 
 **Measured on chain.** One invoice, two places. The same bytes - the
 INV-301/317 invoice the jury released in every Release 1 run - were published
@@ -190,28 +198,28 @@ vendor, the second held, then evidence committed from one place or the other.
 
 | | Agent's copy (forged path) | Vendor's copy (pinned path) |
 | --- | --- | --- |
-| **Studio** (`deploy/evidence-studio.json`) | refused at commit 3 of 3; paid 0 | verified 3 of 3; released 3 of 3 (in_remit 90, 94, 80) |
-| **Bradbury** (`deploy/evidence-bradbury.json`) | refused at commit 3 of 3; paid 0 | verified 3 of 3; released 3 of 3 (in_remit 90, 75, 80) |
+| **Studio** (`deploy/evidence-studio.json`) | refused at commit 3 of 3, and the double-encoded path 3 of 3; paid 0 | verified 3 of 3; released 3 of 3 (in_remit 72, 85, 95) |
+| **Bradbury** (`deploy/archive/evidence-bradbury-engine4.json`, first Milestone 1 engine; the rerun on `remit-engine/5` is in progress) | refused at commit 3 of 3; paid 0 | verified 3 of 3; released 3 of 3 (in_remit 90, 75, 80) |
 
 Studio and Bradbury: 0 failed checks each. Every refusal reads, from the chain, `evidence must come from the vendor, under https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/`. On Bradbury, the jury then ruled on the ledger alone in two forged runs (out_of_remit 85 and 95); in the first, the round ended with all five validators `NOT_VOTED`, no verdict, so the payment stayed held and was closed after its response window by `resolve_deadline` with the mandate's default: refused (`deadline_default`). No forged run paid on either network.
 
-**Tests.** 400 (31 new in `tests/direct/test_pinned_evidence.py`, running the
-built guard readable and deployed); 58 mutants, six new, all killed; the app
+**Tests.** 403 (34 new in `tests/direct/test_pinned_evidence.py`, running the
+built guard readable and deployed); 59 mutants, seven new, all killed; the app
 warns before signing exactly when the guard would refuse (parity on 74 mandate
-cases and 33 recipient/URL pairs).
+cases and 39 recipient/URL pairs).
 
 **Milestone 1 contracts** - the app reads these from `deploy/deployments.json`
 when it is built; nothing has to be configured by hand:
 
 | Contract | Studio | Bradbury |
 | --- | --- | --- |
-| **Engine** `remit-engine/4` - adds `evidence_error` | [`0x8c09CC08a2eeE514e9cA8F09445dc7DE0e9D232a`](https://explorer-studio.genlayer.com/address/0x8c09CC08a2eeE514e9cA8F09445dc7DE0e9D232a) | [`0x5C77740FC6fc081eEC163783D6852f520B7813Fc`](https://explorer-bradbury.genlayer.com/address/0x5C77740FC6fc081eEC163783D6852f520B7813Fc) |
-| **Prompts** - shared, unchanged code | [`0x7f97d460211f77FCfe56D7a027046721C541fAf3`](https://explorer-studio.genlayer.com/address/0x7f97d460211f77FCfe56D7a027046721C541fAf3) | [`0xC0a1fC2E23ebD280614eFdF565BB6D8884A465f4`](https://explorer-bradbury.genlayer.com/address/0xC0a1fC2E23ebD280614eFdF565BB6D8884A465f4) |
-| **Registry** - shared, unchanged code | [`0x426196A18fe7A305384170a5FbD8df16401F3fcC`](https://explorer-studio.genlayer.com/address/0x426196A18fe7A305384170a5FbD8df16401F3fcC) | [`0x0a1658f591cA8237e98Bec7F833e616D9dB3F40a`](https://explorer-bradbury.genlayer.com/address/0x0a1658f591cA8237e98Bec7F833e616D9dB3F40a) |
-| **Guard (reference)** `remit-guard/4` - checks evidence against the pinned prefixes | [`0x4DC1175d180dFEe0226B2bb887c06153126E8DeD`](https://explorer-studio.genlayer.com/address/0x4DC1175d180dFEe0226B2bb887c06153126E8DeD) | [`0x2eFe9d3931757AC90321BE1Df2894a1813C762fB`](https://explorer-bradbury.genlayer.com/address/0x2eFe9d3931757AC90321BE1Df2894a1813C762fB) |
-| **Rail (reference)** - unchanged code | [`0x7AB4ae093497Db200A167Dd3eE21bE463c1a4221`](https://explorer-studio.genlayer.com/address/0x7AB4ae093497Db200A167Dd3eE21bE463c1a4221) | [`0x7ac45f98C7a82A5eFE24259d2CA03aadAF864A0E`](https://explorer-bradbury.genlayer.com/address/0x7ac45f98C7a82A5eFE24259d2CA03aadAF864A0E) |
+| **Engine** `remit-engine/5` - adds `evidence_error` | [`0x361Dc1B1EdDb2Dbe5E7CcbcA157D1b979201d9C7`](https://explorer-studio.genlayer.com/address/0x361Dc1B1EdDb2Dbe5E7CcbcA157D1b979201d9C7) | [`0xfeA8Ec15868526e921502820C5c1Fe8fCEA6E685`](https://explorer-bradbury.genlayer.com/address/0xfeA8Ec15868526e921502820C5c1Fe8fCEA6E685) |
+| **Prompts** - shared, unchanged code | [`0x06c9570A7F57a54eb0f07c4Cc3c6ee0f312c48D9`](https://explorer-studio.genlayer.com/address/0x06c9570A7F57a54eb0f07c4Cc3c6ee0f312c48D9) | [`0xF34a07Ce68B59158f325bcb40314258fA22dA70a`](https://explorer-bradbury.genlayer.com/address/0xF34a07Ce68B59158f325bcb40314258fA22dA70a) |
+| **Registry** - shared, unchanged code | [`0x95E415844BEA23DEa63B16A6f82FA2168ead19cf`](https://explorer-studio.genlayer.com/address/0x95E415844BEA23DEa63B16A6f82FA2168ead19cf) | [`0x74ba5878B0714275dbB97Ec4D9b7Ea823b3c3707`](https://explorer-bradbury.genlayer.com/address/0x74ba5878B0714275dbB97Ec4D9b7Ea823b3c3707) |
+| **Guard (reference)** `remit-guard/4` - checks evidence against the pinned prefixes | [`0xF7EE795EF77519b5dF9d367cd3588dC902603E0F`](https://explorer-studio.genlayer.com/address/0xF7EE795EF77519b5dF9d367cd3588dC902603E0F) | [`0x8EB28e009B6BC8b2853C549F87A917D1b371EAe9`](https://explorer-bradbury.genlayer.com/address/0x8EB28e009B6BC8b2853C549F87A917D1b371EAe9) |
+| **Rail (reference)** - unchanged code | [`0x85016A51f34a1A633862749f1ab5c7F436948846`](https://explorer-studio.genlayer.com/address/0x85016A51f34a1A633862749f1ab5c7F436948846) | [`0xCE6EBe9e8B6C2AD94839Db40a5D2f0d2D6cD8EdE`](https://explorer-bradbury.genlayer.com/address/0xCE6EBe9e8B6C2AD94839Db40a5D2f0d2D6cD8EdE) |
 
-Reference agent `0x8aA26Fa51a68c583C467463e93db0EBc10f7D509` (both networks), max tier 3. Rail finality delay: 60 s on Studio, 2400 s on Bradbury; bond floor 0.01 GEN. Code changed in the engine and the guard only; prompts, registry and rail were redeployed unchanged because a guard binds to one engine and the registry to one engine.
+Reference agent `0x8aA26Fa51a68c583C467463e93db0EBc10f7D509` (both networks), max tier 3. Rail finality delay: 60 s on Studio, 2400 s on Bradbury; bond floor 0.01 GEN. The Studio reference guard was seeded by the walkthrough (`deploy/walkthrough-studio-m1.json`, 16 transactions): the jury ruled spend #3 a split, so the rail refused #0 and #2 with it and paid #4, the override. The Bradbury reference guard is seeded once its evidence runs finish. The first Milestone 1 deploy (`remit-engine/4`, which refused `%2e` but not `%252e`) is in `deploy/archive/deployments-engine4.json` with its records. Code changed in the engine and the guard only; prompts, registry and rail were redeployed unchanged because a guard binds to one engine and the registry to one engine.
 
 ## Status
 
@@ -311,10 +319,10 @@ Bradbury runs are in `deploy/jury-json-*.json` and `deploy/jury-split-*.json`.
 
 | Engine and contracts | |
 | --- | --- |
-| Tests | 400, including every built contract run from its deployed bytes (`tests/direct/genvm_stub.py`) |
+| Tests | 403, including every built contract run from its deployed bytes (`tests/direct/genvm_stub.py`) |
 | Injection corpus | 12 strings, as claim, artifact, category and challenge statement |
-| Mutation | 58 mutants across engine, prompts, guard, rail and registry, all killed |
-| Parity | the app's mandate validator agrees with the engine on 74 cases, its evidence check on 33 recipient/URL pairs, and its split-hold check (the Pay button) on 227 cases |
+| Mutation | 59 mutants across engine, prompts, guard, rail and registry, all killed |
+| Parity | the app's mandate validator agrees with the engine on 74 cases, its evidence check on 39 recipient/URL pairs, and its split-hold check (the Pay button) on 227 cases |
 
 ```bash
 python3 -m pytest tests/direct        # no chain needed

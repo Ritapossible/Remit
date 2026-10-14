@@ -56,6 +56,9 @@ def test_a_pinned_prefix_names_an_https_host_and_ends_with_a_slash(prefix, ok):
     (PREFIX + "../acct_999/inv.json", False),                             # path traversal
     (PREFIX + "%2e%2e/acct_999/inv.json", False),
     (PREFIX + "%2E%2E/acct_999/inv.json", False),
+    (PREFIX + "%252e%252e/acct_999/inv.json", False),                     # decoded twice: ../
+    (PREFIX + "inv%2f..%2fx.json", False),
+    (PREFIX + "x%5c..%5cinv.json", False),
     (PREFIX + "inv.json?redirect=https://evil", False),
     ("https://agent@invoice.vendor.test/i/acct_123/x", False),
 ])

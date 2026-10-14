@@ -115,6 +115,16 @@ for (const [name, c] of Object.entries(CASES)) {
     const held = await readUntil(() => spendOf(g.address, 1), (x) => x.state === "held", { seconds: 120 });
     check(run, "the second payment is held", held.value.state === "held");
 
+    if (name === "forged") {
+      // The vendor's prefix, then a double-encoded "../../" back out to the
+      // agent's copy: a server that decodes twice would serve agent-uploads/.
+      const sneak = RAW + "vendor/northlight/%252e%252e/%252e%252e/agent-uploads/invoices-INV-301-317.json";
+      const d = await send(agent, g.address, "commit_artifact", [1, sneak, DIGEST], "commit double-encoded");
+      run.double_encoded = { uri: sneak, tx: d.hash, result: d.applied ? "committed" : d.refused ? "refused" : d.consensus };
+      if (!d.applied) run.double_encoded.reason = await refusalOf(agent, d.hash, g.address, "commit_artifact", [1, sneak, DIGEST]);
+      console.log(`  double-encoded: ${run.double_encoded.result} - ${(run.double_encoded.reason ?? "").slice(0, 100)}`);
+      check(run, "a double-encoded path out of the prefix is refused", d.refused && /must come from the vendor/.test(run.double_encoded.reason ?? ""));
+    }
     const commit = await send(agent, g.address, "commit_artifact", [1, c.uri, DIGEST], "commit evidence");
     run.commit_tx = commit.hash;
     run.commit = commit.applied ? "committed" : commit.refused ? "refused" : commit.consensus;

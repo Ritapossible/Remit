@@ -809,7 +809,7 @@ def is_revoked(*, spend_id, revoked_below):
 
 def _unsafe_url(u):
     """Anything that could make a URL escape the prefix it starts with."""
-    return any(x in u.lower() for x in ("..", "%2e", "\\", "@", "#", "?", " "))
+    return any(x in u.lower() for x in ("..", "%", "\\", "@", "#", "?", " "))
 
 
 def evidence_prefix_ok(prefix):

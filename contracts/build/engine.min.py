@@ -291,7 +291,7 @@ def _BF(*, tier, shadow):
  return _BB if tier >= _BB else _BA
 
 def _BG(u):
- return any((x in u.lower() for x in ('..', '%2e', '\\', '@', '#', '?', ' ')))
+ return any((x in u.lower() for x in ('..', '%', '\\', '@', '#', '?', ' ')))
 
 def _BH(prefix):
  p = str(prefix)
@@ -501,7 +501,7 @@ class RemitEngine(gl.Contract):
  prompts: Address
 
  def __init__(self, prompts: str):
-  self.release = 'remit-engine/4'
+  self.release = 'remit-engine/5'
   self.prompts = Address(prompts)
 
  @gl.public.view

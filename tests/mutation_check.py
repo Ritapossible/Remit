@@ -38,8 +38,14 @@ MUTATIONS = [
     (
         "traversal-escapes-prefix",
         "a URL that walks out of its prefix is refused",
-        '    return any(x in u.lower() for x in ("..", "%2e", "\\\\", "@", "#", "?", " "))',
+        '    return any(x in u.lower() for x in ("..", "%", "\\\\", "@", "#", "?", " "))',
         '    return any(x in u.lower() for x in ("\\\\", "@", "#", "?", " "))',
+    ),
+    (
+        "double-encoding-escapes-prefix",
+        "no percent-encoding at all: %252e is a dot once a server decodes twice",
+        '    return any(x in u.lower() for x in ("..", "%", "\\\\", "@", "#", "?", " "))',
+        '    return any(x in u.lower() for x in ("..", "%2e", "\\\\", "@", "#", "?", " "))',
     ),
     (
         "prefix-without-slash",

@@ -211,6 +211,34 @@ export function Overview() {
           </div>
         </>
       )}
+
+      {mandate.evidence_sources && Object.keys(mandate.evidence_sources).length > 0 && (
+        <>
+          <h2 className="app-h2">Where each vendor's evidence must come from</h2>
+          <p className="muted small" style={{ maxWidth: 720 }}>
+            For these vendors the guard accepts evidence only from the addresses below, before anything is fetched or
+            judged, so the agent cannot be its own witness. A URL with <code>..</code>, any <code>%</code> encoding,{" "}
+            <code>@</code>, <code>?</code>, <code>#</code> or a space is refused. Vendors not listed are unrestricted.
+          </p>
+          <div className="grid-2">
+            {Object.entries(mandate.evidence_sources).map(([addr, prefixes]) => (
+              <div className="card" key={addr}>
+                <h3>
+                  <Addr value={addr} />
+                </h3>
+                <p className="sub">
+                  {prefixes.length} pinned {prefixes.length === 1 ? "prefix" : "prefixes"}
+                </p>
+                {prefixes.map((p) => (
+                  <div key={p} className="small" style={{ marginTop: 6 }}>
+                    <code>{p}</code>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </>
   );
 }

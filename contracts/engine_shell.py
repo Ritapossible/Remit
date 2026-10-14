@@ -13,7 +13,7 @@ class RemitEngine(gl.Contract):
     prompts: Address
 
     def __init__(self, prompts: str):
-        self.release = "remit-engine/4"
+        self.release = "remit-engine/5"
         self.prompts = Address(prompts)
 
     @gl.public.view
