@@ -10,6 +10,11 @@ Arithmetic clears in the same transaction. Judgment goes to a jury.
 A treasury contract pays only what the gate authorized.
 
 Built on [GenLayer](https://genlayer.com) Intelligent Contracts.
+**Live app: [remit-v1.vercel.app](https://remit-v1.vercel.app)**
+
+[![Watch the Remit intro (10 seconds, with sound)](docs/media/watch-remit.jpg)](https://remit-v1.vercel.app/media/remit-intro.mp4)
+
+<sub>Tap the image to play it in your browser ([direct link](https://remit-v1.vercel.app/media/remit-intro.mp4)). It also plays on the [live site](https://remit-v1.vercel.app), under the hero.</sub>
 
 ---
 
@@ -416,3 +421,10 @@ CLAUDE.md           project memory: hard constraints, conventions, commands
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+---
+
+<p>
+  <img src="frontend/public/media/ritacryptotips@2x.jpg" alt="RitaCryptoTips" width="48" height="48" align="left" />
+  Built by <b>RitaCryptoTips</b> (Rita Egwuatu).
+</p>

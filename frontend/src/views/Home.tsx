@@ -60,6 +60,13 @@ export function Home() {
         </div>
       </section>
 
+      <section className="section wrap intro-video">
+        <span className="eyebrow">Remit in ten seconds</span>
+        <video controls playsInline preload="none" poster="media/remit-intro-poster.jpg" aria-label="Remit intro video">
+          <source src="media/remit-intro.mp4" type="video/mp4" />
+        </video>
+      </section>
+
       <section className="section wrap">
         <span className="eyebrow">The gap</span>
         <h2 className="h2" style={{ marginTop: 14 }}>
