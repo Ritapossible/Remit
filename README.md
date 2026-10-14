@@ -322,6 +322,7 @@ Bradbury runs are in `deploy/jury-json-*.json` and `deploy/jury-split-*.json`.
 | Tests | 403, including every built contract run from its deployed bytes (`tests/direct/genvm_stub.py`) |
 | Injection corpus | 12 strings, as claim, artifact, category and challenge statement |
 | Mutation | 59 mutants across engine, prompts, guard, rail and registry, all killed |
+| Bradbury smoke | `frontend/scripts/smoke-bradbury.mjs`: the app on Bradbury, read-only - mandate and pinned sources, docket, a jury verdict, the rail's split refusal before signing, a paid spend; 8 of 8 |
 | Parity | the app's mandate validator agrees with the engine on 74 cases, its evidence check on 39 recipient/URL pairs, and its split-hold check (the Pay button) on 227 cases |
 
 ```bash
