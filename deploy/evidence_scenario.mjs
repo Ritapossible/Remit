@@ -53,13 +53,20 @@ async function send(client, address, fn, args, label) {
   r = await settledReceipt(client, h, r);
   return { hash: h, ...outcome(r), receipt: r };
 }
-/** The contract's own words for a refusal: simulate the same call. */
-async function refusalOf(client, address, fn, args) {
+/** The contract's own words for a refusal: the leader's stderr on the stored
+ *  transaction (Studio), else a simulation of the same call (Bradbury's
+ *  receipts carry no stderr). */
+const EXPECTED = /Exception: (\[EXPECTED\][^"\\\n]*)/;
+async function refusalOf(client, hash, address, fn, args) {
+  const tx = await client.getTransaction({ hash }).catch(() => null);
+  const text = JSON.stringify(tx ?? {}, (k, v) => (typeof v === "bigint" ? v.toString() : v));
+  const found = (text.match(EXPECTED) || [, ""])[1];
+  if (found) return found;
   try {
     await client.simulateWriteContract({ address, functionName: fn, args });
     return "";
   } catch (e) {
-    return String(e?.details || e?.shortMessage || e?.message || e).slice(0, 300);
+    return (String(e?.message ?? e).match(EXPECTED) || [, String(e?.details ?? e?.shortMessage ?? e).slice(0, 200)])[1];
   }
 }
 const spendOf = async (address, id) => {
@@ -81,6 +88,14 @@ const check = (run, label, ok) => {
 };
 
 console.log(`engine ${engine} on ${network}; ${REPEAT} runs per case`);
+// A resumed record: re-read the refusal's own words for any forged run whose
+// first reading found none, and re-decide that one check from the chain.
+for (const run of record.runs.filter((r) => r.case === "forged" && r.done && r.commit_tx && !/must come from the vendor/.test(r.commit_reason ?? ""))) {
+  run.commit_reason = await refusalOf(agent, run.commit_tx, run.guard, "commit_artifact", [1, run.uri, DIGEST]);
+  run.checks["the refusal names the vendor's prefix"] = /must come from the vendor/.test(run.commit_reason);
+  console.log(`  forged run ${run.run}: refusal re-read from chain - ${run.commit_reason}`);
+  save();
+}
 for (const [name, c] of Object.entries(CASES)) {
   for (let n = record.runs.filter((r) => r.case === name && r.done).length; n < REPEAT; n++) {
     console.log(`\n=== ${name} (run ${n + 1}/${REPEAT}): ${c.what}`);
@@ -103,7 +118,7 @@ for (const [name, c] of Object.entries(CASES)) {
     const commit = await send(agent, g.address, "commit_artifact", [1, c.uri, DIGEST], "commit evidence");
     run.commit_tx = commit.hash;
     run.commit = commit.applied ? "committed" : commit.refused ? "refused" : commit.consensus;
-    if (!commit.applied) run.commit_reason = await refusalOf(agent, g.address, "commit_artifact", [1, c.uri, DIGEST]);
+    if (!commit.applied) run.commit_reason = await refusalOf(agent, commit.hash, g.address, "commit_artifact", [1, c.uri, DIGEST]);
     console.log(`  commit: ${run.commit}${run.commit_reason ? " - " + run.commit_reason.slice(0, 140) : ""}`);
     if (name === "forged") {
       check(run, "the forged evidence is refused when committed", commit.refused);

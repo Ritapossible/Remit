@@ -110,8 +110,8 @@ estimate before you sign.
 
 | Method | Who | What it does |
 | --- | --- | --- |
-| `request_spend(recipient, amount, category, memo_uri, memo_digest, claim)` | agent | Classifies the spend in this transaction: settled, refused, or held. `amount` is atto-GEN. `memo_uri` and `memo_digest` are optional; if a URI is given the digest must be a sha256 hex string. `claim` is shown to the jury as untrusted. |
-| `commit_artifact(spend_id, uri, digest)` | agent | Pins evidence to a held spend. |
+| `request_spend(recipient, amount, category, memo_uri, memo_digest, claim)` | agent | Classifies the spend in this transaction: settled, refused, or held. `amount` is atto-GEN. `memo_uri` and `memo_digest` are optional; if a URI is given the digest must be a sha256 hex string, and for a vendor the mandate pins (`evidence_sources`) the URI must start with one of its prefixes, or the request is refused with nothing recorded. `claim` is shown to the jury as untrusted. |
+| `commit_artifact(spend_id, uri, digest)` | agent | Pins evidence to a held spend. For a vendor the mandate pins, `uri` must start with one of its `evidence_sources` prefixes; otherwise it is refused (`evidence must come from the vendor, under ...`). |
 | `adjudicate(spend_id)` | anyone | Convenes the jury on a held spend. Refused while the response window is open and no evidence is committed. |
 | `resolve_deadline(spend_id)` | anyone | After the hold deadline, applies the registered default. |
 | `override_release(spend_id)` / `override_refuse(spend_id)` | principal | Decides a held spend directly. The principal always outranks Remit. |

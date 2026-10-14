@@ -10,7 +10,7 @@ interface Phase {
   label: string;
   title: string;
   status: Status;
-  items: { done: boolean; text: string }[];
+  items: { done: boolean; partial: boolean; text: string }[];
 }
 
 function parse(md: string) {
@@ -36,10 +36,10 @@ function parse(md: string) {
       continue;
     }
     if (section === "phase") {
-      const it = line.match(/^- \[(x| )\] (.*)$/);
+      const it = line.match(/^- \[(x|~| )\] (.*)$/);
       if (it) {
         lastItem = { text: it[2] };
-        phases[phases.length - 1].items.push({ done: it[1] === "x", text: it[2] });
+        phases[phases.length - 1].items.push({ done: it[1] === "x", partial: it[1] === "~", text: it[2] });
         continue;
       }
       // Continuation of a wrapped item; nested sub-items are folded into it.
@@ -133,9 +133,9 @@ export function Roadmap() {
                   </div>
                   <ul className="checklist">
                     {p.items.map((i, k) => (
-                      <li key={k} className={i.done ? "on" : ""}>
+                      <li key={k} className={i.done ? "on" : ""} title={i.partial ? "In progress" : undefined}>
                         <span className="box" aria-hidden="true">
-                          {i.done ? "✓" : ""}
+                          {i.done ? "✓" : i.partial ? "~" : ""}
                         </span>
                         <span dangerouslySetInnerHTML={{ __html: inline(i.text) }} />
                       </li>

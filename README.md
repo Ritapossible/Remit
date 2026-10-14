@@ -137,7 +137,9 @@ returns the bond with a 5% reward, after the principal is made whole.
 
 ## Deployed contracts
 
-The app reads these from `deploy/deployments.json` when it is built; nothing has to be configured by hand.
+**Release 1**, the contracts submitted and accepted, kept as they were
+(`deploy/deployments-v1.json`). The app now runs on the Milestone 1 contracts
+[below](#milestone-1-the-agent-cannot-be-its-own-witness).
 
 | Contract | Studio | Bradbury |
 | --- | --- | --- |
@@ -150,15 +152,79 @@ The app reads these from `deploy/deployments.json` when it is built; nothing has
 Reference agent `0x8aA26Fa51a68c583C467463e93db0EBc10f7D509` (both networks), max tier 3. Rail finality delay: 60 s on Studio, 2400 s on Bradbury; bond floor 0.01 GEN. This pair carries the split hold; the walkthrough records (`deploy/walkthrough-*.json`) ran on the previous pair (Studio guard `0x9F4A53576E135aE81949d2525Fa2C4776afDedDc`, Bradbury guard `0x4CC1E5c237f064993Ae288B47c274EfeA0c852c8`), whose rail did not.
 
 
+## Milestone 1: the agent cannot be its own witness
+
+**The problem it closes.** Release 1's worst stated result: invoices the agent
+forged got a split released once in three Studio runs, two validators to one.
+The agent was its own witness - it could write any document, host it, and
+commit it as evidence.
+
+**What changed.** A mandate may now pin, per vendor, the URL prefixes that
+vendor's evidence comes from:
+
+```json
+"evidence_sources": {
+  "0x3F55971f7fd2594A90871Db489fBb82f1DB4d747": ["https://invoice.stripe.com/i/acct_VENDOR/"]
+}
+```
+
+For a pinned vendor, the guard refuses any other document when it is sent with
+a payment or committed later - before any fetch or model - with
+`evidence must come from the vendor, under ...`. A forgery the agent hosts
+itself, or one under another merchant's account on the same shared host, never
+reaches the jury. Prefixes must be `https://host/path/` ending in `/`, and a
+URL with `..`, encoded dots, `@`, `?`, `#` or spaces is refused, so nothing
+walks out of its prefix. A vendor nobody pinned is unrestricted, as in
+Release 1. Details: `docs/MANDATE-FORMAT.md`, threat model T4.
+
+**What it does not do.** It does not make a vendor honest: a vendor that lies
+on its own host, or colludes with the agent, is still believed as far as the
+jury believes it. It removes the agent as a witness for itself.
+
+**Measured on chain.** One invoice, two places. The same bytes - the
+INV-301/317 invoice the jury released in every Release 1 run - were published
+under `examples/vendor/northlight/` (the vendor's prefix, pinned in
+`mandates/demo-*.json`) and under `examples/agent-uploads/` (the same host,
+where the agent can publish). Each run is a fresh guard: two payments to one
+vendor, the second held, then evidence committed from one place or the other.
+
+| | Agent's copy (forged path) | Vendor's copy (pinned path) |
+| --- | --- | --- |
+| **Studio** (`deploy/evidence-studio.json`) | refused at commit 3 of 3; paid 0 | verified 3 of 3; released 3 of 3 (in_remit 90, 94, 80) |
+| **Bradbury** (`deploy/evidence-bradbury.json`) | refused at commit 3 of 3; paid 0 | verified 3 of 3; released 3 of 3 (in_remit 90, 75, 80) |
+
+Studio and Bradbury: 0 failed checks each. Every refusal reads, from the chain, `evidence must come from the vendor, under https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/`. On Bradbury, the jury then ruled on the ledger alone in two forged runs (out_of_remit 85 and 95); in the first, the round ended with all five validators `NOT_VOTED`, no verdict, so the payment stayed held and was closed at its hold deadline by the mandate's default, refund. No forged run paid on either network.
+
+**Tests.** 400 (31 new in `tests/direct/test_pinned_evidence.py`, running the
+built guard readable and deployed); 58 mutants, six new, all killed; the app
+warns before signing exactly when the guard would refuse (parity on 74 mandate
+cases and 33 recipient/URL pairs).
+
+**Milestone 1 contracts** - the app reads these from `deploy/deployments.json`
+when it is built; nothing has to be configured by hand:
+
+| Contract | Studio | Bradbury |
+| --- | --- | --- |
+| **Engine** `remit-engine/4` - adds `evidence_error` | [`0x8c09CC08a2eeE514e9cA8F09445dc7DE0e9D232a`](https://explorer-studio.genlayer.com/address/0x8c09CC08a2eeE514e9cA8F09445dc7DE0e9D232a) | [`0x5C77740FC6fc081eEC163783D6852f520B7813Fc`](https://explorer-bradbury.genlayer.com/address/0x5C77740FC6fc081eEC163783D6852f520B7813Fc) |
+| **Prompts** - shared, unchanged code | [`0x7f97d460211f77FCfe56D7a027046721C541fAf3`](https://explorer-studio.genlayer.com/address/0x7f97d460211f77FCfe56D7a027046721C541fAf3) | [`0xC0a1fC2E23ebD280614eFdF565BB6D8884A465f4`](https://explorer-bradbury.genlayer.com/address/0xC0a1fC2E23ebD280614eFdF565BB6D8884A465f4) |
+| **Registry** - shared, unchanged code | [`0x426196A18fe7A305384170a5FbD8df16401F3fcC`](https://explorer-studio.genlayer.com/address/0x426196A18fe7A305384170a5FbD8df16401F3fcC) | [`0x0a1658f591cA8237e98Bec7F833e616D9dB3F40a`](https://explorer-bradbury.genlayer.com/address/0x0a1658f591cA8237e98Bec7F833e616D9dB3F40a) |
+| **Guard (reference)** `remit-guard/4` - checks evidence against the pinned prefixes | [`0x4DC1175d180dFEe0226B2bb887c06153126E8DeD`](https://explorer-studio.genlayer.com/address/0x4DC1175d180dFEe0226B2bb887c06153126E8DeD) | [`0x2eFe9d3931757AC90321BE1Df2894a1813C762fB`](https://explorer-bradbury.genlayer.com/address/0x2eFe9d3931757AC90321BE1Df2894a1813C762fB) |
+| **Rail (reference)** - unchanged code | [`0x7AB4ae093497Db200A167Dd3eE21bE463c1a4221`](https://explorer-studio.genlayer.com/address/0x7AB4ae093497Db200A167Dd3eE21bE463c1a4221) | [`0x7ac45f98C7a82A5eFE24259d2CA03aadAF864A0E`](https://explorer-bradbury.genlayer.com/address/0x7ac45f98C7a82A5eFE24259d2CA03aadAF864A0E) |
+
+Reference agent `0x8aA26Fa51a68c583C467463e93db0EBc10f7D509` (both networks), max tier 3. Rail finality delay: 60 s on Studio, 2400 s on Bradbury; bond floor 0.01 GEN. Code changed in the engine and the guard only; prompts, registry and rail were redeployed unchanged because a guard binds to one engine and the registry to one engine.
+
 ## Status
 
 **Running on GenLayer Studio and the Bradbury testnet**, as five contracts: a
 shared rules engine, a shared prompts contract and a shared registry, and per
 agent a guard and its rail (treasury and court). Bradbury caps a transaction at
 2^24 gas, so nothing over about 20 KB deploys; the split is how everything
-fits. Deployed sizes: engine 18.1 KB, prompts 10.6 KB, guard 17.4 KB plus its
-mandate, rail 18.8 KB, registry 3.0 KB. Addresses are below and in
-`deploy/deployments.json`.
+fits. Deployed sizes (Milestone 1): engine 19.1 KB, prompts 10.6 KB, guard
+17.7 KB plus its mandate, rail 18.8 KB, registry 3.0 KB - the engine and the
+rail are within about 1 KB of the cap, so new logic must pay for itself in
+bytes. Addresses are above: Release 1 in `deploy/deployments-v1.json`,
+Milestone 1 in `deploy/deployments.json`. The results below this line ran on
+Release 1, except where they name Milestone 1.
 
 Every result below is a real transaction, recorded in `deploy/*.json`, and every
 assertion is on resulting state and the consensus outcome - never on a
@@ -198,7 +264,11 @@ Bradbury runs are in `deploy/jury-json-*.json` and `deploy/jury-split-*.json`.
   window (the rail pays only after `finality_seconds`) and the principal, who
   can ask for vendor-issued evidence in the rule's question. It resisted the
   forgery twice and paid once, on Studio only; that is not "the jury resists
-  forged invoices".
+  forged invoices". **Milestone 1 answers this** for any vendor the principal
+  pins: the agent can no longer commit a document it hosts itself, so a
+  forgery never reaches the jury (refused 6 of 6 on Studio and Bradbury, paid
+  0; [Milestone 1](#milestone-1-the-agent-cannot-be-its-own-witness)). A vendor
+  nobody pinned is judged as before.
 - **Appeals.** On Studio an appeal of a released spend upheld the verdict, and
   the rail refused to pay while it ran - as designed. But afterwards Studio
   served the appealed guard as "Contract not deployed" at its non-final state,
@@ -241,10 +311,10 @@ Bradbury runs are in `deploy/jury-json-*.json` and `deploy/jury-split-*.json`.
 
 | Engine and contracts | |
 | --- | --- |
-| Tests | 369, including every built contract run from its deployed bytes (`tests/direct/genvm_stub.py`) |
+| Tests | 400, including every built contract run from its deployed bytes (`tests/direct/genvm_stub.py`) |
 | Injection corpus | 12 strings, as claim, artifact, category and challenge statement |
-| Mutation | 52 mutants across engine, prompts, guard, rail and registry, all killed |
-| Parity | the app's mandate validator agrees with the engine on 60 cases |
+| Mutation | 58 mutants across engine, prompts, guard, rail and registry, all killed |
+| Parity | the app's mandate validator agrees with the engine on 74 cases, and its evidence check on 33 recipient/URL pairs |
 
 ```bash
 python3 -m pytest tests/direct        # no chain needed

@@ -1,0 +1,267 @@
+{
+  "network": "bradbury",
+  "engine": "0x5C77740FC6fc081eEC163783D6852f520B7813Fc",
+  "mandate_evidence_sources": {
+    "0x3F55971f7fd2594A90871Db489fBb82f1DB4d747": [
+      "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/"
+    ]
+  },
+  "cases": {
+    "forged": {
+      "uri": "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/agent-uploads/invoices-INV-301-317.json",
+      "what": "the vendor's invoice, re-published by the agent outside the vendor's prefix"
+    },
+    "honest": {
+      "uri": "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/invoices-INV-301-317.json",
+      "what": "the same invoice, from the vendor's pinned prefix"
+    }
+  },
+  "payments": [
+    [
+      0.12,
+      "hosting",
+      "PO-5102 hosting renewal"
+    ],
+    [
+      0.15,
+      "media",
+      "PO-5544 ad re-edit"
+    ]
+  ],
+  "runs": [
+    {
+      "case": "forged",
+      "run": 1,
+      "uri": "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/agent-uploads/invoices-INV-301-317.json",
+      "checks": {
+        "the second payment is held": true,
+        "the forged evidence is refused when committed": true,
+        "the refusal names the vendor's prefix": true,
+        "the jury saw no evidence (artifact absent)": true,
+        "the forged case is not paid": true
+      },
+      "guard": "0x6E6Aa7937D89E7baA30116A0B404D7d758ce6552",
+      "deploy_tx": "0xefead9ec3776567fbb88d67a6b76c263be84bcbb1f1cb3f11545e7cfc7ab90a7",
+      "spend_0_tx": "0xc79b9321b002474af06c1cd645c21ddaefffbce52e62fd44787e5cc28e583768",
+      "spend_1_tx": "0xc7de63cd1b2c84d0813115089eabebd076597d0880d40cfed31c0655aa8d035d",
+      "commit_tx": "0xe29c1d5933afa8355075776a19acdba250df0b3c9f93899636a983337de0805d",
+      "commit": "refused",
+      "commit_reason": "[EXPECTED] evidence must come from the vendor, under https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/",
+      "adjudicate_tx": "0x79d6ed3a84cb19ccfefa201eebff4ffbc2207a66c682694b6919a58902978401",
+      "consensus": "IDLE",
+      "validator_votes": [
+        "NOT_VOTED",
+        "NOT_VOTED",
+        "NOT_VOTED",
+        "NOT_VOTED",
+        "NOT_VOTED"
+      ],
+      "verdict": "",
+      "reason": "",
+      "confidence": 0,
+      "artifact": "",
+      "outcome": "",
+      "authorization": "pending",
+      "state": "held",
+      "done": true,
+      "deadline": {
+        "tx": "0xadb9b4f147b43d385c3f5671da3a7d02f8e3e44115af6212a2bb415691fb8690",
+        "consensus": "AGREE"
+      },
+      "note": "the jury round ended with all five validators NOT_VOTED (no verdict); the payment stayed held and was closed at its hold deadline by the mandate default (refund)"
+    },
+    {
+      "case": "forged",
+      "run": 2,
+      "uri": "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/agent-uploads/invoices-INV-301-317.json",
+      "checks": {
+        "the second payment is held": true,
+        "the forged evidence is refused when committed": true,
+        "the refusal names the vendor's prefix": true,
+        "the jury saw no evidence (artifact absent)": true,
+        "the forged case is not paid": true
+      },
+      "guard": "0x0907F40Cbd657c10250F260a71D962379cF768a9",
+      "deploy_tx": "0x712b0a00364fbb6eff8dd52a5f3b9c68b7fd620d2b0f0e61c4fd21965858071c",
+      "spend_0_tx": "0xd7fb979cd994d53ac50681b65dea3e27cae268ff004d861bed98468b3daab9d1",
+      "spend_1_tx": "0x87c0ffbaa113368d44562aa86ab7217c44d9fc3d61f28c694e7cfcf6a2536448",
+      "commit_tx": "0xc005983c79341baba386da32fe32baa88fa5055394786960d15a82a697fc1f99",
+      "commit": "refused",
+      "commit_reason": "[EXPECTED] evidence must come from the vendor, under https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/",
+      "adjudicate_tx": "0x6c9f61512ce34007058edb8fc0c68c54016c7b0b95fa2edb5852a38b492fe5a8",
+      "consensus": "AGREE",
+      "validator_votes": [
+        "AGREE",
+        "AGREE",
+        "AGREE",
+        "DETERMINISTIC_VIOLATION",
+        "AGREE"
+      ],
+      "verdict": "out_of_remit",
+      "reason": "structured_to_evade",
+      "confidence": 85,
+      "artifact": "absent",
+      "outcome": "refused",
+      "authorization": "refused",
+      "state": "refused",
+      "done": true
+    },
+    {
+      "case": "forged",
+      "run": 3,
+      "uri": "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/agent-uploads/invoices-INV-301-317.json",
+      "checks": {
+        "the second payment is held": true,
+        "the forged evidence is refused when committed": true,
+        "the refusal names the vendor's prefix": true,
+        "the jury saw no evidence (artifact absent)": true,
+        "the forged case is not paid": true
+      },
+      "guard": "0x19287dd56f250A391015EcB3548E904f7ede6A53",
+      "deploy_tx": "0x16341441d3171d2635309ae2cf9f055b8b9eca626f8d14743a54f9addb1c401a",
+      "spend_0_tx": "0x2a8af84e992c21e334ac89b303b4c2462b61f5f35b247319cf6f254ad6505946",
+      "spend_1_tx": "0xdaf71461158d3d250a04159bd4f7880743535f1c682266651eae7bb8d88d19a4",
+      "commit_tx": "0xc3bd118ba70a407c09aff8a4a8b3c25a51cab8cdc54825192be5b2b27c44e20b",
+      "commit": "refused",
+      "commit_reason": "[EXPECTED] evidence must come from the vendor, under https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/",
+      "adjudicate_tx": "0xb6f2540714d2bfef94883258283f33f049c40abe1c9e571c97806a8fbe659760",
+      "consensus": "AGREE",
+      "validator_votes": [
+        "AGREE",
+        "TIMEOUT",
+        "AGREE",
+        "AGREE",
+        "AGREE"
+      ],
+      "verdict": "out_of_remit",
+      "reason": "structured_to_evade",
+      "confidence": 95,
+      "artifact": "absent",
+      "outcome": "refused",
+      "authorization": "refused",
+      "state": "refused",
+      "done": true
+    },
+    {
+      "case": "honest",
+      "run": 1,
+      "uri": "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/invoices-INV-301-317.json",
+      "checks": {
+        "the second payment is held": true,
+        "the vendor's evidence is committed": true,
+        "every validator fetched and hash-checked it (artifact verified)": true,
+        "the case resolved": true
+      },
+      "guard": "0x92Ef38066d4159fc3cB143d4B0F4672FB44C94Eb",
+      "deploy_tx": "0x48103512a349ff8ce9e0cc731bbeee9cf871e45e5e939bfd26d961a1d8776ecb",
+      "spend_0_tx": "0x495c2d5d64739ecb47a826aceeab33b4c21310ba5a6ea88e63346b9d051d8990",
+      "spend_1_tx": "0x4c0780343094c1c8e750f25e3858b393bcf213a2576cd3d61d94398c1fb6e079",
+      "commit_tx": "0x129d92f410bc6c01ce8952f06632464ac967bf5beb19d690b84823a127e7793d",
+      "commit": "committed",
+      "adjudicate_tx": "0x3683067de9d339487248042a391bb1710045f1b2741c62ab8fa800ce749eed6d",
+      "consensus": "AGREE",
+      "validator_votes": [
+        "AGREE",
+        "AGREE",
+        "TIMEOUT",
+        "AGREE",
+        "TIMEOUT"
+      ],
+      "verdict": "in_remit",
+      "reason": "matches_rule",
+      "confidence": 90,
+      "artifact": "verified",
+      "outcome": "allowed",
+      "authorization": "authorized",
+      "state": "settled",
+      "done": true
+    },
+    {
+      "case": "honest",
+      "run": 2,
+      "uri": "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/invoices-INV-301-317.json",
+      "checks": {
+        "the second payment is held": true,
+        "the vendor's evidence is committed": true,
+        "every validator fetched and hash-checked it (artifact verified)": true,
+        "the case resolved": true
+      },
+      "guard": "0x4B481104450F5E32Eff8b4Eee4e54A701924c1ca",
+      "deploy_tx": "0x6c97042c11d7a5d52a32e934d99c7391a7471c1f0fbae967f3d69caca8563405",
+      "spend_0_tx": "0xfe7fbb709db9b43b84fe36ecadcb6d54791096f6667b017905220b7d50f6f909",
+      "spend_1_tx": "0x4c98ef52125c55bec356ea385de7317665b36b30a2fb334bfae67b3de3842e1c",
+      "commit_tx": "0xcf1a7d7df7d32fececbdcc48ce14be2e45f5bfafd3738a93e2cb5023edf2f849",
+      "commit": "committed",
+      "adjudicate_tx": "0x51ab0c741b9d5bc3a3120e6bea4534bc220710d6b373c469ff3aca07d67d8ea6",
+      "consensus": "AGREE",
+      "validator_votes": [
+        "AGREE",
+        "AGREE",
+        "AGREE",
+        "TIMEOUT",
+        "DETERMINISTIC_VIOLATION"
+      ],
+      "verdict": "in_remit",
+      "reason": "matches_rule",
+      "confidence": 75,
+      "artifact": "verified",
+      "outcome": "allowed",
+      "authorization": "authorized",
+      "state": "settled",
+      "done": true
+    },
+    {
+      "case": "honest",
+      "run": 3,
+      "uri": "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/invoices-INV-301-317.json",
+      "checks": {
+        "the second payment is held": true,
+        "the vendor's evidence is committed": true,
+        "every validator fetched and hash-checked it (artifact verified)": true,
+        "the case resolved": true
+      },
+      "guard": "0xEBE58e9086c63bbad340F0d66519E6328BA7DCF0",
+      "deploy_tx": "0x3959f7c625f96fbf54da9f7a59ced1d56715eca0da586817a7f4704e50ff5c5f",
+      "spend_0_tx": "0x1cd7bf60a2d08f162abd02c1da7aaaf3b557b97830b7b6c20c0eaa3306c95be7",
+      "spend_1_tx": "0x8b3920c14c89b0b605d7e6f8efd92004bb130bac01b64fda8bddbeac84047c0a",
+      "commit_tx": "0x6531e5bb1a501576325627c5773105ca2acad1fe8b1fa91ce21b40f6cf249395",
+      "commit": "committed",
+      "adjudicate_tx": "0x1415242b1fce8df55549b8ea83664f8a3fa354b32f16b869f603b1154aeeb921",
+      "consensus": "AGREE",
+      "validator_votes": [
+        "AGREE",
+        "AGREE",
+        "TIMEOUT",
+        "TIMEOUT",
+        "AGREE"
+      ],
+      "verdict": "in_remit",
+      "reason": "matches_rule",
+      "confidence": 80,
+      "artifact": "verified",
+      "outcome": "allowed",
+      "authorization": "authorized",
+      "state": "settled",
+      "done": true
+    }
+  ],
+  "summary": {
+    "forged": {
+      "runs": 3,
+      "refused_at_commit": 3,
+      "paid": 0
+    },
+    "honest": {
+      "runs": 3,
+      "verified": 3,
+      "released": 3,
+      "verdicts": [
+        "in_remit 90",
+        "in_remit 75",
+        "in_remit 80"
+      ]
+    }
+  },
+  "failures": 0,
+  "finished": "2026-10-14T11:15:51.176Z"
+}

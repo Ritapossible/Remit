@@ -153,6 +153,46 @@ and let the first payments of a split through.
 This is the T7 mitigation and the reason the product exists. A pure-code system
 cannot answer it at any threshold.
 
+## Evidence sources (Milestone 1)
+
+Who may testify for a vendor. Optional; per recipient.
+
+```json
+"evidence_sources": {
+  "0x3F55971f7fd2594A90871Db489fBb82f1DB4d747": [
+    "https://invoice.stripe.com/i/acct_1Nv0FGQ9RKHgCVdK/"
+  ]
+}
+```
+
+When a recipient has pinned prefixes, the guard accepts evidence for a payment
+to it - sent with `request_spend` or committed later with `commit_artifact` -
+only if the document's URL starts with one of them. Anything else is refused
+on the spot (`evidence must come from the vendor, under ...`), before any fetch
+or model: an invoice the agent wrote and hosted itself, or one under another
+merchant's account on the same shared host, never reaches the jury. A
+recipient with no pinned prefix is unrestricted, exactly as before.
+
+| Rule | Why |
+| --- | --- |
+| 1-4 prefixes per address | enough for a vendor's billing hosts, small enough to read |
+| `https://host/path/`, ending with `/` | `https://vendor.com` would also match `https://vendor.com.attacker.io/...` |
+| No `..`, `%2e`, `\`, `@`, `?`, `#` or spaces, in a prefix or in a committed URL | each can make a URL leave the prefix it appears to start with |
+
+Pin the **narrowest** prefix the vendor publishes under. On a shared host -
+Stripe's `invoice.stripe.com`, GitHub's `raw.githubusercontent.com` - pin the
+vendor's own account path, never the bare host, or any other merchant's
+document there passes.
+
+What it does not do: it does not make a vendor honest. A vendor that lies on
+its own invoice host is still believed as far as the jury believes it, and a
+vendor colluding with the agent can testify for it. It removes the agent as a
+witness for itself. Every document is still hash-pinned (the digest committed
+with it), so what the jury reads is exactly what was committed.
+
+Note that an evidence URL is stored on chain and is public: use invoice links
+that are safe to publish.
+
 ## Validation at registration
 
 A mandate is rejected - loudly, never with a falsy default - if:
@@ -164,6 +204,7 @@ A mandate is rejected - loudly, never with a falsy default - if:
 5. Any `defaults` field is missing.
 6. `on_breach.tier` exceeds the registered `max_tier` on any rule.
 7. Any amount is not a non-negative integer.
+8. `evidence_sources` is not an object of addresses to 1-4 usable prefixes.
 
 And one advisory that is not a rejection:
 

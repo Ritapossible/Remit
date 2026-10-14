@@ -196,6 +196,22 @@ A guard with no such test is decoration. This is how #7 was caught.
 
 ---
 
+### 17. Evidence for a pinned vendor comes from the vendor (Milestone 1)
+
+`evidence_sources` pins, per recipient, the URL prefixes evidence may come
+from. The guard asks the engine (`evidence_error`) before it stores any URI, in
+`request_spend` and in `commit_artifact`; a URI outside the prefixes is
+refused before any fetch or model. Prefixes end with `/` and no URL may carry
+`..`, `%2e`, `\\`, `@`, `?`, `#` or a space. The app mirrors the rule
+(`frontend/src/lib/mandate.ts`, `evidenceError`) and `npm run parity` holds the
+two to the same answers.
+
+> Tests: `tests/direct/test_pinned_evidence.py`; six mutants.
+
+**Size budget.** The engine is about 30 bytes under its 0.95 margin of the cap
+and the rail about 1 KB under; the guard plus the demo mandate sits at the
+0.96 line. New logic in any of them must pay for itself in bytes, or move.
+
 ## Prompt rules
 
 - Provenance-label every block: `MANDATE RULE` / `FACTS` / `DELIVERABLE` /

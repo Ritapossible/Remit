@@ -342,7 +342,8 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
           falls to the mandate’s default, which in the templates is to refuse. The round is decided by a majority of
           validators, so a convincing forgery can still win: invoices forged to make a split look like two unrelated
           orders were refused or left in doubt in most runs, and released in one of three on Studio. That is why the
-          rail waits out the appeal window before it pays.
+          rail waits out the appeal window before it pays - and why, since Milestone 1, a mandate can pin where each
+          vendor’s evidence must come from, so the agent cannot submit a document it wrote itself.
         </p>
       </>
     ),

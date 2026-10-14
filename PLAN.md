@@ -77,7 +77,7 @@ from one that is not there, so it now has a direct test.
       prepared
 
 **Exit criterion - met.** 149 tests green, 20 of 20 mutants killed, contract
-builds reproducibly. (Counts at the end of Phase 2. Today: 369 tests and 52
+builds reproducibly. (Counts at the end of Phase 2. Today: 400 tests and 58
 mutants, all killed - see Phase 6 and the README.)
 
 ## Phase 3 - On chain: Studio `[x]`
@@ -196,7 +196,7 @@ claimed. Every point checked out against the code. What changed:
 - [x] **Direct-mode contract tests**: `tests/direct/genvm_stub.py` runs every
       built contract - readable and deployed bytes - with a scripted model,
       web and clock, and requires identical behaviour.
-- [x] **52 mutants**, all killed, across the engine, the prompt layer, the
+- [x] **52 mutants** (58 since Phase 7), all killed, across the engine, the prompt layer, the
       guard, the rail and the registry.
 - [x] **Isolation** measured on Studio: guard B's payments were accepted while
       guard A's jury round was running (`deploy/isolation-studio.json`).
@@ -210,16 +210,71 @@ claimed. Every point checked out against the code. What changed:
       the window closes that, at the cost of every payment waiting as long.
 - [ ] An appeal that **reverses** a verdict, observed on either network.
 
+## Phase 7 - Milestone 1: the agent cannot be its own witness `[x]`
+
+The README's worst stated result: invoices the agent forged got a split
+released once in three Studio runs. Pasted text was the hole - the agent was
+its own witness. Done when a forgery cannot reach the jury on either network
+and a vendor's own invoice still can.
+
+- [x] **Pinned evidence sources.** A mandate may pin, per vendor, the URL
+      prefixes its evidence comes from (`evidence_sources`). The guard refuses
+      any other document when it is sent or committed, before any fetch or
+      model. Prefixes are `https://host/path/` ending in `/`; traversal,
+      encoded dots, userinfo, queries and fragments are refused; a vendor
+      nobody pinned is unrestricted, as before. Engine `remit-engine/4`, guard
+      `remit-guard/4`.
+- [x] **Tests.** `tests/direct/test_pinned_evidence.py` (31 tests, the built
+      guard readable and deployed); 400 tests in all; six new mutants, 58 of 58
+      killed.
+- [x] **The app agrees with the guard.** It warns before signing exactly when
+      the guard would refuse; parity covers 74 mandate cases and 33
+      recipient/URL pairs.
+- [x] **Studio** (`deploy/evidence-studio.json`): the same invoice bytes,
+      three runs each. From the agent's path: refused at commit 3 of 3, paid 0.
+      From the vendor's pinned path: verified 3 of 3, released 3 of 3
+      (in_remit 90, 94, 80). 0 failed checks.
+- [x] **Bradbury** (`deploy/evidence-bradbury.json`): from the agent's
+      path, refused at commit 3 of 3, paid 0 (one jury round ended with every
+      validator `NOT_VOTED`; that payment was closed at its hold deadline by
+      the default, refund). From the vendor's path: verified 3 of 3, released
+      3 of 3 (in_remit 90, 75, 80). 0 failed checks.
+
+## Phase 8 - Production readiness `[ ]`
+
+What stands between a measured testnet system and one a principal should
+trust with real money. Each item is done only when its evidence is in the
+repository.
+
+- [ ] **Jury sample at size on Bradbury**: every case in
+      `deploy/jury-v3-studio.json`, three runs each, with Milestone 1 evidence
+      sources pinned; the rates published, misses included.
+- [ ] **Mandate republishing**: a principal publishes a new version for new
+      spends; open cases stay pinned to the version they were raised under
+      (T5); measured on both networks.
+- [ ] **Agent SDKs**: TypeScript and Python clients for `request_spend`,
+      `commit_artifact` and the case views, so agent frameworks call Remit
+      directly; each with an end-to-end example against Studio.
+- [ ] **Notifications**: tell a principal when a spend is held, when a case
+      resolves, and when the agent is frozen.
+- [ ] **Browser end-to-end in CI**: the full flow on Studio on every push.
+- [ ] **Operations runbook**: key custody for principals and agents, rail
+      funding and withdrawal, freezing an agent, and what to do when an appeal
+      leaves a guard unreadable (`withdraw` does not call the guard).
+- [ ] **Independent security review** of the five contracts, findings and
+      fixes published, before any deployment that holds real value.
+- [ ] **Mainnet**, once GenLayer mainnet is available: the reviewed release
+      deployed, with its addresses and code hashes published.
+
 ## Beyond v1
 
 Not scheduled. Listed so the direction is visible and nobody mistakes it for
 something already built.
 
-- **Mandate republishing.** New versions for new spends, with open cases pinned
-  to the version they were raised under.
-- **Agent SDKs.** TypeScript and Python clients so agent frameworks call
-  `request_spend` directly.
-- **Notifications.** Tell a principal when a spend is held.
+- **Vendor-signed evidence.** Invoices signed with a key the vendor registers,
+  so evidence is checked by signature, not by where it is hosted.
+- **Splits across vendors.** Linking one order paid to several recipients;
+  hard to judge fairly, so not attempted yet.
 
 ## Sequencing rationale
 

@@ -212,6 +212,15 @@ and tells the jury the ledger wins where the two conflict. The adversarial case
 in `deploy/jury-scenarios-studio.json` measures what a self-serving document
 does to the verdict.
 
+**Who may testify (Milestone 1).** A mandate may pin, per vendor, the URL
+prefixes its evidence comes from (`evidence_sources`). The guard asks the
+engine (`evidence_error`) before it stores a URI - in `request_spend` and in
+`commit_artifact` - and refuses one outside them. The check is deterministic and
+runs before any fetch, so a forgery the agent hosts never reaches a validator,
+let alone the jury; the hash check still decides whether the bytes read are the
+bytes committed. The rule lives in the shared engine so every guard applies the
+same one, at the cost of about 1 KB of the engine's size budget.
+
 **Every rule that fired is asked.** If two judgment triggers fire on one spend,
 the jury gets both questions and any breach is `out_of_remit`.
 
