@@ -119,9 +119,195 @@
       "case": "forged",
       "run": 3,
       "uri": "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/agent-uploads/invoices-INV-301-317.json",
-      "checks": {},
+      "checks": {
+        "the second payment is held": true,
+        "a double-encoded path out of the prefix is refused": true,
+        "the forged evidence is refused when committed": true,
+        "the refusal names the vendor's prefix": true,
+        "the jury saw no evidence (artifact absent)": true,
+        "the forged case is not paid": true
+      },
       "guard": "0xD99A22B736f45E1149fA4A760267c7A672448FcE",
-      "deploy_tx": "0xc85e76806cf39fb5bb46683668805b7e9367ccc7fea6f8adb2581eec387ff729"
+      "deploy_tx": "0xc85e76806cf39fb5bb46683668805b7e9367ccc7fea6f8adb2581eec387ff729",
+      "spend_0_tx": "0x305384065942c02af0571c28cde8d4c1cb000df60d65796d45c801a710804d72",
+      "spend_1_tx": "0xe9f6138225ab7a4a669fc575efc4d1bfb8679615b199c2c0e4178e7c233c87c2",
+      "double_encoded": {
+        "uri": "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/%252e%252e/%252e%252e/agent-uploads/invoices-INV-301-317.json",
+        "tx": "0x676a8f205f6b7c6c7ef21ccc308ea7880e153cb8bfff0cfa25f074acba0d5230",
+        "result": "refused",
+        "reason": "[EXPECTED] evidence must come from the vendor, under https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/"
+      },
+      "commit_tx": "0x68b425c5ded8affb89fed7f0c04830b912753b7141b1f9f48ab46b10a987e0a0",
+      "commit": "refused",
+      "commit_reason": "[EXPECTED] evidence must come from the vendor, under https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/",
+      "adjudicate_tx": "0xd0a346d8747f1c3317a94202d65bd7301bd404c14b504979d4982faa54042578",
+      "consensus": "IDLE",
+      "validator_votes": [
+        "NOT_VOTED",
+        "NOT_VOTED",
+        "NOT_VOTED",
+        "NOT_VOTED",
+        "NOT_VOTED"
+      ],
+      "verdict": "",
+      "reason": "",
+      "confidence": 0,
+      "artifact": "",
+      "outcome": "",
+      "authorization": "pending",
+      "state": "held",
+      "done": true,
+      "reconvened": {
+        "adjudicate_tx": "0xb1144906dbf0d988bb6f8c03d305a13dba918f503f5d6551a60a832229ab6bae",
+        "consensus": "AGREE",
+        "verdict": "out_of_remit",
+        "reason": "structured_to_evade",
+        "confidence": 80,
+        "artifact": "absent",
+        "outcome": "refused",
+        "authorization": "refused"
+      }
+    },
+    {
+      "case": "honest",
+      "run": 1,
+      "uri": "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/invoices-INV-301-317.json",
+      "checks": {
+        "the second payment is held": true,
+        "the vendor's evidence is committed": true,
+        "every validator fetched and hash-checked it (artifact verified)": true,
+        "the case resolved": true
+      },
+      "guard": "0x5642eAc936019Fc52D682A29ebD0399579728123",
+      "deploy_tx": "0x936e076e59cdcdc7c3daadec10018172823e79e5ad4b852a70ea4d928f0f3591",
+      "spend_0_tx": "0x028ae0af5ca551689a807aa7381fded340fc14a5dfb34475d699fe2eac9df4e8",
+      "spend_1_tx": "0xb734b85e362fea412e53b68f50ad4a148c3bb3c80ecb965751be1c0da83c28a5",
+      "commit_tx": "0xb9dad727f44a79bbc189ab3e7826c78a51074acfcd417abae52903e972233e83",
+      "commit": "committed",
+      "adjudicate_tx": "0xc4ca291a5a8aa2fc7539163ea1298bf583d9b06036cd549bc99215aeca6c9604",
+      "consensus": "AGREE",
+      "validator_votes": [
+        "AGREE",
+        "AGREE",
+        "TIMEOUT",
+        "AGREE",
+        "DETERMINISTIC_VIOLATION"
+      ],
+      "verdict": "in_remit",
+      "reason": "matches_rule",
+      "confidence": 80,
+      "artifact": "verified",
+      "outcome": "allowed",
+      "authorization": "authorized",
+      "state": "settled",
+      "done": true
+    },
+    {
+      "case": "honest",
+      "run": 2,
+      "uri": "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/invoices-INV-301-317.json",
+      "checks": {
+        "the second payment is held": true,
+        "the vendor's evidence is committed": true,
+        "every validator fetched and hash-checked it (artifact verified)": true,
+        "the case resolved": true
+      },
+      "guard": "0x3Fd7D963c882C069DA18aC804cf971A7D3BE037b",
+      "deploy_tx": "0xbbec858c238316aefba0513e90d4bc4b8351621cc4d8e1ac1e57e3c264d7b41e",
+      "spend_0_tx": "0x76ac062f05c076e86579b0e08279dae375701a00b69333efe0fa126608a98082",
+      "spend_1_tx": "0x9f62ca6e4bac12f0cd63fe2b22a294e752b8c93540dea8f85873f2b5fbd92e9a",
+      "commit_tx": "0xf8d153e45baf6d89d99762d9e41680f6e1c43a340107c07b14c63763782750cd",
+      "commit": "committed",
+      "adjudicate_tx": "0xd56ddef32dce0800ff7a39f2a8c0f235ea91c3d12fe8b6ac6c3b9a5f6f242e1e",
+      "consensus": "IDLE",
+      "validator_votes": [
+        "NOT_VOTED",
+        "NOT_VOTED",
+        "NOT_VOTED",
+        "NOT_VOTED",
+        "NOT_VOTED"
+      ],
+      "verdict": "",
+      "reason": "",
+      "confidence": 0,
+      "artifact": "",
+      "outcome": "",
+      "authorization": "pending",
+      "state": "held",
+      "done": true,
+      "reconvened": {
+        "adjudicate_tx": "0x6b418cc75f75b49e231a02a4ca3a5d3e4a5f212f0876525b83e0b583aa41b1c2",
+        "consensus": "AGREE",
+        "verdict": "in_remit",
+        "reason": "matches_rule",
+        "confidence": 100,
+        "artifact": "verified",
+        "outcome": "allowed",
+        "authorization": "authorized"
+      }
+    },
+    {
+      "case": "honest",
+      "run": 3,
+      "uri": "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/invoices-INV-301-317.json",
+      "checks": {
+        "the second payment is held": true,
+        "the vendor's evidence is committed": true,
+        "every validator fetched and hash-checked it (artifact verified)": true,
+        "the case resolved": true
+      },
+      "guard": "0xfe6354665a1476f3466cE38e8A024f21215A5bb0",
+      "deploy_tx": "0x4e6723173c8640f8c2ae2c74c83919422ef880a9245c84b31bcda345098ff1c7",
+      "spend_0_tx": "0x948a2cb34a718695a572bd3eea662fd718b9e2f22c4101a299b6577e0b9fc124",
+      "spend_1_tx": "0x1fe4e084d5406105487e9ab774fd48824e4f3072dabfeb6958a33d55ca033b40",
+      "commit_tx": "0x3e91bd5383ceccf235531a63dc2e77aa9eb13f5da5717f16597c5291d3cbf2bc",
+      "commit": "committed",
+      "adjudicate_tx": "0xdd60f31038a7a692afdd40b4534cab77e85738cb6872d0760e3d4baf00b94912",
+      "consensus": "AGREE",
+      "validator_votes": [
+        "DETERMINISTIC_VIOLATION",
+        "AGREE",
+        "AGREE",
+        "TIMEOUT",
+        "AGREE"
+      ],
+      "verdict": "in_remit",
+      "reason": "matches_rule",
+      "confidence": 85,
+      "artifact": "verified",
+      "outcome": "allowed",
+      "authorization": "authorized",
+      "state": "settled",
+      "done": true
     }
-  ]
+  ],
+  "summary": {
+    "forged": {
+      "runs": 3,
+      "refused_at_commit": 3,
+      "double_encoded_refused": 3,
+      "paid": 0,
+      "verdicts": [
+        "out_of_remit 95",
+        "undetermined 55",
+        "out_of_remit 80"
+      ]
+    },
+    "honest": {
+      "runs": 3,
+      "verified": 3,
+      "released": 3,
+      "verdicts": [
+        "in_remit 80",
+        "in_remit 100",
+        "in_remit 85"
+      ]
+    },
+    "unvoted_rounds_reconvened": [
+      "forged 3",
+      "honest 2"
+    ]
+  },
+  "failures": 0,
+  "finished": "2026-10-14T12:41:45.867Z"
 }

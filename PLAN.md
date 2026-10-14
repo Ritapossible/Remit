@@ -236,8 +236,12 @@ and a vendor's own invoice still can.
       commit 3 of 3, and a double-encoded path out of the vendor's prefix
       refused 3 of 3; paid 0. From the vendor's pinned path: verified 3 of 3,
       released 3 of 3 (in_remit 72, 85, 95). 0 failed checks.
-- [~] **Bradbury, rerun on `remit-engine/5`** (`deploy/evidence-bradbury.json`):
-      in progress. On the first Milestone 1 engine
+- [x] **Bradbury, on `remit-engine/5`** (`deploy/evidence-bradbury.json`):
+      from the agent's path, refused at commit 3 of 3 and the double-encoded
+      path 3 of 3, paid 0; from the vendor's path, verified and released 3 of
+      3 (in_remit 80, 100, 85). Two jury rounds ended with every validator
+      `NOT_VOTED` and were convened again (`reconvene.mjs`). 0 failed checks.
+- [x] **Bradbury, first Milestone 1 engine**
       (`deploy/archive/evidence-bradbury-engine4.json`): from the agent's
       path, refused at commit 3 of 3, paid 0 (one jury round ended with every
       validator `NOT_VOTED`; that payment was closed after its response
