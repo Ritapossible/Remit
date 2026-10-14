@@ -3,7 +3,7 @@ import { useApp, href } from "../state";
 import { previewSpend, readSpend, write, type Preview, type SpendView, type TxOutcome } from "../chain/remit";
 import { parseGen } from "../lib/money";
 import { digestOfUrl, isSha256Hex } from "../lib/digest";
-import { describePredicate } from "../lib/mandate";
+import { describePredicate, evidenceError } from "../lib/mandate";
 import { sameAddr } from "../lib/format";
 import { Addr, Badge, Empty, Gen, Spinner, TxLine, explainError } from "../components/ui";
 
@@ -74,7 +74,8 @@ export function RequestSpend() {
 
   const me = wallet.kind === "none" ? "" : wallet.address;
   const isAgent = sameAddr(me, mandate.agent);
-  const evidenceOk = !uri || isSha256Hex(digest);
+  const pinErr = uri.trim() ? evidenceError(mandate.evidence_sources, recipient, uri.trim()) : "";
+  const evidenceOk = !uri || (isSha256Hex(digest) && !pinErr);
 
   const submit = async () => {
     if (!atto) return;
@@ -179,6 +180,7 @@ export function RequestSpend() {
                 </button>
               </div>
               {digest && <span className="hint mono" style={{ overflowWrap: "anywhere" }}>sha256 {digest}</span>}
+              {pinErr && <span className="hint" style={{ color: "var(--refused)" }}>The guard will refuse this: {pinErr}.</span>}
             </label>
             <label className="field">
               Note to the jury <span className="hint">shown to validators as untrusted - it cannot override the mandate</span>

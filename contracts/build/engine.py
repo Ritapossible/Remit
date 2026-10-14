@@ -812,6 +812,31 @@ def is_revoked(*, spend_id, revoked_below):
 # --------------------------------------------------------------------------
 
 
+def _unsafe_url(u):
+    """Anything that could make a URL escape the prefix it starts with."""
+    return any(x in u.lower() for x in ("..", "%2e", "\\", "@", "#", "?", " "))
+
+
+def evidence_prefix_ok(prefix):
+    """A pinned evidence prefix names an https host and ends with "/", so that
+    "https://vendor.example" cannot match "https://vendor.example.attacker.io"."""
+    p = str(prefix)
+    return p[:8] == "https://" and "." in p[8:].split("/")[0] and p[-1:] == "/" and not _unsafe_url(p)
+
+
+def pinned_source_error(sources, recipient, uri):
+    """Why ``uri`` may not be committed as evidence for a payment to
+    ``recipient`` ("" if it may). A recipient the mandate pins evidence for may
+    only be proven by a document under one of its prefixes: the vendor, not
+    the agent, is the witness. A recipient with no pinned prefix is
+    unrestricted, as before."""
+    ps = sources.get(normalize_address(recipient), [])
+    u = str(uri)
+    if not ps or not _unsafe_url(u) and any(u.startswith(p) for p in ps):
+        return ""
+    return "evidence must come from the vendor, under " + " or ".join(ps)
+
+
 def validate_mandate(mandate, *, stored_version, max_tier):
     """Return a list of errors. Empty means the mandate may be registered.
 
@@ -875,6 +900,14 @@ def validate_mandate(mandate, *, stored_version, max_tier):
                 normalize_address(addr, "vendor_lists." + str(name))
             except RemitError as exc:
                 bad(str(exc))
+
+    try:
+        for addr, ps in mandate.get("evidence_sources", {}).items():
+            normalize_address(addr)
+            if not (isinstance(ps, list) and 1 <= len(ps) <= 4 and all(evidence_prefix_ok(p) for p in ps)):
+                raise RemitError("")
+    except Exception:
+        bad("evidence_sources: {address: [1-4 URL prefixes, each https://host/path/]}")
 
     rules = mandate.get("rules")
     if not isinstance(rules, (list, tuple)):
@@ -1035,6 +1068,7 @@ def api_compile(mandate_json, max_tier):
             "mandate_digest": str(mandate.get("mandate_digest", "")).lower(),
             "defaults": {k: mandate["defaults"][k] for k in REQUIRED_DEFAULTS},
             "vendor_lists": lists,
+            "evidence_sources": {normalize_address(a): ps for a, ps in mandate.get("evidence_sources", {}).items()},
             "rules": [_rule_view(r) for r in mandate["rules"]],
         }
     )
@@ -1156,7 +1190,7 @@ class RemitEngine(gl.Contract):
     prompts: Address
 
     def __init__(self, prompts: str):
-        self.release = "remit-engine/3"
+        self.release = "remit-engine/4"
         self.prompts = Address(prompts)
 
     @gl.public.view
@@ -1170,6 +1204,10 @@ class RemitEngine(gl.Contract):
     @gl.public.view
     def outcomes(self, compiled: str, requires_artifact: bool) -> str:
         return api_outcomes(str(compiled), bool(requires_artifact))
+
+    @gl.public.view
+    def evidence_error(self, compiled: str, recipient: str, uri: str) -> str:
+        return pinned_source_error(json.loads(str(compiled)).get("evidence_sources", {}), str(recipient), str(uri))
 
     @gl.public.view
     def uncommitted(self, held_at: int, now: int, window: int) -> str:

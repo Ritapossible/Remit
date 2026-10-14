@@ -812,6 +812,31 @@ def is_revoked(*, spend_id, revoked_below):
 # --------------------------------------------------------------------------
 
 
+def _unsafe_url(u):
+    """Anything that could make a URL escape the prefix it starts with."""
+    return any(x in u.lower() for x in ("..", "%2e", "\\", "@", "#", "?", " "))
+
+
+def evidence_prefix_ok(prefix):
+    """A pinned evidence prefix names an https host and ends with "/", so that
+    "https://vendor.example" cannot match "https://vendor.example.attacker.io"."""
+    p = str(prefix)
+    return p[:8] == "https://" and "." in p[8:].split("/")[0] and p[-1:] == "/" and not _unsafe_url(p)
+
+
+def pinned_source_error(sources, recipient, uri):
+    """Why ``uri`` may not be committed as evidence for a payment to
+    ``recipient`` ("" if it may). A recipient the mandate pins evidence for may
+    only be proven by a document under one of its prefixes: the vendor, not
+    the agent, is the witness. A recipient with no pinned prefix is
+    unrestricted, as before."""
+    ps = sources.get(normalize_address(recipient), [])
+    u = str(uri)
+    if not ps or not _unsafe_url(u) and any(u.startswith(p) for p in ps):
+        return ""
+    return "evidence must come from the vendor, under " + " or ".join(ps)
+
+
 def validate_mandate(mandate, *, stored_version, max_tier):
     """Return a list of errors. Empty means the mandate may be registered.
 
@@ -875,6 +900,14 @@ def validate_mandate(mandate, *, stored_version, max_tier):
                 normalize_address(addr, "vendor_lists." + str(name))
             except RemitError as exc:
                 bad(str(exc))
+
+    try:
+        for addr, ps in mandate.get("evidence_sources", {}).items():
+            normalize_address(addr)
+            if not (isinstance(ps, list) and 1 <= len(ps) <= 4 and all(evidence_prefix_ok(p) for p in ps)):
+                raise RemitError("")
+    except Exception:
+        bad("evidence_sources: {address: [1-4 URL prefixes, each https://host/path/]}")
 
     rules = mandate.get("rules")
     if not isinstance(rules, (list, tuple)):
@@ -1407,6 +1440,12 @@ class RemitGuard(gl.Contract):
     def _rule_ids(self, key) -> list:
         return [r for r in str(self.s_rules[key]).split(",") if r != ""]
 
+    def _pinned(self, recipient: str, uri: str) -> None:
+        """Evidence for a vendor the mandate pins must come from the vendor."""
+        e = str(self._eng().evidence_error(self.compiled, recipient, str(uri)))
+        if e:
+            raise Exception("[EXPECTED] " + e)
+
     def _needs_artifact(self, key) -> bool:
         fired = self._rule_ids(key)
         for r in self._mandate()["rules"]:
@@ -1487,6 +1526,8 @@ class RemitGuard(gl.Contract):
 
         now = self._now()
         who = normalize_address(recipient)
+        if str(memo_uri) != "":
+            self._pinned(who, memo_uri)
         decided = self._classify(who, value, str(category), now)
         if decided.get("error"):
             raise Exception("[EXPECTED] " + str(decided["error"]))
@@ -1532,6 +1573,7 @@ class RemitGuard(gl.Contract):
             raise Exception("[EXPECTED] spend is not held; the artifact is frozen")
         if not _is_sha256_hex(digest):
             raise Exception("[EXPECTED] digest must be 64 hex characters")
+        self._pinned(str(self.s_recipient[key]), uri)
         self.s_memo_uri[key] = str(uri)
         self.s_memo_digest[key] = str(digest).strip().lower()
 
@@ -1824,7 +1866,7 @@ class RemitGuard(gl.Contract):
         m["max_tier"] = int(self.max_tier)
         m["shadow"] = bool(self.shadow)
         m["spend_count"] = int(self.spend_count)
-        m["release"] = "remit-guard/3"
+        m["release"] = "remit-guard/4"
         m["rail"] = self.rail
         m["frozen_tier"] = int(self.frozen_tier)
         m["frozen_by"] = int(self.frozen_by) - 1

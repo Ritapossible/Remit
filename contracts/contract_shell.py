@@ -133,6 +133,12 @@ class RemitGuard(gl.Contract):
     def _rule_ids(self, key) -> list:
         return [r for r in str(self.s_rules[key]).split(",") if r != ""]
 
+    def _pinned(self, recipient: str, uri: str) -> None:
+        """Evidence for a vendor the mandate pins must come from the vendor."""
+        e = str(self._eng().evidence_error(self.compiled, recipient, str(uri)))
+        if e:
+            raise Exception("[EXPECTED] " + e)
+
     def _needs_artifact(self, key) -> bool:
         fired = self._rule_ids(key)
         for r in self._mandate()["rules"]:
@@ -213,6 +219,8 @@ class RemitGuard(gl.Contract):
 
         now = self._now()
         who = normalize_address(recipient)
+        if str(memo_uri) != "":
+            self._pinned(who, memo_uri)
         decided = self._classify(who, value, str(category), now)
         if decided.get("error"):
             raise Exception("[EXPECTED] " + str(decided["error"]))
@@ -258,6 +266,7 @@ class RemitGuard(gl.Contract):
             raise Exception("[EXPECTED] spend is not held; the artifact is frozen")
         if not _is_sha256_hex(digest):
             raise Exception("[EXPECTED] digest must be 64 hex characters")
+        self._pinned(str(self.s_recipient[key]), uri)
         self.s_memo_uri[key] = str(uri)
         self.s_memo_digest[key] = str(digest).strip().lower()
 
@@ -550,7 +559,7 @@ class RemitGuard(gl.Contract):
         m["max_tier"] = int(self.max_tier)
         m["shadow"] = bool(self.shadow)
         m["spend_count"] = int(self.spend_count)
-        m["release"] = "remit-guard/3"
+        m["release"] = "remit-guard/4"
         m["rail"] = self.rail
         m["frozen_tier"] = int(self.frozen_tier)
         m["frozen_by"] = int(self.frozen_by) - 1

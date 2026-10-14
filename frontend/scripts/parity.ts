@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as C from "../src/lib/constants";
-import { campaignTemplate, contractorTemplate, parseMandateText, validateMandate } from "../src/lib/mandate";
+import { campaignTemplate, contractorTemplate, evidenceError, parseMandateText, validateMandate } from "../src/lib/mandate";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CORE = join(ROOT, "contracts");
@@ -104,6 +104,20 @@ const mutations: [string, (m: M) => unknown][] = [
   ["requires_artifact not bool", (m) => ((m.rules[4].requires_artifact = "yes"), m)],
   ["context uri without digest", (m) => ((m.rules[4].context_uri = "https://x.y/z"), m)],
   ["context uri with digest", (m) => ((m.rules[4].context_uri = "https://x.y/z"), (m.rules[4].context_digest = "sha256:00"), m)],
+  ["evidence sources ok", (m) => ((m.evidence_sources = { [vendors[0]]: ["https://invoice.vendor.test/i/acct_1/"] }), m)],
+  ["evidence sources empty object", (m) => ((m.evidence_sources = {}), m)],
+  ["evidence sources not object", (m) => ((m.evidence_sources = ["https://x.test/"]), m)],
+  ["evidence sources null", (m) => ((m.evidence_sources = null), m)],
+  ["evidence source bad address", (m) => ((m.evidence_sources = { "0xzz": ["https://x.test/"] }), m)],
+  ["evidence source empty list", (m) => ((m.evidence_sources = { [vendors[0]]: [] }), m)],
+  ["evidence source five prefixes", (m) => ((m.evidence_sources = { [vendors[0]]: Array(5).fill("https://x.test/") }), m)],
+  ["evidence source not a list", (m) => ((m.evidence_sources = { [vendors[0]]: "https://x.test/" }), m)],
+  ["evidence source http", (m) => ((m.evidence_sources = { [vendors[0]]: ["http://x.test/"] }), m)],
+  ["evidence source no slash", (m) => ((m.evidence_sources = { [vendors[0]]: ["https://x.test"] }), m)],
+  ["evidence source no dot", (m) => ((m.evidence_sources = { [vendors[0]]: ["https://localhost/"] }), m)],
+  ["evidence source traversal", (m) => ((m.evidence_sources = { [vendors[0]]: ["https://x.test/a/../"] }), m)],
+  ["evidence source query", (m) => ((m.evidence_sources = { [vendors[0]]: ["https://x.test/?a=/"] }), m)],
+  ["evidence source userinfo", (m) => ((m.evidence_sources = { [vendors[0]]: ["https://u@x.test/"] }), m)],
   ["reflex-only mandate", (m) => ((m.rules = m.rules.filter((r: { type: string }) => r.type === "reflex")), m)],
   ["empty rules", (m) => ((m.rules = []), m)],
 ];
@@ -140,5 +154,43 @@ cases.forEach((k, i) => {
 });
 const accepted = verdicts.filter(Boolean).length;
 console.log(`  ${cases.length - failures} agree · engine accepts ${accepted}, rejects ${cases.length - accepted}`);
+// ------------------------------------------------- 3. pinned evidence sources
+// The app warns before signing exactly when the guard would refuse.
+const PIN = "https://invoice.vendor.test/i/acct_1/";
+const sources = { [vendors[0]]: [PIN] };
+const uris = [
+  PIN + "inv.json", PIN, PIN + "../acct_2/inv.json", PIN + "%2E%2E/x", PIN + "inv.json?x=1", PIN + "inv.json#a",
+  "https://invoice.vendor.test/i/acct_2/inv.json", "https://invoice.vendor.test.attacker.io/i/acct_1/x",
+  "https://agent@invoice.vendor.test/i/acct_1/x", "https://agent-host.test/forged.json", PIN + "a b",
+];
+const recipients = [vendors[0], vendors[0].toLowerCase(), "0x00000000000000000000000000000000000000a2"];
+const pyEvidence = JSON.parse(
+  execFileSync("python3", [
+    "-c",
+    `import sys, json; sys.path.insert(0, ${JSON.stringify(CORE)}); import remit_core as c
+s = json.loads(sys.argv[1]); out = []
+for r in json.loads(sys.argv[2]):
+    for u in json.loads(sys.argv[3]):
+        out.append(c.pinned_source_error({c.normalize_address(k): v for k, v in s.items()}, r, u) == "")
+print(json.dumps(out))`,
+    JSON.stringify(sources),
+    JSON.stringify(recipients),
+    JSON.stringify(uris),
+  ]).toString(),
+);
+console.log("pinned evidence");
+let k = 0;
+let evidenceFails = 0;
+for (const r of recipients)
+  for (const u of uris) {
+    const mine = evidenceError(sources, r, u) === "";
+    if (mine !== pyEvidence[k]) {
+      fail(`evidence ${r} ${u}: ui=${mine} engine=${pyEvidence[k]}`);
+      evidenceFails++;
+    }
+    k++;
+  }
+if (!evidenceFails) console.log(`  ok   ${k} recipient/URL pairs agree`);
+
 console.log(failures ? `\n${failures} parity failure(s)` : "\nparity ok");
 process.exit(failures ? 1 : 0);

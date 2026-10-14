@@ -9,7 +9,7 @@ import { duration, sameAddr } from "../lib/format";
 import { pathOf, PATH_TEXT } from "../lib/path";
 import { formatGen } from "../lib/money";
 import { Addr, Badge, Empty, Spinner, TxLine, explainError } from "../components/ui";
-import { describePredicate } from "../lib/mandate";
+import { describePredicate, evidenceError } from "../lib/mandate";
 
 export function CaseView({ id }: { id: number }) {
   const { client, guard, mandate } = useApp();
@@ -259,6 +259,7 @@ function Actions({ spend, onChange }: { spend: SpendView; onChange: () => Promis
   const isAgent = sameAddr(me, mandate.agent);
   const isPrincipal = sameAddr(me, mandate.principal);
   const held = spend.state === "held";
+  const pinErr = uri.trim() ? evidenceError(mandate.evidence_sources, spend.recipient, uri.trim()) : "";
   const winEnds = spend.held_at + mandate.defaults.response_window_seconds;
   const deadline = spend.held_at + mandate.defaults.hold_deadline_seconds;
   const windowOpen = held && !spend.memo_uri && now < winEnds;
@@ -336,13 +337,14 @@ function Actions({ spend, onChange }: { spend: SpendView; onChange: () => Promis
             </button>
             <button
               className="btn sm primary"
-              disabled={pending || !canSign || !isSha256Hex(digest)}
+              disabled={pending || !canSign || !isSha256Hex(digest) || !!pinErr}
               onClick={() => run("commit_artifact", [spend.id, uri.trim(), digest], "Evidence can only be committed while the spend is held.")}
             >
               Commit
             </button>
           </div>
           {digest && <div className="small mono muted" style={{ marginTop: 6, overflowWrap: "anywhere" }}>{digest}</div>}
+          {pinErr && <div className="small" style={{ marginTop: 6, color: "var(--refused)" }}>The guard will refuse this: {pinErr}.</div>}
           <div className="hint" style={{ marginTop: 6 }}>
             The digest is computed from the bytes this browser receives. Validators fetch the same URL; if the bytes
             differ, the evidence lands as unverified.

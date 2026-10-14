@@ -28,6 +28,45 @@ BUILD = os.path.join(ROOT, "contracts", "build")
 # (name, what it breaks, original fragment, mutated fragment[, file])
 # The file defaults to remit_core.py.
 MUTATIONS = [
+    # --- Milestone 1: the agent cannot be its own witness ---
+    (
+        "pinned-evidence-unchecked",
+        "evidence for a pinned vendor must come from one of its prefixes",
+        "    if not ps or not _unsafe_url(u) and any(u.startswith(p) for p in ps):",
+        "    if True:",
+    ),
+    (
+        "traversal-escapes-prefix",
+        "a URL that walks out of its prefix is refused",
+        '    return any(x in u.lower() for x in ("..", "%2e", "\\\\", "@", "#", "?", " "))',
+        '    return any(x in u.lower() for x in ("\\\\", "@", "#", "?", " "))',
+    ),
+    (
+        "prefix-without-slash",
+        "a pinned prefix must end with a slash, or vendor.test matches vendor.test.attacker.io",
+        ' and p[-1:] == "/" and not _unsafe_url(p)',
+        " and not _unsafe_url(p)",
+    ),
+    (
+        "sources-not-validated",
+        "a mandate with an unusable evidence source is refused",
+        '        bad("evidence_sources: {address: [1-4 URL prefixes, each https://host/path/]}")',
+        "        pass",
+    ),
+    (
+        "request-skips-pinning",
+        "evidence sent with a payment request is checked against the pinned prefixes",
+        "        if str(memo_uri) != \"\":\n            self._pinned(who, memo_uri)",
+        "        if False:\n            self._pinned(who, memo_uri)",
+        GUARD,
+    ),
+    (
+        "commit-skips-pinning",
+        "evidence committed to a held payment is checked against the pinned prefixes",
+        "        self._pinned(str(self.s_recipient[key]), uri)\n",
+        "",
+        GUARD,
+    ),
     (
         "jury-fails-open",
         "an unsure validator must not accept a leader that releases money",

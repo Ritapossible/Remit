@@ -290,18 +290,32 @@ def _BF(*, tier, shadow):
   return 0
  return _BB if tier >= _BB else _BA
 
-def _BG(mandate, *, stored_version, max_tier):
+def _BG(u):
+ return any((x in u.lower() for x in ('..', '%2e', '\\', '@', '#', '?', ' ')))
+
+def _BH(prefix):
+ p = str(prefix)
+ return p[:8] == 'https://' and '.' in p[8:].split('/')[0] and (p[-1:] == '/') and (not _BG(p))
+
+def _BI(sources, recipient, uri):
+ ps = sources.get(_AI(recipient), [])
+ u = str(uri)
+ if not ps or (not _BG(u) and any((u.startswith(p) for p in ps))):
+  return ''
+ return 'evidence must come from the vendor, under ' + ' or '.join(ps)
+
+def _BJ(mandate, *, stored_version, max_tier):
  _d = []
 
  def bad(message):
   _d.append(message)
  if not isinstance(mandate, dict):
   return ['mandate: expected an object']
- _u = mandate.get('version')
- if isinstance(_u, bool) or not isinstance(_u, int):
+ _w = mandate.get('version')
+ if isinstance(_w, bool) or not isinstance(_w, int):
   bad('version: expected int')
- elif _u <= stored_version:
-  bad('version: %r does not exceed stored version %r' % (_u, stored_version))
+ elif _w <= stored_version:
+  bad('version: %r does not exceed stored version %r' % (_w, stored_version))
  _c = mandate.get('defaults')
  if not isinstance(_c, dict):
   bad('defaults: expected an object')
@@ -320,87 +334,94 @@ def _BG(mandate, *, stored_version, max_tier):
     bad(str(_e))
  if 'response_window_seconds' in _c and 'hold_deadline_seconds' in _c:
   try:
-   _w = _AE(_c['response_window_seconds'], 'w')
+   _y = _AE(_c['response_window_seconds'], 'w')
    _b = _AE(_c['hold_deadline_seconds'], 'd')
-   if _w >= _b:
+   if _y >= _b:
     bad('defaults: response_window_seconds must be less than hold_deadline_seconds')
   except _AD:
    pass
- _t = mandate.get('vendor_lists', {})
- if not isinstance(_t, dict):
+ _v = mandate.get('vendor_lists', {})
+ if not isinstance(_v, dict):
   bad('vendor_lists: expected an object')
-  _t = {}
- for _k in _t:
-  if not isinstance(_t[_k], (list, tuple)):
+  _v = {}
+ for _k in _v:
+  if not isinstance(_v[_k], (list, tuple)):
    bad('vendor_lists.%s: expected a list' % _k)
    continue
-  for _a in _t[_k]:
+  for _a in _v[_k]:
    try:
     _AI(_a, 'vendor_lists.' + str(_k))
    except _AD as _e:
     bad(str(_e))
- _q = mandate.get('rules')
- if not isinstance(_q, (list, tuple)):
+ try:
+  for _a, ps in mandate.get('evidence_sources', {}).items():
+   _AI(_a)
+   if not (isinstance(ps, list) and 1 <= len(ps) <= 4 and all((_BH(p) for p in ps))):
+    raise _AD('')
+ except Exception:
+  bad('evidence_sources: {address: [1-4 URL prefixes, each https://host/path/]}')
+ _s = mandate.get('rules')
+ if not isinstance(_s, (list, tuple)):
   return _d + ['rules: expected a list']
- _r = set()
- for _h, _n in enumerate(_q):
-  _v = 'rules[%d]' % _h
-  if not isinstance(_n, dict):
-   bad('%s: expected an object' % _v)
+ _t = set()
+ for _h, _p in enumerate(_s):
+  _x = 'rules[%d]' % _h
+  if not isinstance(_p, dict):
+   bad('%s: expected an object' % _x)
    continue
-  _o = _n.get('id')
-  if not isinstance(_o, str) or _o == '':
-   bad('%s.id: expected a non-empty string' % _v)
-  elif _o in _r:
-   bad('%s.id: duplicate rule id %r' % (_v, _o))
+  _q = _p.get('id')
+  if not isinstance(_q, str) or _q == '':
+   bad('%s.id: expected a non-empty string' % _x)
+  elif _q in _t:
+   bad('%s.id: duplicate rule id %r' % (_x, _q))
   else:
-   _r.add(_o)
-  _p = _n.get('type')
-  if _p not in _T:
-   bad('%s.type: expected one of %s' % (_v, list(_T)))
+   _t.add(_q)
+  _r = _p.get('type')
+  if _r not in _T:
+   bad('%s.type: expected one of %s' % (_x, list(_T)))
    continue
-  _i = 'check' if _p == _R else 'when'
+  _i = 'check' if _r == _R else 'when'
   try:
-   _k, _m = _AO(_n.get(_i), '%s.%s' % (_v, _i))
+   _k, _m = _AO(_p.get(_i), '%s.%s' % (_x, _i))
    if _k not in _AC:
-    bad('%s.%s: predicate %r is outside the v1 vocabulary' % (_v, _i, _k))
+    bad('%s.%s: predicate %r is outside the v1 vocabulary' % (_x, _i, _k))
    elif _k in _X:
-    _AE(_m, '%s.%s.%s' % (_v, _i, _k))
+    _AE(_m, '%s.%s.%s' % (_x, _i, _k))
    elif _k in _Y:
-    _AP(_m, 'amount', '%s.%s.%s' % (_v, _i, _k))
+    _AP(_m, 'amount', '%s.%s.%s' % (_x, _i, _k))
    elif _k in _Z:
-    _AP(_m, 'count', '%s.%s.%s' % (_v, _i, _k))
+    _AP(_m, 'count', '%s.%s.%s' % (_x, _i, _k))
    elif _k in _AA:
-    _j = _AF(_m, '%s.%s' % (_v, _i))
-    if _j not in _t:
-     bad('%s.%s: vendor list %r is not defined' % (_v, _i, _j))
+    _j = _AF(_m, '%s.%s' % (_x, _i))
+    if _j not in _v:
+     bad('%s.%s: vendor list %r is not defined' % (_x, _i, _j))
    elif _k in _AB:
     if not isinstance(_m, (list, tuple)) or not _m:
-     bad('%s.%s.%s: expected a non-empty list' % (_v, _i, _k))
+     bad('%s.%s.%s: expected a non-empty list' % (_x, _i, _k))
   except _AD as _e:
    bad(str(_e))
-  if _p == _S:
-   if not isinstance(_n.get('ask'), str) or not _n.get('ask'):
-    bad('%s.ask: expected a non-empty string' % _v)
-   _l = _n.get('on_breach')
+  if _r == _S:
+   if not isinstance(_p.get('ask'), str) or not _p.get('ask'):
+    bad('%s.ask: expected a non-empty string' % _x)
+   _l = _p.get('on_breach')
    if not isinstance(_l, dict) or 'tier' not in _l:
-    bad("%s.on_breach: expected an object with 'tier'" % _v)
+    bad("%s.on_breach: expected an object with 'tier'" % _x)
    else:
     try:
-     _s = _AE(_l['tier'], '%s.on_breach.tier' % _v)
-     if _s > max_tier:
-      bad('%s.on_breach.tier: %d exceeds registered max_tier %d' % (_v, _s, max_tier))
+     _u = _AE(_l['tier'], '%s.on_breach.tier' % _x)
+     if _u > max_tier:
+      bad('%s.on_breach.tier: %d exceeds registered max_tier %d' % (_x, _u, max_tier))
     except _AD as _e:
      bad(str(_e))
-   if _n.get('requires_artifact') and (not isinstance(_n.get('requires_artifact'), bool)):
-    bad('%s.requires_artifact: expected a bool' % _v)
-   _g = bool(_n.get('context_uri'))
-   _f = bool(_n.get('context_digest'))
+   if _p.get('requires_artifact') and (not isinstance(_p.get('requires_artifact'), bool)):
+    bad('%s.requires_artifact: expected a bool' % _x)
+   _g = bool(_p.get('context_uri'))
+   _f = bool(_p.get('context_digest'))
    if _g != _f:
-    bad('%s: context_uri and context_digest must be given together' % _v)
+    bad('%s: context_uri and context_digest must be given together' % _x)
  return _d
 
-def _BH(rule):
+def _BK(rule):
  _e = str(rule['type'])
  _d = rule['check'] if _e == _R else rule['when']
  _f, _g = _AO(_d, 'rule ' + str(rule['id']))
@@ -417,37 +438,37 @@ def _BH(rule):
   s = ','.join([str(c) for c in _g])
  return {'id': str(rule['id']), 'type': _e, 'predicate': _f, 'cond': {_f: _g}, 'a': a, 'b': b, 's': s, 'requires_artifact': bool(rule.get('requires_artifact', False)), 'tier': int(rule.get('on_breach', {}).get('tier', 0)), 'ask': str(rule.get('ask', ''))}
 
-def _BI(mandate_json, max_tier):
+def _BL(mandate_json, max_tier):
  try:
   _e = json.loads(mandate_json)
  except Exception:
   return json.dumps({'errors': ['mandate: not valid JSON']})
- _b = _BG(_e, stored_version=0, max_tier=int(max_tier))
+ _b = _BJ(_e, stored_version=0, max_tier=int(max_tier))
  if _b:
   return json.dumps({'errors': _b})
  _d = {}
  for _f in _e.get('vendor_lists', {}):
   _d[str(_f)] = [_AI(a) for a in _e['vendor_lists'][_f]]
- return json.dumps({'errors': [], 'mandate_version': int(_e['version']), 'mandate_uri': str(_e.get('mandate_uri', '')), 'mandate_digest': str(_e.get('mandate_digest', '')).lower(), 'defaults': {k: _e['defaults'][k] for k in _W}, 'vendor_lists': _d, 'rules': [_BH(r) for r in _e['rules']]})
+ return json.dumps({'errors': [], 'mandate_version': int(_e['version']), 'mandate_uri': str(_e.get('mandate_uri', '')), 'mandate_digest': str(_e.get('mandate_digest', '')).lower(), 'defaults': {k: _e['defaults'][k] for k in _W}, 'vendor_lists': _d, 'evidence_sources': {_AI(a): ps for a, ps in _e.get('evidence_sources', {}).items()}, 'rules': [_BK(r) for r in _e['rules']]})
 
-def _BJ(compiled):
+def _BM(compiled):
  _b = []
  for r in compiled['rules']:
   _b.append({'id': r['id'], 'type': r['type'], 'check' if r['type'] == _R else 'when': r['cond']})
  return {'rules': _b, 'vendor_lists': compiled['vendor_lists']}
 
-def _BK(row):
+def _BN(row):
  return Spend(amount=int(row[0]), recipient=str(row[1]), category=str(row[2]), at=int(row[3]))
 
-def _BL(compiled_json, history_json, candidate_json):
+def _BO(compiled_json, history_json, candidate_json):
  _b = json.loads(compiled_json)
  _a = json.loads(candidate_json)
  if not _AM(_a[2]):
   return json.dumps({'error': "category must be 1-40 letters, digits, spaces, '_', '.' or '-'", 'state': 'invalid', 'rules': []})
- _f, _c = _AR(_BJ(_b), _BK(_a), [_BK(h) for h in json.loads(history_json)])
+ _f, _c = _AR(_BM(_b), _BN(_a), [_BN(h) for h in json.loads(history_json)])
  return json.dumps({'state': _f, 'rules': [str(r) for r in _c]})
 
-def _BM(compiled_json, requires_artifact):
+def _BP(compiled_json, requires_artifact):
  _b = json.loads(compiled_json)
  _c = {}
  for _d in _L:
@@ -459,16 +480,16 @@ def _BM(compiled_json, requires_artifact):
   _c['deadline'][_a] = _AU(verdict=None, artifact=_a, requires_artifact=bool(requires_artifact), defaults=_b['defaults'], deadline_reached=True)
  return json.dumps(_c)
 
-def _BN(held_at, now, window):
+def _BQ(held_at, now, window):
  return _AS(held_at=int(held_at), now=int(now), response_window_seconds=int(window))
 
-def _BO(spend_json, rule_json, challenger, agent, now, window, losses, last_loss_at, floor):
+def _BR(spend_json, rule_json, challenger, agent, now, window, losses, last_loss_at, floor):
  _c = json.loads(spend_json)
  _b = _BC(spend=_c, rule=json.loads(rule_json), challenger=str(challenger), agent=str(agent), now=int(now), clawback_window_seconds=int(window))
  _a = _AW(amount=int(_c['amount']), losses=int(losses), last_loss_at=int(last_loss_at), now=int(now), policy=BondPolicy(floor=int(floor)))
  return json.dumps({'error': _b, 'bond': _a})
 
-def _BP(verdict, bond, amount, paid, standing, floor, losses, now, tier):
+def _BS(verdict, bond, amount, paid, standing, floor, losses, now, tier):
  _a = _BD(verdict=str(verdict), bond=int(bond), amount=int(amount), paid=bool(paid), standing=int(standing), policy=BondPolicy(floor=int(floor)))
  _b = _a['state'] == _AY
  _a['losses'], _a['last_loss_at'] = _BE(losses=int(losses), upheld=_b, now=int(now))
@@ -480,32 +501,36 @@ class RemitEngine(gl.Contract):
  prompts: Address
 
  def __init__(self, prompts: str):
-  self.release = 'remit-engine/3'
+  self.release = 'remit-engine/4'
   self.prompts = Address(prompts)
 
  @gl.public.view
  def compile_mandate(self, mandate_json: str, max_tier: int) -> str:
-  return _BI(str(mandate_json), int(max_tier))
+  return _BL(str(mandate_json), int(max_tier))
 
  @gl.public.view
  def classify(self, compiled: str, history: str, candidate: str) -> str:
-  return _BL(str(compiled), str(history), str(candidate))
+  return _BO(str(compiled), str(history), str(candidate))
 
  @gl.public.view
  def outcomes(self, compiled: str, requires_artifact: bool) -> str:
-  return _BM(str(compiled), bool(requires_artifact))
+  return _BP(str(compiled), bool(requires_artifact))
+
+ @gl.public.view
+ def evidence_error(self, compiled: str, recipient: str, uri: str) -> str:
+  return _BI(json.loads(str(compiled)).get('evidence_sources', {}), str(recipient), str(uri))
 
  @gl.public.view
  def uncommitted(self, held_at: int, now: int, window: int) -> str:
-  return _BN(int(held_at), int(now), int(window))
+  return _BQ(int(held_at), int(now), int(window))
 
  @gl.public.view
  def challenge_terms(self, spend: str, rule: str, challenger: str, agent: str, now: int, window: int, losses: int, last_loss_at: int, floor: int) -> str:
-  return _BO(str(spend), str(rule), str(challenger), str(agent), int(now), int(window), int(losses), int(last_loss_at), int(floor))
+  return _BR(str(spend), str(rule), str(challenger), str(agent), int(now), int(window), int(losses), int(last_loss_at), int(floor))
 
  @gl.public.view
  def challenge_result(self, verdict: str, bond: int, amount: int, paid: bool, standing: int, floor: int, losses: int, now: int, tier: int) -> str:
-  return _BP(str(verdict), int(bond), int(amount), bool(paid), int(standing), int(floor), int(losses), int(now), int(tier))
+  return _BS(str(verdict), int(bond), int(amount), bool(paid), int(standing), int(floor), int(losses), int(now), int(tier))
 
  @gl.public.view
  def prompts_address(self) -> str:

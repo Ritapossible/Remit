@@ -13,7 +13,7 @@ class RemitEngine(gl.Contract):
     prompts: Address
 
     def __init__(self, prompts: str):
-        self.release = "remit-engine/3"
+        self.release = "remit-engine/4"
         self.prompts = Address(prompts)
 
     @gl.public.view
@@ -27,6 +27,10 @@ class RemitEngine(gl.Contract):
     @gl.public.view
     def outcomes(self, compiled: str, requires_artifact: bool) -> str:
         return api_outcomes(str(compiled), bool(requires_artifact))
+
+    @gl.public.view
+    def evidence_error(self, compiled: str, recipient: str, uri: str) -> str:
+        return pinned_source_error(json.loads(str(compiled)).get("evidence_sources", {}), str(recipient), str(uri))
 
     @gl.public.view
     def uncommitted(self, held_at: int, now: int, window: int) -> str:

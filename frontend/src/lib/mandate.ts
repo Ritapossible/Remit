@@ -43,6 +43,8 @@ export interface MandateInfo {
   };
   rules: RuleInfo[];
   vendor_lists?: Record<string, string[]>;
+  /** Milestone 1: per vendor, the URL prefixes its evidence must come from. */
+  evidence_sources?: Record<string, string[]>;
   spend_count: number;
   /** Graduated authority; absent on guards built before tiers 2 and 3. */
   release?: string;
@@ -132,6 +134,25 @@ const nonNegInt = (v: unknown) => isInt(v) && BigInt(v as number | bigint) >= 0n
 const isAddress = (v: unknown) =>
   typeof v === "string" && v.trim() !== "" && /^0x[0-9a-f]+$/.test(v.trim().toLowerCase());
 
+// Milestone 1: the agent cannot be its own witness. Mirrors remit_core.py
+// (_unsafe_url, evidence_prefix_ok, pinned_source_error); scripts/parity.ts
+// checks the two agree.
+const unsafeUrl = (u: string) => ["..", "%2e", "\\", "@", "#", "?", " "].some((x) => u.toLowerCase().includes(x));
+
+export function evidencePrefixOk(p: unknown): boolean {
+  const s = String(p);
+  return s.slice(0, 8) === "https://" && s.slice(8).split("/")[0].includes(".") && s.endsWith("/") && !unsafeUrl(s);
+}
+
+/** Why ``uri`` may not be committed as evidence for a payment to
+ *  ``recipient`` ("" if it may). A vendor with no pinned prefix is unrestricted. */
+export function evidenceError(sources: Record<string, string[]> | undefined, recipient: string, uri: string): string {
+  const key = Object.keys(sources ?? {}).find((a) => a.toLowerCase() === recipient.trim().toLowerCase());
+  const ps = key ? (sources as Record<string, string[]>)[key] : [];
+  if (!ps.length || (!unsafeUrl(uri) && ps.some((p) => uri.startsWith(p)))) return "";
+  return "evidence must come from the vendor, under " + ps.join(" or ");
+}
+
 export function validateMandate(m: Json, opts: { storedVersion: number; maxTier: number }): string[] {
   const errors: string[] = [];
   const bad = (msg: string) => errors.push(msg);
@@ -169,6 +190,16 @@ export function validateMandate(m: Json, opts: { storedVersion: number; maxTier:
       continue;
     }
     for (const a of members) if (!isAddress(a)) bad(`vendor_lists.${name}: not an address: ${String(a)}`);
+  }
+
+  if ("evidence_sources" in m) {
+    const src = m.evidence_sources;
+    const ok =
+      isObj(src) &&
+      Object.entries(src as Record<string, Json>).every(
+        ([a, ps]) => isAddress(a) && Array.isArray(ps) && ps.length >= 1 && ps.length <= 4 && ps.every(evidencePrefixOk),
+      );
+    if (!ok) bad("evidence_sources: {address: [1-4 URL prefixes, each https://host/path/]}");
   }
 
   const rules = m.rules;

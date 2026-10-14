@@ -76,6 +76,7 @@ def api_compile(mandate_json, max_tier):
             "mandate_digest": str(mandate.get("mandate_digest", "")).lower(),
             "defaults": {k: mandate["defaults"][k] for k in REQUIRED_DEFAULTS},
             "vendor_lists": lists,
+            "evidence_sources": {normalize_address(a): ps for a, ps in mandate.get("evidence_sources", {}).items()},
             "rules": [_rule_view(r) for r in mandate["rules"]],
         }
     )
