@@ -148,14 +148,15 @@ if (rail) {
   for (let id = 0; id < 5; id++) all.push(await spendOf(id));
   const splitWindow = 86400;
   const fallsWithSplit = (me) => all.some((o) => o.id > me.id && o.recipient.toLowerCase() === me.recipient.toLowerCase() &&
-    o.at - me.at < splitWindow && o.outcome === "refused" && o.rules.length > 0 && o.rules.every((r) => r === "structuring"));
+    o.at - me.at < splitWindow && o.rules.includes("structuring") &&
+    (o.state === "held" || (o.outcome === "refused" && o.rules.every((r) => r === "structuring"))));
   for (let id = 0; id < 5; id++) {
     const auth = all[id].authorization;
     if (auth === "authorized" && fallsWithSplit(all[id])) {
       const h = await retry(`pay#${id}`, () => principal.writeContract({ address: rail, functionName: "pay", args: [id], value: 0n }), 4);
       const r = outcome(await retry(`pay#${id} receipt`, () => principal.waitForTransactionReceipt({ hash: h, status: WAIT, retries: 300, interval: 2500 }), 4));
       txs.push({ label: `pay#${id}`, hash: h, leader: r.leader, consensus: r.consensus });
-      check(`pay #${id} (authorized, a slice of the refused split) reverted`, r.refused, true);
+      check(`pay #${id} (authorized, a slice of a split that is held or refused) reverted`, r.refused, true);
       continue;
     }
     const h = await retry(`pay#${id}`, () => principal.writeContract({ address: rail, functionName: "pay", args: [id], value: 0n }), 4);

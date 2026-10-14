@@ -1,0 +1,217 @@
+{
+  "address": "0x8EB28e009B6BC8b2853C549F87A917D1b371EAe9",
+  "txs": [
+    {
+      "label": "spend#0",
+      "hash": "0xc8bc6613f2312351c550885be3b7c3e8e66312643391933bdb4476bd1deac2b8",
+      "leader": "return",
+      "consensus": "AGREE"
+    },
+    {
+      "label": "spend#1",
+      "hash": "0xc40596c70355ea822314387665e2e039ee753bda22dc857b4f74406813383cde",
+      "leader": "return",
+      "consensus": "AGREE"
+    },
+    {
+      "label": "forged-category",
+      "hash": "0x7569b527b1d1188af3b82039f403d230524401d7478e462540dc859a41f5fe98",
+      "leader": "contract_error",
+      "consensus": "AGREE"
+    },
+    {
+      "label": "spend#2",
+      "hash": "0xdd31e2698279d26f8fb5a4d6e893e2d6c357cc253386873592993ccc0c688137",
+      "leader": "return",
+      "consensus": "AGREE"
+    },
+    {
+      "label": "spend#3",
+      "hash": "0xbe9e3477711571316df95f013b25f40b53c89fdbcaccaf7b67dfb68fc7d2f77d",
+      "leader": "return",
+      "consensus": "AGREE"
+    },
+    {
+      "label": "adjudicate-early",
+      "hash": "0xfa28ce11be1e6e0150ce1e40ab2df8f7a0d91a69e55b98310df8f0bb7491367d",
+      "leader": "contract_error",
+      "consensus": "AGREE"
+    },
+    {
+      "label": "adjudicate",
+      "hash": "0xb3d64456e78f4e391587ec6770deaad4ed0387f307646c79a4f70472a99502a1",
+      "leader": "NOT_VOTED",
+      "consensus": "IDLE"
+    },
+    {
+      "label": "spend#4",
+      "hash": "0x8c7485e0fa6baa3eea0195c9c33f9b45298a439d3e86b3de52251fd2cb910638",
+      "leader": "return",
+      "consensus": "AGREE"
+    },
+    {
+      "label": "override_release",
+      "hash": "0xfd65e8b25f1f0371f33d4529017810bee9b6063c74c3fc89478490c782217ffe",
+      "leader": "return",
+      "consensus": "AGREE"
+    },
+    {
+      "label": "pay#0",
+      "hash": "0xe2f2ae5efc6a518b60b98c245787198e2fc974ec6ee95aec107417bfe926840a",
+      "leader": "contract_error",
+      "consensus": "AGREE"
+    },
+    {
+      "label": "pay#1",
+      "hash": "0xb5d74be3f62519d65de10c5e38ab3edb296bbafb5213e6a16a99b9e3af85730c",
+      "leader": "contract_error",
+      "consensus": "AGREE"
+    },
+    {
+      "label": "pay#2",
+      "hash": "0x3d7eaec84cc07253e1005de079c6a2176abc23bb61ba2167ec76555fcb526f11",
+      "leader": "contract_error",
+      "consensus": "AGREE"
+    },
+    {
+      "label": "pay#3",
+      "hash": "0xd750f36d0f6dd248fb807f5966c9baadb39168741dc1f4cf9a7fc589f354d9d0",
+      "leader": "contract_error",
+      "consensus": "AGREE"
+    },
+    {
+      "label": "pay#4",
+      "hash": "0xe7eab022ba6a134430bb7f207a67de41d435423016b27294da65722d0f67cbd9",
+      "leader": "return",
+      "consensus": "AGREE"
+    }
+  ],
+  "docket": [
+    {
+      "id": 0,
+      "amount": 50000000000000000,
+      "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
+      "category": "media",
+      "at": 1791981962,
+      "state": "settled",
+      "rules": [],
+      "memo_uri": "",
+      "memo_digest": "",
+      "claim": "stock photo for the Q4 banner",
+      "held_at": 0,
+      "verdict": "",
+      "reason": "",
+      "confidence": 0,
+      "artifact": "",
+      "outcome": "allowed",
+      "tier": 0,
+      "decided_at": 1791981962,
+      "authorization": "authorized",
+      "shadow": false
+    },
+    {
+      "id": 1,
+      "amount": 50000000000000000,
+      "recipient": "0x00000000000000000000000000000000000000b1",
+      "category": "media",
+      "at": 1791981982,
+      "state": "refused",
+      "rules": [
+        "allowlist"
+      ],
+      "memo_uri": "",
+      "memo_digest": "",
+      "claim": "agency retainer",
+      "held_at": 0,
+      "verdict": "",
+      "reason": "",
+      "confidence": 0,
+      "artifact": "",
+      "outcome": "refused",
+      "tier": 1,
+      "decided_at": 1791981982,
+      "authorization": "refused",
+      "shadow": false
+    },
+    {
+      "id": 2,
+      "amount": 150000000000000000,
+      "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
+      "category": "media",
+      "at": 1791982020,
+      "state": "settled",
+      "rules": [],
+      "memo_uri": "",
+      "memo_digest": "",
+      "claim": "PO-5521 product video",
+      "held_at": 0,
+      "verdict": "",
+      "reason": "",
+      "confidence": 0,
+      "artifact": "",
+      "outcome": "allowed",
+      "tier": 0,
+      "decided_at": 1791982020,
+      "authorization": "authorized",
+      "shadow": false
+    },
+    {
+      "id": 3,
+      "amount": 150000000000000000,
+      "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
+      "category": "media",
+      "at": 1791982049,
+      "state": "held",
+      "rules": [
+        "structuring"
+      ],
+      "memo_uri": "",
+      "memo_digest": "",
+      "claim": "PO-5521 product video",
+      "held_at": 1791982049,
+      "verdict": "",
+      "reason": "",
+      "confidence": 0,
+      "artifact": "",
+      "outcome": "",
+      "tier": 0,
+      "decided_at": 0,
+      "authorization": "pending",
+      "shadow": false
+    },
+    {
+      "id": 4,
+      "amount": 100000000000000000,
+      "recipient": "0x3f55971f7fd2594a90871db489fbb82f1db4d747",
+      "category": "media",
+      "at": 1791983063,
+      "state": "settled",
+      "rules": [
+        "structuring"
+      ],
+      "memo_uri": "",
+      "memo_digest": "",
+      "claim": "PO-5560 thumbnail set",
+      "held_at": 1791983063,
+      "verdict": "",
+      "reason": "principal_override",
+      "confidence": 0,
+      "artifact": "absent",
+      "outcome": "allowed",
+      "tier": 0,
+      "decided_at": 1791983083,
+      "authorization": "authorized",
+      "shadow": false
+    }
+  ],
+  "reconvened": {
+    "spend": 3,
+    "why": "the walkthrough's jury round ended with every validator NOT_VOTED; convened again",
+    "adjudicate_tx": "0x95480b63a1f75e72ce9d2174e809b92fa57d4ad5a21bcadc99aa0562a07877b3",
+    "consensus": "AGREE",
+    "verdict": "out_of_remit",
+    "confidence": 91,
+    "state": "refused"
+  },
+  "note": "pay #0 and #2 reverted on the rail: while #3 was held they waited on it, and once #3 was refused they fall with it (split hold). #4, the principal's override, was paid."
+}
