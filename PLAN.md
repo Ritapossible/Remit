@@ -236,8 +236,8 @@ and a vendor's own invoice still can.
       (in_remit 90, 94, 80). 0 failed checks.
 - [x] **Bradbury** (`deploy/evidence-bradbury.json`): from the agent's
       path, refused at commit 3 of 3, paid 0 (one jury round ended with every
-      validator `NOT_VOTED`; that payment was closed at its hold deadline by
-      the default, refund). From the vendor's path: verified 3 of 3, released
+      validator `NOT_VOTED`; that payment was closed after its response
+      window by `resolve_deadline`: refused, `deadline_default`). From the vendor's path: verified 3 of 3, released
       3 of 3 (in_remit 90, 75, 80). 0 failed checks.
 
 ## Phase 8 - Production readiness `[ ]`

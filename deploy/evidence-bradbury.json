@@ -57,18 +57,25 @@
         "NOT_VOTED"
       ],
       "verdict": "",
-      "reason": "",
+      "reason": "deadline_default",
       "confidence": 0,
       "artifact": "",
-      "outcome": "",
-      "authorization": "pending",
-      "state": "held",
+      "outcome": "refused",
+      "authorization": "refused",
+      "state": "refused",
       "done": true,
       "deadline": {
-        "tx": "0xadb9b4f147b43d385c3f5671da3a7d02f8e3e44115af6212a2bb415691fb8690",
-        "consensus": "AGREE"
+        "early_attempt": {
+          "tx": "0xadb9b4f147b43d385c3f5671da3a7d02f8e3e44115af6212a2bb415691fb8690",
+          "result": "refused: called before held_at + response window"
+        },
+        "tx": "0x6070d33c4395d0aa5154184a50a054dac1bab7337d14709b2e96d9b67baee09b",
+        "block": 25167462,
+        "at": 1791978572,
+        "result": "applied"
       },
-      "note": "the jury round ended with all five validators NOT_VOTED (no verdict); the payment stayed held and was closed at its hold deadline by the mandate default (refund)"
+      "note": "the jury round ended with all five validators NOT_VOTED (no verdict); the payment stayed held and was closed after its response window by resolve_deadline, which applied the mandate default: refused (reason deadline_default)",
+      "decided_at": 1791978572
     },
     {
       "case": "forged",

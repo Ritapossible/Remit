@@ -417,6 +417,7 @@ dl.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .prose p, .prose li { color: var(--ink-2); }
 .prose strong { color: var(--ink); }
 .prose code { overflow-wrap: anywhere; font-family: var(--mono); font-size: 0.86em; background: var(--surface-2); padding: 2px 6px; border-radius: 6px; }
+:not(pre) > code { overflow-wrap: anywhere; }
 .prose pre { max-width: 100%; background: #03222e; color: #d8eef2; padding: 18px 20px; border-radius: var(--r); overflow-x: auto; font-size: 13.5px; line-height: 1.6; }
 @media (max-width: 559px) { .prose pre { font-size: 12.5px; padding: 14px 16px; } }
 .prose pre code { overflow-wrap: normal; background: none; padding: 0; color: inherit; font-size: inherit; }

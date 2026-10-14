@@ -193,7 +193,7 @@ vendor, the second held, then evidence committed from one place or the other.
 | **Studio** (`deploy/evidence-studio.json`) | refused at commit 3 of 3; paid 0 | verified 3 of 3; released 3 of 3 (in_remit 90, 94, 80) |
 | **Bradbury** (`deploy/evidence-bradbury.json`) | refused at commit 3 of 3; paid 0 | verified 3 of 3; released 3 of 3 (in_remit 90, 75, 80) |
 
-Studio and Bradbury: 0 failed checks each. Every refusal reads, from the chain, `evidence must come from the vendor, under https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/`. On Bradbury, the jury then ruled on the ledger alone in two forged runs (out_of_remit 85 and 95); in the first, the round ended with all five validators `NOT_VOTED`, no verdict, so the payment stayed held and was closed at its hold deadline by the mandate's default, refund. No forged run paid on either network.
+Studio and Bradbury: 0 failed checks each. Every refusal reads, from the chain, `evidence must come from the vendor, under https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/`. On Bradbury, the jury then ruled on the ledger alone in two forged runs (out_of_remit 85 and 95); in the first, the round ended with all five validators `NOT_VOTED`, no verdict, so the payment stayed held and was closed after its response window by `resolve_deadline` with the mandate's default: refused (`deadline_default`). No forged run paid on either network.
 
 **Tests.** 400 (31 new in `tests/direct/test_pinned_evidence.py`, running the
 built guard readable and deployed); 58 mutants, six new, all killed; the app
@@ -314,7 +314,7 @@ Bradbury runs are in `deploy/jury-json-*.json` and `deploy/jury-split-*.json`.
 | Tests | 400, including every built contract run from its deployed bytes (`tests/direct/genvm_stub.py`) |
 | Injection corpus | 12 strings, as claim, artifact, category and challenge statement |
 | Mutation | 58 mutants across engine, prompts, guard, rail and registry, all killed |
-| Parity | the app's mandate validator agrees with the engine on 74 cases, and its evidence check on 33 recipient/URL pairs |
+| Parity | the app's mandate validator agrees with the engine on 74 cases, its evidence check on 33 recipient/URL pairs, and its split-hold check (the Pay button) on 227 cases |
 
 ```bash
 python3 -m pytest tests/direct        # no chain needed

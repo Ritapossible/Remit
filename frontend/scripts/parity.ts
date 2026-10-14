@@ -14,6 +14,8 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as C from "../src/lib/constants";
 import { campaignTemplate, contractorTemplate, evidenceError, parseMandateText, validateMandate } from "../src/lib/mandate";
+import type { RuleInfo } from "../src/lib/mandate";
+import { splitHold } from "../src/lib/split";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CORE = join(ROOT, "contracts");
@@ -191,6 +193,50 @@ for (const r of recipients)
     k++;
   }
 if (!evidenceFails) console.log(`  ok   ${k} recipient/URL pairs agree`);
+
+// ------------------------------------------------------------- 4. split hold
+// The Pay button says "refused with the split" exactly when the rail would.
+const V1 = "0x3F55971f7fd2594A90871Db489fBb82f1DB4d747";
+const V2 = "0x1111111111111111111111111111111111111111";
+const splitRules = [
+  { id: "S", type: "judgment", predicate: "recipient_total_lte", a: "100", b: 86400, s: "", requires_artifact: false, tier: 1, ask: "" },
+  { id: "C", type: "judgment", predicate: "recipient_count_lte", a: 3, b: 3600, s: "", requires_artifact: false, tier: 1, ask: "" },
+  { id: "P", type: "judgment", predicate: "purpose", a: "", b: "", s: "x", requires_artifact: false, tier: 1, ask: "" },
+  { id: "R", type: "reflex", predicate: "amount_lte", a: "5", b: "", s: "", requires_artifact: false, tier: 0, ask: "" },
+] as unknown as RuleInfo[];
+const me = { id: 3, recipient: V1, at: 1000, state: "settled", rules: [], outcome: "allowed" };
+const splitCases: (typeof me)[][] = [];
+for (const recipient of [V1, V1.toLowerCase(), V2])
+  for (const dt of [1, 3599, 3600, 86399, 86400])
+    for (const [state, outcome] of [["held", ""], ["refused", "refused"], ["settled", "allowed"]])
+      for (const rules of [["S"], ["C"], ["S", "P"], ["P"], ["S", "C"]])
+        splitCases.push([{ id: 4, recipient, at: 1000 + dt, state, rules, outcome }]);
+splitCases.push([{ ...me, id: 2, at: 1001, state: "refused", outcome: "refused", rules: ["S"] }]);
+splitCases.push([
+  { id: 4, recipient: V1, at: 1001, state: "held", rules: ["S"], outcome: "" },
+  { id: 5, recipient: V1, at: 1002, state: "refused", rules: ["C"], outcome: "refused" },
+]);
+const pySplit = JSON.parse(
+  execFileSync("python3", [
+    "-c",
+    `import sys, json; sys.path.insert(0, ${JSON.stringify(CORE)}); import remit_core as c
+me = json.loads(sys.argv[1]); rules = json.loads(sys.argv[2])
+print(json.dumps([c.split_hold(me, later, rules) for later in json.loads(sys.argv[3])]))`,
+    JSON.stringify(me),
+    JSON.stringify(splitRules),
+    JSON.stringify(splitCases),
+  ]).toString(),
+);
+console.log("split hold");
+let splitFails = 0;
+splitCases.forEach((later, i) => {
+  const mine = splitHold(me, later, splitRules);
+  if (mine !== pySplit[i]) {
+    fail(`split ${JSON.stringify(later)}: ui=${mine} engine=${pySplit[i]}`);
+    splitFails++;
+  }
+});
+if (!splitFails) console.log(`  ok   ${splitCases.length} cases agree`);
 
 console.log(failures ? `\n${failures} parity failure(s)` : "\nparity ok");
 process.exit(failures ? 1 : 0);

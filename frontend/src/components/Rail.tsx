@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useApp } from "../state";
 import { NETWORKS } from "../chain/networks";
-import { deployRail, readPayment, readRail, write, type RailPayment, type RailStatus, type SpendView, type TxOutcome } from "../chain/remit";
+import { splitHold, SPLIT_REASON } from "../lib/split";
+import { deployRail, readDocket, readPayment, readRail, write, type RailPayment, type RailStatus, type SpendView, type TxOutcome } from "../chain/remit";
 import { parseGen } from "../lib/money";
 import { duration, sameAddr } from "../lib/format";
 import { useNow } from "../hooks";
@@ -204,6 +205,9 @@ export function CasePayment({ spend }: { spend: SpendView }) {
   const [payment, setPayment] = useState<RailPayment | null>(null);
   const now = useNow();
   const tx = useTx();
+  // The rail's own answer before anyone signs: simulate `pay` and show the
+  // reason it would refuse (a split it belongs to, a challenge, a freeze...).
+  const [blocked, setBlocked] = useState("");
 
   const load = useCallback(async () => {
     if (!isAddr(rail)) return;
@@ -216,6 +220,31 @@ export function CasePayment({ spend }: { spend: SpendView }) {
   useEffect(() => {
     void load();
   }, [load]);
+  const ready = !!status && (spend.decided_at ?? 0) + status.finality_seconds <= now;
+  const { guard, mandate } = useApp();
+  useEffect(() => {
+    setBlocked("");
+    if (!isAddr(rail) || !ready || payment?.paid || spend.authorization !== "authorized") return;
+    let live = true;
+    // The split hold, computed here as the rail computes it (Studio's
+    // simulations carry no reason); then the rail's own simulation for the rest.
+    if (mandate)
+      void readDocket(client, guard)
+        .then((d) => {
+          const link = splitHold(spend, d, mandate.rules);
+          if (live && link) setBlocked(SPLIT_REASON[link]);
+        })
+        .catch(() => undefined);
+    (client as unknown as { simulateWriteContract(a: object): Promise<unknown> })
+      .simulateWriteContract({ address: rail, functionName: "pay", args: [spend.id] })
+      .catch((e: unknown) => {
+        const m = String((e as { message?: string })?.message ?? e).match(/\[EXPECTED\] ([^"\\\n]*)/);
+        if (live && m) setBlocked((b) => b || m[1]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [client, guard, mandate, rail, ready, payment?.paid, spend, spend.authorization]);
 
   if (!isAddr(rail) || !status) {
     return (
@@ -245,7 +274,7 @@ export function CasePayment({ spend }: { spend: SpendView }) {
       <div className="row">
         <button
           className="btn primary"
-          disabled={!canSign || tx.pending || wait > 0}
+          disabled={!canSign || tx.pending || wait > 0 || !!blocked}
           onClick={() => tx.run((onHash) => write(client, rail, "pay", [spend.id], pollMs, onHash), load)}
         >
           {tx.pending ? <Spinner /> : null} Pay <Gen atto={spend.amount} /> from the rail
@@ -254,6 +283,11 @@ export function CasePayment({ spend }: { spend: SpendView }) {
           {wait > 0 ? `Payable in ${duration(wait)}, after the finality delay.` : "Anyone may trigger it; the rail decides who is paid and how much."}
         </span>
       </div>
+      {blocked && (
+        <div className="notice" style={{ marginTop: 10 }}>
+          The rail will not pay this now: <b>{blocked}</b>.
+        </div>
+      )}
       <TxLine
         network={network}
         pending={tx.pending}

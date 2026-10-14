@@ -163,7 +163,9 @@ if (verdictOrRetry === "no-consensus") {
 }
 t = await text();
 check("jury verdict recorded", /Outside the remit|Within the remit|Undetermined/.test(t));
-check("verdict is out of remit", t.includes("Outside the remit"));
+// The jury is a model panel: "outside" and "undetermined" (validators did not
+// agree) both refuse; the guard fails closed. Assert the decision, not the words.
+check("the split is refused (outside the remit, or undetermined: fails closed)", (t.includes("Outside the remit") || t.includes("Undetermined")) && t.includes("Refused"));
 check("the rail would not pay it", t.includes("The rail will not pay") || t.includes("No rail is attached"));
 await shot("07-case-verdict");
 const caseUrl = page.url();
@@ -179,15 +181,18 @@ await page.getByLabel("GEN to add").fill("0.3");
 await page.getByRole("button", { name: "Add GEN" }).click();
 await waitText("Funds added to the rail.", 300000);
 check("rail funded", true);
+// Payment 1 was authorized, but it is the first slice of the split the jury
+// refused, so the rail refuses it too ("hold the first slice", PLAN Phase 6).
+// The app asks the rail before anyone signs and says so. (The rail paying an
+// authorized spend is measured on chain by deploy/rail_scenario.mjs.)
 await page.goto(page.url().replace(/#.*$/, "#/app/case/0"));
 await page.getByRole("button", { name: /Pay .* from the rail/ }).waitFor({ timeout: 60000 });
-await page.waitForFunction(() => ![...document.querySelectorAll("button")].find((b) => /from the rail/.test(b.textContent))?.disabled, null, { timeout: 120000 });
-await page.getByRole("button", { name: /Pay .* from the rail/ }).click();
-await waitText("Paid. The recipient", 300000);
-check("authorized spend paid from the rail", true);
-await page.reload();
-await waitText("The rail sent", 60000);
-check("payment recorded on the rail", true);
+await waitText("refused with the split it belongs to", 180000);
+check("the first slice of a refused split is shown as unpayable before signing", true);
+check(
+  "its Pay button is disabled",
+  await page.getByRole("button", { name: /Pay .* from the rail/ }).isDisabled(),
+);
 await page.goto(page.url().replace(/#.*$/, "#/app/case/1"));
 await waitText("The rail will not pay this spend", 60000);
 check("refused spend shown as unpayable", true);
