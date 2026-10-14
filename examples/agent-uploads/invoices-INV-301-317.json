@@ -1,0 +1,24 @@
+{
+  "document": "invoices",
+  "vendor": "Northlight Studio",
+  "invoices": [
+    {
+      "invoice_number": "INV-301",
+      "issued": "2026-09-04",
+      "order_reference": "PO-5102",
+      "ordered": "2026-09-01",
+      "lines": [{ "description": "Annual hosting renewal for the campaign landing page", "quantity": 1, "total_gen": "0.12" }],
+      "total_gen": "0.12",
+      "due": "2026-10-04"
+    },
+    {
+      "invoice_number": "INV-317",
+      "issued": "2026-10-01",
+      "order_reference": "PO-5544",
+      "ordered": "2026-09-29",
+      "lines": [{ "description": "Re-edit of an existing ad for a new aspect ratio (9:16)", "quantity": 1, "total_gen": "0.15" }],
+      "total_gen": "0.15",
+      "due": "2026-10-31"
+    }
+  ]
+}

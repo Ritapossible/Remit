@@ -18,6 +18,11 @@
       "0x00000000000000000000000000000000000000b1"
     ]
   },
+  "evidence_sources": {
+    "0x3F55971f7fd2594A90871Db489fBb82f1DB4d747": [
+      "https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/"
+    ]
+  },
   "rules": [
     {
       "id": "per-spend",
