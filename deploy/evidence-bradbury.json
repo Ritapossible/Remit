@@ -144,7 +144,13 @@
       "commit_reason": "[EXPECTED] evidence must come from the vendor, under https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/",
       "adjudicate_tx": "0xb1144906dbf0d988bb6f8c03d305a13dba918f503f5d6551a60a832229ab6bae",
       "consensus": "AGREE",
-      "validator_votes": null,
+      "validator_votes": [
+        "AGREE",
+        "TIMEOUT",
+        "AGREE",
+        "AGREE",
+        "TIMEOUT"
+      ],
       "verdict": "out_of_remit",
       "reason": "structured_to_evade",
       "confidence": 80,
@@ -179,7 +185,15 @@
           "artifact": "absent",
           "outcome": "refused",
           "authorization": "refused",
-          "result": "decided; convened again with deploy/reconvene.mjs, a fresh round with a new validator set"
+          "result": "decided; convened again with deploy/reconvene.mjs, a fresh round with a new validator set",
+          "validator_votes": [
+            "AGREE",
+            "TIMEOUT",
+            "AGREE",
+            "AGREE",
+            "TIMEOUT"
+          ],
+          "transaction_status": "FINALIZED"
         }
       ],
       "final_state_read_from_chain": {
@@ -249,7 +263,13 @@
       "commit": "committed",
       "adjudicate_tx": "0x6b418cc75f75b49e231a02a4ca3a5d3e4a5f212f0876525b83e0b583aa41b1c2",
       "consensus": "AGREE",
-      "validator_votes": null,
+      "validator_votes": [
+        "AGREE",
+        "AGREE",
+        "TIMEOUT",
+        "AGREE",
+        "AGREE"
+      ],
       "verdict": "in_remit",
       "reason": "matches_rule",
       "confidence": 100,
@@ -284,7 +304,15 @@
           "artifact": "verified",
           "outcome": "allowed",
           "authorization": "authorized",
-          "result": "decided; convened again with deploy/reconvene.mjs, a fresh round with a new validator set"
+          "result": "decided; convened again with deploy/reconvene.mjs, a fresh round with a new validator set",
+          "validator_votes": [
+            "AGREE",
+            "AGREE",
+            "TIMEOUT",
+            "AGREE",
+            "AGREE"
+          ],
+          "transaction_status": "FINALIZED"
         }
       ],
       "final_state_read_from_chain": {
