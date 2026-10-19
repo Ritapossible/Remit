@@ -70,7 +70,8 @@
       "outcome": "refused",
       "authorization": "refused",
       "state": "refused",
-      "done": true
+      "done": true,
+      "rounds_to_decide": 1
     },
     {
       "case": "forged",
@@ -113,7 +114,8 @@
       "outcome": "refused",
       "authorization": "refused",
       "state": "refused",
-      "done": true
+      "done": true,
+      "rounds_to_decide": 1
     },
     {
       "case": "forged",
@@ -140,33 +142,59 @@
       "commit_tx": "0x68b425c5ded8affb89fed7f0c04830b912753b7141b1f9f48ab46b10a987e0a0",
       "commit": "refused",
       "commit_reason": "[EXPECTED] evidence must come from the vendor, under https://raw.githubusercontent.com/Ritapossible/Remit/main/examples/vendor/northlight/",
-      "adjudicate_tx": "0xd0a346d8747f1c3317a94202d65bd7301bd404c14b504979d4982faa54042578",
-      "consensus": "IDLE",
-      "validator_votes": [
-        "NOT_VOTED",
-        "NOT_VOTED",
-        "NOT_VOTED",
-        "NOT_VOTED",
-        "NOT_VOTED"
-      ],
-      "verdict": "",
-      "reason": "",
-      "confidence": 0,
-      "artifact": "",
-      "outcome": "",
-      "authorization": "pending",
-      "state": "held",
+      "adjudicate_tx": "0xb1144906dbf0d988bb6f8c03d305a13dba918f503f5d6551a60a832229ab6bae",
+      "consensus": "AGREE",
+      "validator_votes": null,
+      "verdict": "out_of_remit",
+      "reason": "structured_to_evade",
+      "confidence": 80,
+      "artifact": "absent",
+      "outcome": "refused",
+      "authorization": "refused",
+      "state": "refused",
       "done": true,
-      "reconvened": {
-        "adjudicate_tx": "0xb1144906dbf0d988bb6f8c03d305a13dba918f503f5d6551a60a832229ab6bae",
-        "consensus": "AGREE",
+      "decided_at": 1791981932,
+      "rounds_to_decide": 2,
+      "rounds": [
+        {
+          "round": 1,
+          "adjudicate_tx": "0xd0a346d8747f1c3317a94202d65bd7301bd404c14b504979d4982faa54042578",
+          "consensus": "IDLE",
+          "validator_votes": [
+            "NOT_VOTED",
+            "NOT_VOTED",
+            "NOT_VOTED",
+            "NOT_VOTED",
+            "NOT_VOTED"
+          ],
+          "result": "no decision: every validator NOT_VOTED; the spend stayed held, nothing was authorized or paid"
+        },
+        {
+          "round": 2,
+          "adjudicate_tx": "0xb1144906dbf0d988bb6f8c03d305a13dba918f503f5d6551a60a832229ab6bae",
+          "consensus": "AGREE",
+          "verdict": "out_of_remit",
+          "reason": "structured_to_evade",
+          "confidence": 80,
+          "artifact": "absent",
+          "outcome": "refused",
+          "authorization": "refused",
+          "result": "decided; convened again with deploy/reconvene.mjs, a fresh round with a new validator set"
+        }
+      ],
+      "final_state_read_from_chain": {
+        "view": "get_spend(1)",
+        "on": "2026-10-19",
+        "state": "refused",
+        "outcome": "refused",
+        "authorization": "refused",
         "verdict": "out_of_remit",
         "reason": "structured_to_evade",
         "confidence": 80,
         "artifact": "absent",
-        "outcome": "refused",
-        "authorization": "refused"
-      }
+        "decided_at": 1791981932
+      },
+      "note": "The first jury round ended with every validator NOT_VOTED and decided nothing. The top-level fields are the deciding (second) round, as the chain records it; both rounds are listed in rounds."
     },
     {
       "case": "honest",
@@ -200,7 +228,8 @@
       "outcome": "allowed",
       "authorization": "authorized",
       "state": "settled",
-      "done": true
+      "done": true,
+      "rounds_to_decide": 1
     },
     {
       "case": "honest",
@@ -218,33 +247,59 @@
       "spend_1_tx": "0x9f62ca6e4bac12f0cd63fe2b22a294e752b8c93540dea8f85873f2b5fbd92e9a",
       "commit_tx": "0xf8d153e45baf6d89d99762d9e41680f6e1c43a340107c07b14c63763782750cd",
       "commit": "committed",
-      "adjudicate_tx": "0xd56ddef32dce0800ff7a39f2a8c0f235ea91c3d12fe8b6ac6c3b9a5f6f242e1e",
-      "consensus": "IDLE",
-      "validator_votes": [
-        "NOT_VOTED",
-        "NOT_VOTED",
-        "NOT_VOTED",
-        "NOT_VOTED",
-        "NOT_VOTED"
-      ],
-      "verdict": "",
-      "reason": "",
-      "confidence": 0,
-      "artifact": "",
-      "outcome": "",
-      "authorization": "pending",
-      "state": "held",
+      "adjudicate_tx": "0x6b418cc75f75b49e231a02a4ca3a5d3e4a5f212f0876525b83e0b583aa41b1c2",
+      "consensus": "AGREE",
+      "validator_votes": null,
+      "verdict": "in_remit",
+      "reason": "matches_rule",
+      "confidence": 100,
+      "artifact": "verified",
+      "outcome": "allowed",
+      "authorization": "authorized",
+      "state": "settled",
       "done": true,
-      "reconvened": {
-        "adjudicate_tx": "0x6b418cc75f75b49e231a02a4ca3a5d3e4a5f212f0876525b83e0b583aa41b1c2",
-        "consensus": "AGREE",
+      "decided_at": 1791981727,
+      "rounds_to_decide": 2,
+      "rounds": [
+        {
+          "round": 1,
+          "adjudicate_tx": "0xd56ddef32dce0800ff7a39f2a8c0f235ea91c3d12fe8b6ac6c3b9a5f6f242e1e",
+          "consensus": "IDLE",
+          "validator_votes": [
+            "NOT_VOTED",
+            "NOT_VOTED",
+            "NOT_VOTED",
+            "NOT_VOTED",
+            "NOT_VOTED"
+          ],
+          "result": "no decision: every validator NOT_VOTED; the spend stayed held, nothing was authorized or paid"
+        },
+        {
+          "round": 2,
+          "adjudicate_tx": "0x6b418cc75f75b49e231a02a4ca3a5d3e4a5f212f0876525b83e0b583aa41b1c2",
+          "consensus": "AGREE",
+          "verdict": "in_remit",
+          "reason": "matches_rule",
+          "confidence": 100,
+          "artifact": "verified",
+          "outcome": "allowed",
+          "authorization": "authorized",
+          "result": "decided; convened again with deploy/reconvene.mjs, a fresh round with a new validator set"
+        }
+      ],
+      "final_state_read_from_chain": {
+        "view": "get_spend(1)",
+        "on": "2026-10-19",
+        "state": "settled",
+        "outcome": "allowed",
+        "authorization": "authorized",
         "verdict": "in_remit",
         "reason": "matches_rule",
         "confidence": 100,
         "artifact": "verified",
-        "outcome": "allowed",
-        "authorization": "authorized"
-      }
+        "decided_at": 1791981727
+      },
+      "note": "The first jury round ended with every validator NOT_VOTED and decided nothing. The top-level fields are the deciding (second) round, as the chain records it; both rounds are listed in rounds."
     },
     {
       "case": "honest",
@@ -278,7 +333,8 @@
       "outcome": "allowed",
       "authorization": "authorized",
       "state": "settled",
-      "done": true
+      "done": true,
+      "rounds_to_decide": 1
     }
   ],
   "summary": {
@@ -303,10 +359,7 @@
         "in_remit 85"
       ]
     },
-    "unvoted_rounds_reconvened": [
-      "forged 3",
-      "honest 2"
-    ]
+    "jury_rounds": "6 runs; 4 decided in the first round, 2 (forged 3, honest 2) needed a second round after a round with no votes"
   },
   "failures": 0,
   "finished": "2026-10-14T12:41:45.867Z"
