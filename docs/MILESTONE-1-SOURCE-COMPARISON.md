@@ -10,8 +10,11 @@ the commit hashes and the chain alone.
 
 | | Commit (full SHA) | Engine | Guard |
 | --- | --- | --- | --- |
-| **Base**: Release 1, reviewed for reward | [`c11fa828f0f8b8efff80830c36074ad7acdebf69`](https://github.com/Ritapossible/Remit/tree/c11fa828f0f8b8efff80830c36074ad7acdebf69) (tag `release-1`) | `remit-engine/3` | `remit-guard/3` |
-| **Head**: Milestone 1 | [`ae29fc34a44744fbf44e63ddae1204e46fcdf053`](https://github.com/Ritapossible/Remit/tree/ae29fc34a44744fbf44e63ddae1204e46fcdf053) (tag `milestone-1`) | `remit-engine/5` | `remit-guard/4` |
+| **Base**: Release 1, reviewed for reward | [`c11fa828f0f8b8efff80830c36074ad7acdebf69`](https://github.com/Ritapossible/Remit/tree/c11fa828f0f8b8efff80830c36074ad7acdebf69) | `remit-engine/3` | `remit-guard/3` |
+| **Head**: Milestone 1 | [`ae29fc34a44744fbf44e63ddae1204e46fcdf053`](https://github.com/Ritapossible/Remit/tree/ae29fc34a44744fbf44e63ddae1204e46fcdf053) | `remit-engine/5` | `remit-guard/4` |
+
+Commit hashes are immutable: the same hash always names the same tree, so
+these two links cannot be changed after review.
 
 **Full comparison:**
 <https://github.com/Ritapossible/Remit/compare/c11fa828f0f8b8efff80830c36074ad7acdebf69...ae29fc34a44744fbf44e63ddae1204e46fcdf053>
