@@ -159,6 +159,8 @@ Reference agent `0x8aA26Fa51a68c583C467463e93db0EBc10f7D509` (both networks), ma
 
 ## Milestone 1: the agent cannot be its own witness
 
+**For reviewers:** the exact source comparison from the rewarded Release 1 commit to this release, with on-chain proof that each deployment is that source, is in [docs/MILESTONE-1-SOURCE-COMPARISON.md](docs/MILESTONE-1-SOURCE-COMPARISON.md).
+
 **The problem it closes.** Release 1's worst stated result: invoices the agent
 forged got a split released once in three Studio runs, two validators to one.
 The agent was its own witness - it could write any document, host it, and
