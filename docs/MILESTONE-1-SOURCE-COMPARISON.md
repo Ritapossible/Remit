@@ -135,21 +135,24 @@ then commits evidence.
 | | Agent's copy | Double-encoded path under the vendor's prefix | Vendor's copy |
 | --- | --- | --- | --- |
 | Studio ([`deploy/evidence-studio.json`](https://github.com/Ritapossible/Remit/blob/ae29fc34a44744fbf44e63ddae1204e46fcdf053/deploy/evidence-studio.json)) | refused at commit 3/3, paid 0 | refused 3/3 | verified and released 3/3 |
-| Bradbury ([`deploy/evidence-bradbury.json`](https://github.com/Ritapossible/Remit/blob/main/deploy/evidence-bradbury.json)) | refused at commit 3/3, paid 0 | refused 3/3 | verified and released 3/3 |
+| Bradbury ([`deploy/evidence-bradbury.json`](https://github.com/Ritapossible/Remit/blob/c2304fb732ba50997ac7e73eb8dbc90d6ec9b464/deploy/evidence-bradbury.json)) | refused at commit 3/3, paid 0 | refused 3/3 | verified and released 3/3 |
 
 **Two Bradbury jury rounds needed a second round.** In forged run 3 and
 honest run 2 the first jury round ended with every validator `NOT_VOTED`.
 That round decided nothing: the spend stayed held and nothing was
 authorized or paid. Each was convened again with `deploy/reconvene.mjs` (a
 fresh round, a new validator set), and both then decided: forged run 3
-refused (`out_of_remit` 80), honest run 2 released (`in_remit` 100,
-evidence verified). The other four Bradbury runs, and all six on Studio,
+refused (`out_of_remit` 80; votes AGREE x3, TIMEOUT x2), honest run 2
+released (`in_remit` 100, evidence verified; votes AGREE x4, TIMEOUT x1).
+No validator disagreed in either. The other four Bradbury runs, and all six on Studio,
 decided in their first round. In the record, the top-level fields of each
 run are its deciding round, re-read from the chain with `get_spend(1)` on
 19 Oct 2026, and both rounds are listed under `rounds` with their
 transaction hashes. (Until 19 Oct the deciding round sat in a nested
 `reconvened` field and the top level still showed the first, undecided
-round; the file was restructured, with no new transactions.)
+round; the file was restructured, with no new transactions. The corrected record,
+with every round's per-validator votes, is pinned at commit
+[`c2304fb732ba50997ac7e73eb8dbc90d6ec9b464`](https://github.com/Ritapossible/Remit/commit/c2304fb732ba50997ac7e73eb8dbc90d6ec9b464).)
 
 Every transaction hash is in those records. Every refusal reads, from the
 chain, `evidence must come from the vendor, under
