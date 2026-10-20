@@ -248,7 +248,75 @@ and a vendor's own invoice still can.
       window by `resolve_deadline`: refused, `deadline_default`). From the vendor's path: verified 3 of 3, released
       3 of 3 (in_remit 90, 75, 80). 0 failed checks.
 
-## Phase 8 - Production readiness `[ ]`
+## Phase 8 - Milestone 2: the agent cannot overpay a vendor `[ ]`
+
+Planned. Implementation starts after Milestone 1 is accepted.
+
+**The gap.** A vendor list and a cap say who may be paid and how much at most.
+They do not know that the same thing is listed for less. An agent can pay an
+allowed vendor at the top of its cap and keep the difference, or follow a
+vendor named in its prompt. Done when, for a category the principal pins, a
+spend clears only if the agent chose the lowest listed price and pays exactly
+that price for what it states it bought, on both networks.
+
+**The rule.** For a category (for example GPU hours), the principal pins two
+to six vendors' price pages and the exact shape of one price line (for
+example `GPU hour: $40.00`). When the agent requests a spend in that category
+it states a quantity. Validators fetch every pinned page in that one
+transaction, and code, not a model, decides:
+
+- [ ] **Price read by code.** A price is a line that matches the pinned shape
+      in the page's visible text; the number is parsed from that shape. Hidden
+      markup, `aria-hidden` and inline `display:none` are not text. A model
+      never decides what a price is, or which price is lower.
+- [ ] **Lowest price, exactly.** The chosen vendor's price must be the lowest
+      readable price among the pinned pages. Higher is refused outright, by
+      code, before any model runs. It is not held for the jury.
+- [ ] **Exact amount.** The amount must equal the chosen vendor's price times
+      the stated quantity. Quantity is the one number the agent controls; it
+      is capped by the mandate and shown on every spend.
+- [ ] **Enough prices to compare.** At least two pinned pages must give a
+      readable, agreed price (the principal may raise this), or the spend is
+      refused. Otherwise taking competitors' pages down would make any vendor
+      the cheapest.
+- [ ] **Disagreement is no price.** A page the validators do not agree on
+      gives no price. If that is the chosen vendor's page, the spend is
+      refused.
+- [ ] **Withdrawn prices.** The only case a jury reads: a price line still on
+      the page whose surrounding words withdraw it (`indicative only, not an
+      offer`). Surroundings are fingerprinted when the category is pinned; the
+      jury is asked only whether the line still offers the price. A withdrawn
+      price is no price, and `cannot_tell` is no price; neither clears a
+      spend.
+- [ ] **Tolerance, named for what it is.** Default is none. A principal may set
+      one; the app labels it "the agent may pay up to N% above the lowest
+      price", never a rounding allowance.
+- [ ] **Pinned, not chosen.** The agent cannot add, change or supply a price
+      page. Pages use Milestone 1's URL rules (plain `https`, no `%`, `..`,
+      `@`, `?`, `#`, spaces).
+- [ ] **Fits Bradbury.** The engine is at 19,125 of about 19,150 bytes, so the
+      price check is a new small contract the guard calls, not engine code.
+- [ ] **Tests and mutants** for every rule above, readable and deployed bytes;
+      parity between the app and the contract on price lines and amounts.
+- [ ] **On chain, Studio and Bradbury**, each case three times: cheapest
+      vendor at the exact amount clears; a pricier vendor is refused; the
+      right vendor with an inflated amount is refused; a cheap price the page
+      withdraws does not count; too few readable pages is refused.
+- [ ] **App**: price pages on the Mandate page, the quantity field, and a
+      warning before signing (`the guard will refuse this: West lists it for
+      $36.00`).
+- [ ] **Source comparison** from Milestone 1, with on-chain code verification,
+      as for Milestone 1.
+
+**Limits, stated up front.** Server-rendered or plain-text pages only: a page
+drawn by JavaScript, a price in an image or canvas, or one set only by an
+external stylesheet is unreadable. One unit per category: it will not compare
+a monthly plan with an hourly price. At most six pages per category. It checks
+the price at the moment of the spend, not delivery: that stays between the
+principal and the vendor. The demo price pages will live in this repository,
+so the runs prove the gate, not an independent vendor.
+
+## Phase 9 - Production readiness `[ ]`
 
 What stands between a measured testnet system and one a principal should
 trust with real money. Each item is done only when its evidence is in the
