@@ -65,11 +65,11 @@ asked" and "the money moved".
 ## 3. Architecture
 
 ```
- ┌──────────────┐  read-only PayPal tools    ┌────────────────────┐
- │  Agent (LLM) │ ─────────────────────────► │ PayPal Agent       │──► PayPal sandbox
- │  shops for   │  (get_invoice, list_       │ Toolkit (Python),  │    (read only)
- │  the brief   │   invoices, get_order)     │ allowlisted actions│
- └──────┬───────┘                            └────────────────────┘
+ ┌──────────────┐   quote, order    ┌──────────────────────┐  create_invoice,  ┌─────────┐
+ │ Buyer agent  │ ────────────────► │ Vendor agent (shop)  │ ────────────────► │ PayPal  │
+ │ (LLM), shops │ ◄──────────────── │ PayPal Agent Toolkit │  send_invoice     │ sandbox │
+ │ for the brief│    invoice ID     │ (vendor's own creds) │                   └─────────┘
+ └──────┬───────┘                   └──────────────────────┘
         │ one tool only: request_spend(vendor, invoice_id, amount, note)
         ▼
  ┌─────────────────────────────── Remit server (FastAPI) ─────────────────────────────┐
@@ -191,9 +191,20 @@ the brief; it cannot see a warehouse.
 
 ## 6. The AI parts
 
-**The agent.** It shops against the brief with read-only PayPal tools, then
-calls `request_spend`. It is deliberately not trusted: everything it says
-is a claim that Remit checks.
+**The buyer agent.** It shops against the brief, then calls
+`request_spend`. It is deliberately not trusted: everything it says is a
+claim that Remit checks.
+
+**The vendor agent (agent-to-agent commerce).** Invoices belong to the
+account that issued them: with the business's credentials, the buyer agent
+cannot list or read a vendor's invoices through the API. So each demo vendor
+runs a small shop whose own agent quotes and then issues a real PayPal
+invoice with the Agent Toolkit's invoice tools (`create_invoice`,
+`send_invoice`), addressed to the business, and returns the invoice ID. The
+buyer agent passes that ID to `request_spend`, and Remit reads the invoice
+from PayPal itself. Both agents use PayPal's toolkit; neither can move the
+business's money. Whether the buyer agent keeps any PayPal tools (for
+example `get_order` on its own spends) is decided at the spike.
 
 **The panel.** Same question Remit's jury asks today, built by the existing
 prompt code (`remit_prompts`), with untrusted text neutralised (invoice
@@ -259,7 +270,7 @@ it must not change the outcome.
 | Dates | Step | Done when |
 | --- | --- | --- |
 | Sat 24 Oct | **0. Accounts**: PayPal developer account from Nigeria; sandbox business (payer), two sandbox business vendors; model API key(s) | Keys in the server's environment. If sign-up fails, ask in the PayPal Discord the same day. |
-| Sat 24 to Mon 26 Oct | **1. Spike** (throwaway scripts): vaulted AUTHORIZE (R1); payee = vendor; capture and void; invoice read; Agent Toolkit with read-only actions | A written decision on R1/R2/R3, payee and invoice access. **Go/no-go gate.** |
+| Sat 24 to Mon 26 Oct | **1. Spike** (throwaway scripts): vaulted AUTHORIZE (R1); payee = vendor; capture and void; invoice read across accounts; a vendor agent issuing an invoice with the Agent Toolkit | A written decision on R1/R2/R3, payee and invoice access. **Go/no-go gate.** |
 | Tue 27 to Thu 29 Oct | **2. Server core**: mandate in USD cents (remit_core reused), PayPal client, state machine, idempotency, audit log, tests | All three demo cases run by script, without AI (reflex only). |
 | Fri 30 Oct to Mon 2 Nov | **3. AI**: panel (3 models), evidence admission, the agent with toolkit plus `request_spend`, injection case | End-to-end script: allowed spend captured, off-brief voided, forged or unapproved invoice refused. |
 | Tue 3 to Fri 6 Nov | **4. Web app**: mandate editor, live spend feed, ruling detail (votes, invoice, PayPal IDs), audit log view; Render deploy | Hosted URL works from a phone. |
