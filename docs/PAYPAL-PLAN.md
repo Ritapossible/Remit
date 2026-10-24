@@ -43,10 +43,11 @@ honorable mention, plus one sponsor prize (Rules section 8).
 
 **Remit: spending authority for AI agents, on PayPal.** A business gives an
 AI agent a budget and a written brief ("buy what the spring campaign needs,
-from our approved vendors"). When the agent wants to pay a vendor, PayPal
-places a hold for the amount. Remit then decides: arithmetic rules (per-spend
-cap, daily cap, approved vendors, dropped vendors) are checked by code; rules
-of judgment ("does this purchase serve the brief?", "is this one purchase
+from our approved vendors"). When the agent wants to pay a vendor, Remit
+first checks by code the arithmetic rules (per-spend cap, daily cap,
+approved vendors, dropped vendors) and the vendor's invoice as PayPal
+returns it; a spend that fails never touches the money. Otherwise PayPal
+places a hold for the amount, and rules of judgment ("does this purchase serve the brief?", "is this one purchase
 split to stay under the cap?") go to a panel of AI models, each reading the
 vendor's invoice **as PayPal returns it**. If Remit allows the spend, the hold
 is captured and the vendor is paid. If not, the hold is voided and no money
@@ -72,9 +73,10 @@ asked" and "the money moved".
         │ one tool only: request_spend(vendor, invoice_id, amount, note)
         ▼
  ┌─────────────────────────────── Remit server (FastAPI) ─────────────────────────────┐
- │ 1. Authorize: create Orders v2 order, intent AUTHORIZE, payee = vendor → hold       │
- │ 2. Evidence:  fetch the invoice from PayPal Invoicing v2 for that vendor            │
- │ 3. Reflex:    remit_core (reused, unchanged): caps, windows, allow/deny lists       │
+ │ 1. Evidence:  fetch the invoice from PayPal Invoicing v2; admission rules (sec. 5)  │
+ │ 2. Reflex:    remit_core (reused, unchanged): caps, windows, allow/deny lists       │
+ │    (1 or 2 fails → refused: no order is created, no money is held)                  │
+ │ 3. Hold:      Orders v2 order, intent AUTHORIZE, payee = vendor → authorization     │
  │ 4. Judgment:  AI panel, N models, fail-closed (remit_prompts + jury reading reused) │
  │ 5. Settle:    capture (allowed) or void (refused), with PayPal-Request-Id           │
  │ 6. Record:    append-only, hash-chained audit log                                   │
@@ -115,9 +117,10 @@ asked" and "the money moved".
 States of one spend (each change is logged):
 
 ```
-requested ─► held ─► (reflex refused) ──────────────────────────► voided
-                 └─► (reflex passed) ─► judging ─► allowed ─► captured
-                                                 └► refused ─► voided
+requested ─► (invoice or reflex refused) ─────────────────────► refused  (nothing held)
+          └─► held ─► judging ─► allowed ─► captured
+                              └► refused ─► voided
+          (no judgment rule triggered: held ─► captured directly)
 held/judging ──(any error, timeout, unparsable panel)──────────► voided   (fail closed)
 captured ──(invoice later cancelled or disputed)──────────────► refunded  (optional, section 12)
 ```
