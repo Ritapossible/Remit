@@ -107,6 +107,60 @@ block and why.
 
 ---
 
+## 3a. Prior art, and what is different (checked 24 October)
+
+**Positioning:** a *policy firewall for PayPal's Agent Toolkit: your AI
+agent cannot approve its own refunds.*
+
+**What PayPal offers.** The Agent Toolkit's only control is an on/off
+switch per tool (`configuration.actions`): an agent either has
+`create_refund` or it does not. There are no limits, no policy check, no
+approval step and no decision log. PayPal's agentic-commerce pages describe
+selling tools (the toolkit, the MCP server, order sync) and one-time
+passwords at checkout. Nothing there governs what an agent does with a
+merchant's money.
+
+**What exists elsewhere.**
+
+- AI support suites put caps on their own bots' refunds: dollar ceilings,
+  frequency caps, and human review above a threshold (Fini, IrisAgent).
+- Agent spending-control products offer caps, allowlists and approvals
+  (Ramp's policy agent, Coinbase agent wallets, several startups).
+
+So caps plus human approval alone are not new.
+
+**What we found no one doing together:**
+
+1. **A guard for PayPal's own toolkit,** usable by any agent built on it, not
+   a feature inside one support product.
+2. **The judge reads PayPal's records, not the conversation.** Tracking,
+   captures, past refunds and disputes come from PayPal itself, so "it never
+   arrived" loses to PayPal's "delivered".
+3. **The agent cannot approve itself.** A separate panel of different model
+   families decides and fails closed. The customer's and the agent's text
+   reach it only as quoted data.
+4. **One refund split into several small ones is caught** by Remit's split
+   rule, which plain caps miss.
+5. **A tamper-evident, hash-chained decision log.**
+6. **Stretch: verifiable by anyone.** Each decision's log hash is published
+   on GenLayer, so the operator cannot quietly rewrite history. This is
+   Remit's own lineage, and we found no one in this space doing it.
+
+**Design consequence.** The guard is built as a layer, not a refund feature:
+one policy path that any money-moving toolkit tool can be routed through.
+Refunds come first. Accepting a dispute claim, cancelling or recording
+invoice payments, and Payouts can follow on the same path.
+
+**The headline** in the video and the README is points 2 and 3, not "refund
+caps".
+
+Sources: PayPal "Power your agentic AI future" and "What is agentic
+commerce"; Agent Toolkit 1.11.0 README; Fini and IrisAgent product pages;
+Fystack and Nadir guides on agent spending guardrails. The hackathon gallery
+is empty until submissions close, so other entries could not be compared.
+
+---
+
 ## 4. Architecture
 
 ```
