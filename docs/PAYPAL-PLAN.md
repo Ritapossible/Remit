@@ -319,6 +319,11 @@ prompt-building code.
 | Mon 9 to Tue 10 Nov | Video, Devpost text | Uploaded |
 | Wed 11 Nov | Submit | Done; Thursday is buffer |
 
+**Second entry.** RedLine on PayPal (RedLine repo, branch `paypal`,
+`docs/PAYPAL-PLAN.md`) is built only after this plan's hosted, end-to-end
+milestone, and is dropped if that milestone is not met by Wednesday
+4 November. Remit is never cut for RedLine.
+
 **Cut list, in order:** the Payouts stretch → the dispute case → the third
 panel model (go to 2 of 2) → the replay mode. **Never cut:** real sandbox
 refunds, PayPal-sourced facts, the code checks, fail-closed panel, the log,
