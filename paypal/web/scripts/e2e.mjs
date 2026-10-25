@@ -82,6 +82,18 @@ for (const path of ["/", "/demo", "/log", "/how"]) {
   await phone.waitForTimeout(700);
   const w = await phone.evaluate(() => document.documentElement.scrollWidth);
   check(`no sideways scroll on #${path}`, w <= 390, `${w}px`);
+  // Text keeps a side margin: nothing readable may start or end at the screen's edge.
+  const edge = await phone.evaluate(() => {
+    let worst = null;
+    for (const el of document.querySelectorAll("main h1, main h2, main p, main .lede, main .btn, main li, main .case, main .verify")) {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      const gap = Math.min(r.left, window.innerWidth - r.right);
+      if (worst === null || gap < worst.gap) worst = { gap: Math.round(gap), text: (el.textContent || "").trim().slice(0, 30) };
+    }
+    return worst;
+  });
+  check(`a side margin on #${path}`, !edge || edge.gap >= 12, edge ? `${edge.gap}px at "${edge.text}"` : "");
 }
 await phone.goto(`${BASE}/#/demo`);
 await phone.locator(".order").first().waitFor();

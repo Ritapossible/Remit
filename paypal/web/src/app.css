@@ -2,8 +2,8 @@
 
 /* ------------------------------------------------------------ layout */
 
-.page { padding: 40px 0 80px; }
-.section { padding: 56px 0; border-top: 1px solid var(--line); }
+.page { padding-top: 40px; padding-bottom: 80px; }
+.section { padding-top: 56px; padding-bottom: 56px; border-top: 1px solid var(--line); }
 .section:first-child { border-top: 0; }
 .grid-2 { display: grid; gap: 28px; }
 @media (min-width: 900px) { .grid-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; } }
@@ -25,7 +25,7 @@
 
 /* ------------------------------------------------------------ home */
 
-.hero { padding: 56px 0 40px; }
+.hero { padding-top: 56px; padding-bottom: 40px; }
 .hero .display { font-size: clamp(44px, 7.4vw, 88px); max-width: 15ch; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
 .flow { display: grid; gap: 12px; margin-top: 8px; counter-reset: step; }
