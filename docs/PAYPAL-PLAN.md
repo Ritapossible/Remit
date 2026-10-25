@@ -209,6 +209,54 @@ GenLayer jury: an `in_remit` below 60 confidence counts as undetermined.
 
 ---
 
+## 4a. The Remit MCP server: the only way in
+
+Remit's roadmap lists "Agent SDKs" so that agent frameworks call Remit
+instead of paying directly. For this build, that is a **Model Context
+Protocol (MCP) server**. PayPal ships its own MCP server (its quickstart is
+on the hackathon's resources page). Remit's MCP server offers PayPal's tools
+to any agent, with the money-moving one behind the guard.
+
+**It is the only way in, our own agent included.** The support agent in the
+web demo calls the same MCP server any other agent would. There is one
+guarded code path, so the demo proves the product rather than a special
+case.
+
+| Tool | Kind | What it does |
+| --- | --- | --- |
+| `get_order` | Read | The order and its capture, from PayPal (Agent Toolkit underneath) |
+| `get_shipment_tracking` | Read | Tracking for the capture, from PayPal |
+| `list_disputes` | Read | Disputes on the capture, from PayPal |
+| `request_refund` | **Guarded** | Runs the guard. Returns the decision, the rules applied, each model's vote, and PayPal's refund ID or the reason it was refused |
+| `get_decision` | Read | A past decision and its log entry, by request ID |
+
+**Never offered:** a raw `create_refund`, or any tool that moves money
+without the guard. The server holds the PayPal credentials; an agent never
+sees them.
+
+**Transports:**
+
+- **Local (stdio),** one command, for judges and for Claude Desktop, Cursor
+  and other MCP clients. Setup is in the README.
+- **Hosted (streamable HTTP) on Render** with a demo token, for agents that
+  cannot run a local process. This is a stretch goal, and goes on the cut
+  list before the web app.
+
+**Built with** the official Python MCP SDK (`mcp`), over the existing guard.
+No new decision logic.
+
+**In the video:** after the web demo, about 15 seconds of the same server
+plugged into a different agent (Claude Desktop) whose refund attempt is
+refused the same way. That shows the guard is a layer any agent goes
+through, not a feature of one app.
+
+**Tests:**
+
+- The MCP tools are exercised through an in-process MCP client against the
+  fake PayPal: the six cases again, called through the MCP layer.
+- A test proves the server's tool list contains no unguarded money-moving
+  tool.
+
 ## 5. What is and is not settled with PayPal
 
 **Settled by PayPal's docs:**
@@ -281,7 +329,7 @@ job brief.
 | --- | --- |
 | 0:00 to 0:20 | The problem: AI support agents can be talked into refunds. |
 | 0:20 to 2:10 | Live: case 1 refunded (the PayPal refund ID shown, then opened in the sandbox); case 2 refused with PayPal's tracking as the reason; case 3, the injection, stopped by code; case 4, the split. |
-| 2:10 to 2:40 | How it works: one diagram, the hash-chained log. |
+| 2:10 to 2:40 | How it works: one diagram, the same MCP server refusing a refund from a second agent (Claude Desktop), the hash-chained log. |
 | 2:40 to 3:00 | The ask: drop Remit in front of any PayPal Agent Toolkit agent. |
 
 No music, no third-party material.
@@ -294,6 +342,7 @@ Before 1 October, Remit was a set of GenLayer contracts governing an agent's
 test-token spending. During the hackathon we built:
 
 - a guard for PayPal's Agent Toolkit;
+- a Remit MCP server, so any agent reaches PayPal only through the guard;
 - PayPal-sourced facts: orders, captures, refunds, tracking, disputes;
 - real sandbox refunds with idempotency;
 - a support agent;
@@ -313,7 +362,7 @@ prompt-building code.
 | --- | --- | --- |
 | Sat 24 Oct | Plan v2. Guard core with fake PayPal and fake models; tests | Six cases pass offline |
 | Sat 24 to Mon 26 Oct | **Owner:** PayPal developer account (Nigeria), sandbox app keys, model key. **Then:** real PayPal client, seed script | Real refund on a seeded sandbox order |
-| Tue 27 to Fri 30 Oct | Support agent on the Agent Toolkit; server; events | Six cases from chat, end to end, in the sandbox |
+| Tue 27 to Fri 30 Oct | Remit MCP server (stdio) over the guard; the support agent using it as its only tools; server; events | Six cases from chat, end to end, in the sandbox, through MCP |
 | Sat 31 Oct to Wed 4 Nov | Web app: chat, console, decision detail, log | Hosted on Render, works on a phone |
 | Thu 5 to Sun 8 Nov | Visitor pool, rate limits, replay mode, README, setup script | A fresh machine runs it in 10 minutes |
 | Mon 9 to Tue 10 Nov | Video, Devpost text | Uploaded |
@@ -324,7 +373,7 @@ prompt-building code.
 milestone, and is dropped if that milestone is not met by Wednesday
 4 November. Remit is never cut for RedLine.
 
-**Cut list, in order:** the Payouts stretch → the dispute case → the third
+**Cut list, in order:** the Payouts stretch → the hosted MCP endpoint (stdio stays) → the dispute case → the third
 panel model (go to 2 of 2) → the replay mode. **Never cut:** real sandbox
 refunds, PayPal-sourced facts, the code checks, fail-closed panel, the log,
 the video.
