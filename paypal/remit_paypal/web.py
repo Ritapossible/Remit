@@ -1,0 +1,205 @@
+"""The web server: chat with the shop's support agent, watch every step in a
+live console, and read the decision log.
+
+    POST /api/session            a visitor session: its id and its orders
+    POST /api/chat               {session_id, message} -> the agent's reply
+    GET  /api/events?session_id  server-sent events: tool calls, results, decisions
+    GET  /api/log?since=N        the hash-chained log, and whether it verifies
+    GET  /api/decisions/{id}     one decision and its log entries
+    GET  /api/health
+
+The agent talks to PayPal only through the Remit MCP server, connected
+in-process. Run: ``uvicorn remit_paypal.web:app`` (configured from the
+environment, see ``config.py``).
+"""
+
+import asyncio
+import json
+import os
+import secrets
+import threading
+import time
+from collections import defaultdict, deque
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from mcp import Client
+from pydantic import BaseModel, Field
+
+from .agent import ScriptedAgent, Session, ToolAgent
+from .mcp_server import create_server
+
+MAX_MESSAGE = 1000
+
+
+class Bus:
+    """Per-session event fan-out to any number of server-sent-event streams,
+    with a short replay buffer for a stream that connects late."""
+
+    def __init__(self, keep=200):
+        self.keep = keep
+        self.history = defaultdict(lambda: deque(maxlen=keep))
+        self.queues = defaultdict(set)
+        self.lock = threading.Lock()
+        self.seq = 0
+
+    def emit(self, sid, event):
+        with self.lock:
+            self.seq += 1
+            event = {"id": self.seq, "at": int(time.time()), **event}
+            self.history[sid].append(event)
+            queues = list(self.queues[sid])
+        for q, loop in queues:
+            loop.call_soon_threadsafe(q.put_nowait, event)
+
+    def subscribe(self, sid):
+        q, loop = asyncio.Queue(), asyncio.get_running_loop()
+        with self.lock:
+            self.queues[sid].add((q, loop))
+            backlog = list(self.history[sid])
+        return q, loop, backlog
+
+    def unsubscribe(self, sid, q, loop):
+        with self.lock:
+            self.queues[sid].discard((q, loop))
+
+
+class Limiter:
+    """A sliding window per key: at most ``n`` calls in ``seconds``."""
+
+    def __init__(self, n, seconds):
+        self.n, self.seconds, self.calls = n, seconds, defaultdict(deque)
+
+    def allow(self, key, now=None):
+        now = now if now is not None else time.time()
+        q = self.calls[key]
+        while q and now - q[0] > self.seconds:
+            q.popleft()
+        if len(q) >= self.n:
+            return False
+        q.append(now)
+        return True
+
+
+class ChatIn(BaseModel):
+    session_id: str
+    message: str = Field(min_length=1, max_length=MAX_MESSAGE)
+
+
+def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key="", base_url="",
+               transport=None, chat_per_minute=12, chats_per_day=2000, static_dir=None):
+    """``orders_for(session_id)`` gives a new visitor their orders."""
+    bus, sessions = Bus(), {}
+    per_ip, daily = Limiter(chat_per_minute, 60), Limiter(chats_per_day, 86400)
+    state = {}
+
+    @asynccontextmanager
+    async def lifespan(app):
+        async with Client(create_server(guard)) as mcp:
+            if agent_kind == "model":
+                state["agent"] = ToolAgent(mcp, bus.emit, model, api_key, base_url, transport=transport)
+            else:
+                state["agent"] = ScriptedAgent(mcp, bus.emit)
+            yield
+
+    app = FastAPI(title="Remit on PayPal", lifespan=lifespan)
+
+    def session(sid):
+        s = sessions.get(sid)
+        if s is None:
+            raise HTTPException(404, "unknown session")
+        return s
+
+    @app.get("/api/health")
+    def health():
+        ok, broken = guard.ledger.verify()
+        return {"ok": True, "agent": state["agent"].name, "log_verifies": ok, "log_broken_at": broken}
+
+    @app.post("/api/session")
+    def new_session():
+        sid = secrets.token_hex(6)
+        sessions[sid] = Session(sid, orders_for(sid))
+        return {"session_id": sid, "orders": sessions[sid].orders, "shop": "Kiln & Co."}
+
+    @app.post("/api/chat")
+    async def chat(body: ChatIn, request: Request):
+        s = session(body.session_id)
+        ip = request.client.host if request.client else "unknown"
+        if not per_ip.allow(ip) or not daily.allow("all"):
+            raise HTTPException(429, "Too many messages; wait a minute and try again.")
+        bus.emit(s.id, {"type": "customer", "text": body.message})
+        try:
+            text = await state["agent"].reply(s, body.message)
+        except Exception as exc:  # the agent failed: say so, move no money
+            bus.emit(s.id, {"type": "error", "text": "the agent failed: %s" % type(exc).__name__})
+            text = "Sorry, something went wrong on our side. No refund was made; please try again."
+        bus.emit(s.id, {"type": "agent", "text": text})
+        return {"reply": text}
+
+    @app.get("/api/events")
+    async def events(session_id: str, request: Request):
+        session(session_id)
+        q, loop, backlog = bus.subscribe(session_id)
+
+        async def stream():
+            try:
+                for e in backlog:
+                    yield "data: %s\n\n" % json.dumps(e)
+                while not await request.is_disconnected():
+                    try:
+                        e = await asyncio.wait_for(q.get(), timeout=15)
+                        yield "data: %s\n\n" % json.dumps(e)
+                    except asyncio.TimeoutError:
+                        yield ": keep-alive\n\n"
+            finally:
+                bus.unsubscribe(session_id, q, loop)
+
+        return StreamingResponse(stream(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+    @app.get("/api/events/recent")
+    def recent(session_id: str):
+        session(session_id)
+        return list(bus.history[session_id])
+
+    @app.get("/api/log")
+    def log(since: int = 0):
+        ok, broken = guard.ledger.verify()
+        return {"verifies": ok, "broken_at": broken, "entries": guard.ledger.entries(since)}
+
+    @app.get("/api/decisions/{request_id}")
+    def decision(request_id: str):
+        row = guard.ledger.get(request_id)
+        if row is None:
+            raise HTTPException(404, "unknown request")
+        return {**row, "log": [e for e in guard.ledger.entries() if e["body"].get("request_id") == request_id]}
+
+    if static_dir and os.path.isdir(static_dir):
+        app.mount("/", StaticFiles(directory=static_dir, html=True), name="web")
+    return app
+
+
+def app_from_env(env=os.environ):
+    from .config import build_guard
+
+    guard = build_guard(env)
+    if env.get("REMIT_OFFLINE") == "1":
+        ids = sorted(guard.paypal.orders)
+        orders_for = lambda sid: ids  # noqa: E731
+    else:
+        ids = [o.strip() for o in env.get("REMIT_DEMO_ORDERS", "").split(",") if o.strip()]
+        orders_for = lambda sid: ids  # noqa: E731  (a per-visitor pool comes with the sandbox seed script)
+    kind = "model" if env.get("REMIT_AGENT_MODEL") else "scripted"
+    return create_app(guard, orders_for=orders_for, agent_kind=kind, model=env.get("REMIT_AGENT_MODEL"),
+                      api_key=env.get("REMIT_MODEL_API_KEY", ""),
+                      base_url=env.get("REMIT_MODEL_BASE_URL", "https://openrouter.ai/api/v1"),
+                      static_dir=env.get("REMIT_STATIC_DIR"))
+
+
+def __getattr__(name):  # ``uvicorn remit_paypal.web:app`` builds the app on first use
+    if name == "app":
+        globals()["app"] = app_from_env()
+        return globals()["app"]
+    raise AttributeError(name)
