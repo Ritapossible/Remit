@@ -2,8 +2,9 @@
 
 On GenLayer, validators run by different people vote and must agree. Here
 the guard's operator runs every model, so the panel buys independence of
-*models*, not of operators: different model families make different
-mistakes, and money moves only when enough of them agree that it should.
+*models*, not of operators, and only as much as the models differ: money
+moves only when enough of them agree that it should, and one confident no
+stops it.
 
 Each answer is read by Remit's own parser (``read_verdict``) and hardened by
 ``harden_verdict``: an ``in_remit`` below 60 confidence counts as

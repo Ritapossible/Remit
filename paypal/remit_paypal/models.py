@@ -1,5 +1,5 @@
-"""Models behind any OpenAI-compatible chat API (OpenRouter, OpenAI, a local
-server). One key can give the panel models from different families."""
+"""Models behind any OpenAI-compatible chat API (OpenRouter, OpenAI, Qwen's
+Model Studio, a local server). One key can give the panel several models."""
 
 import httpx
 

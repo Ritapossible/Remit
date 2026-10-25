@@ -22,7 +22,7 @@ Lagos). Target: submit **Wednesday 11 November**.
 
 | Requirement | How v2 meets it |
 | --- | --- |
-| Meaningfully use **PayPal and AI**; PayPal integration central | Every refund is a real PayPal sandbox refund, decided from PayPal's own records of the order, capture, shipment and dispute. AI is the support agent (built on PayPal's Agent Toolkit) and the panel that judges each refund. |
+| Meaningfully use **PayPal and AI**; PayPal integration central | Every refund is a real PayPal sandbox refund, decided from PayPal's own records of the order, capture, shipment and dispute. AI is the support agent, which reaches PayPal only through Remit's MCP server, and the panel that judges each refund. |
 | PayPal **sandbox** | Sandbox only; the server refuses to start on live keys. |
 | New, or existing and **significantly updated** after 1 October, explained | Section 9. |
 | **Working demo** judges can use: hosted URL or full setup | Hosted app judges can try in a browser, plus a local setup with their own sandbox keys. |
@@ -73,7 +73,7 @@ rest, and money moves only when Remit authorizes it.
 ## 3. The product
 
 **Remit: a spending policy for AI agents on PayPal.** It is a drop-in guard
-for the money-moving tools of PayPal's Agent Toolkit.
+between an AI agent and PayPal's money-moving APIs, served as an MCP server.
 
 Merchants are putting AI agents on customer support, and those agents can
 issue refunds. A customer can talk the agent into refunding them:
@@ -120,8 +120,8 @@ block and why.
 
 ## 3a. Prior art, and what is different (checked 24 October)
 
-**Positioning:** a *policy firewall for PayPal's Agent Toolkit: your AI
-agent cannot approve its own refunds.*
+**Positioning:** a *policy firewall between AI agents and PayPal's
+money-moving APIs: your AI agent cannot approve its own refunds.*
 
 **What PayPal offers.** The Agent Toolkit's only control is an on/off
 switch per tool (`configuration.actions`): an agent either has
@@ -142,13 +142,14 @@ So caps plus human approval alone are not new.
 
 **What we found no one doing together:**
 
-1. **A guard for PayPal's own toolkit,** usable by any agent built on it, not
-   a feature inside one support product.
+1. **A guard any agent can use,** as an MCP server in front of PayPal's
+   APIs, not a feature inside one support product. It is the agent's only
+   way to PayPal: there is no refund tool outside it.
 2. **The judge reads PayPal's records, not the conversation.** Tracking,
    captures, past refunds and disputes come from PayPal itself, so "it never
    arrived" loses to PayPal's "delivered".
-3. **The agent cannot approve itself.** A separate panel of different model
-   families decides and fails closed. The customer's and the agent's text
+3. **The agent cannot approve itself.** A separate panel of models decides
+   and fails closed. The customer's and the agent's text
    reach it only as quoted data.
 4. **One refund split into several small ones is caught** by Remit's split
    rule, which plain caps miss.
@@ -159,7 +160,7 @@ So caps plus human approval alone are not new.
    lineage, and we found no one in this space doing it.
 
 **Design consequence.** The guard is built as a layer, not a refund feature:
-one policy path that any money-moving toolkit tool can be routed through.
+one policy path that any money-moving PayPal call can be routed through.
 Refunds come first. Accepting a dispute claim, cancelling or recording
 invoice payments, and Payouts can follow on the same path.
 
@@ -179,12 +180,16 @@ is empty until submissions close, so other entries could not be compared.
  Customer (judge, in the browser)
         │ chat
         ▼
- ┌──────────────────────────┐   read tools (get_order, get_shipment_tracking,
- │ Support agent (LLM)      │──  list_disputes, get_dispute, get_refund)  ──► PayPal Agent Toolkit ──► PayPal sandbox
- │ PayPal Agent Toolkit     │
- │ + one guarded tool:      │
- │   request_refund(...)    │   create_refund is NOT given to the agent
+ ┌──────────────────────────┐
+ │ Support agent (LLM)      │   holds no PayPal credentials and no refund tool
  └───────────┬──────────────┘
+             │ MCP: get_order, get_shipment_tracking, list_disputes,
+             │      request_refund (guarded), get_decision
+             ▼
+ ┌──────────────────────────┐
+ │ Remit MCP server         │   reads ──► PayPal REST (sandbox)
+ └───────────┬──────────────┘
+             │ request_refund only
              ▼
  ┌──────────────────────────── Remit guard (Python) ───────────────────────────┐
  │ 1. Facts:   PayPal REST: order, capture, refunds so far, tracking, disputes │
@@ -197,18 +202,19 @@ is empty until submissions close, so other entries could not be compared.
         PayPal sandbox                                 Web app: chat + live console
 ```
 
-**The trust rule:** the agent never holds a tool that moves money. Its PayPal
-toolkit has read actions only (the toolkit's `configuration.actions`
-allowlist); `create_refund` and `accept_dispute_claim` are off. Its one way
-to move money is `request_refund`, and Remit decides.
+**The trust rule:** the agent never holds a tool that moves money, or
+PayPal credentials. Remit's MCP server is its only way to PayPal: reads go
+through it, and its one way to move money is `request_refund`, which Remit
+decides. (PayPal's Agent Toolkit could serve the reads underneath; today
+Remit's own REST client does, and the plan does not claim the toolkit.)
 
 | Part | Choice | Reason |
 | --- | --- | --- |
 | Guard and server | Python 3.11, FastAPI | Imports `remit_core` and `remit_prompts` unchanged; their tests keep running. |
-| PayPal | REST v2 (Orders, Payments, Tracking, Disputes) through our own small client; Agent Toolkit 1.11.0 (Python) for the agent | Remit's own calls need idempotency headers and exact errors; the agent uses PayPal's toolkit, the judges' own product. |
-| Agent | The toolkit's OpenAI integration, or LangChain; any OpenAI-compatible model | Decided by which keys we have. |
-| Panel | 3 models from different families behind one OpenAI-compatible endpoint | Diversity from one key; size and models are config. |
-| Storage | SQLite, WAL | One file; refunds for one merchant are decided one at a time. |
+| PayPal | REST v2 (Orders, Payments, Tracking, Disputes) through our own small client, sandbox only | Idempotency headers and exact errors on every call; one client for reads and the refund. |
+| Agent | Any OpenAI-compatible model with tool calling, through Remit's MCP server | The hosted demo uses Qwen (Model Studio). |
+| Panel | 3 models behind one OpenAI-compatible endpoint (Qwen for the hosted demo) | Size and models are config; models from different families make different mistakes, so a second provider is an upgrade, not a requirement. |
+| Storage | SQLite, or Postgres for the hosted demo | Refunds for one merchant are decided one at a time. |
 | Web app | React + Vite, Remit's design system | Remit's look is finished. |
 | Hosting | Render | One platform; sponsor prize. |
 
@@ -236,7 +242,7 @@ case.
 
 | Tool | Kind | What it does |
 | --- | --- | --- |
-| `get_order` | Read | The order and its capture, from PayPal (Agent Toolkit underneath) |
+| `get_order` | Read | The order and its capture, from PayPal |
 | `get_shipment_tracking` | Read | Tracking for the capture, from PayPal |
 | `list_disputes` | Read | Disputes on the capture, from PayPal |
 | `request_refund` | **Guarded** | Runs the guard. Returns the decision, the rules applied, each model's vote, and PayPal's refund ID or the reason it was refused |
@@ -340,19 +346,19 @@ single party can.
 - A merchant refunds its own capture: `POST /v2/payments/captures/{id}/refund`,
   full or partial.
 - Order, capture and refund details are readable by the merchant.
-- Tracking is added by the merchant (`create_shipment_tracking` is in the
-  toolkit), so the demo shop's orders carry real tracking records.
+- Tracking is added by the merchant (`POST /v1/shipping/trackers-batch`),
+  so the demo shop's orders carry real tracking records.
 - No payer approval or vault is involved in a refund, so v1's unknowns do not
   apply.
 
 **To check in the first two days (all low risk):**
 
-- **Seeding real captured orders.** A sandbox buyer must approve each
-  checkout. The seed script approves them in a scripted browser with the
-  sandbox buyer login (Chromium is available). Fallback: a sandbox test card.
+- **Seeding real captured orders.** Paid server-side with a sandbox test
+  card (`payment_source.card`, captured in the same call), so no buyer has to
+  approve a checkout. This needs card processing on the sandbox business
+  account, which US sandbox accounts have by default.
 - **Dispute creation in the sandbox**, for the "already disputed" case.
   Optional; the case is cut if the sandbox cannot create disputes.
-- **Agent Toolkit read actions** working with our sandbox app.
 
 ---
 
@@ -384,7 +390,7 @@ job brief.
   under a cap.
 - **The agent's text is never authority.** The customer's message and the
   agent's note go to the panel as quoted, neutralized data (`remit_prompts`).
-- **Secrets:** server-side only. The agent's toolkit instance is read-only.
+- **Secrets:** server-side only. The agent never holds PayPal credentials.
 - **Hosted demo:**
   - each visitor gets their own sandbox orders, issued from a pool;
   - a "new orders" reset;
@@ -406,7 +412,7 @@ job brief.
 | 0:00 to 0:20 | The problem: AI support agents can be talked into refunds. |
 | 0:20 to 2:10 | Live: case 1 refunded (the PayPal refund ID shown, then opened in the sandbox); case 2 refused with PayPal's tracking as the reason; case 3, the injection, stopped by code; case 4, the split. |
 | 2:10 to 2:40 | How it works: one diagram, the same MCP server refusing a refund from a second agent (Claude Desktop), and the log matching its anchor on GenLayer. |
-| 2:40 to 3:00 | The ask: drop Remit in front of any PayPal Agent Toolkit agent. |
+| 2:40 to 3:00 | The ask: put Remit between any AI agent and PayPal's money. |
 
 No music, no third-party material.
 
@@ -417,7 +423,7 @@ No music, no third-party material.
 Before 1 October, Remit was a set of GenLayer contracts governing an agent's
 test-token spending. During the hackathon we built:
 
-- a guard for PayPal's Agent Toolkit;
+- a guard between AI agents and PayPal's refunds;
 - a Remit MCP server, so any agent reaches PayPal only through the guard;
 - PayPal-sourced facts: orders, captures, refunds, tracking, disputes;
 - real sandbox refunds with idempotency;
