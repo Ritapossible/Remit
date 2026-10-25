@@ -1,6 +1,10 @@
 """Deploy RemitAnchor on GenLayer Studio and record it.
 
-    REMIT_KEYS_DIR=<private dir> python deploy/deploy_anchor.py [log_id]
+    REMIT_KEYS_DIR=<private dir> python deploy/deploy_anchor.py [log_id] [record name]
+
+Each log needs its own contract: RemitAnchor refuses an entry number that is
+not after the last one it holds, so a fresh log cannot reuse a contract that
+anchors another.
 
 The operator key is read from ``$REMIT_KEYS_DIR/anchor-operator.key``, or
 made there (mode 0600) on first use. It never enters the repository. The
@@ -23,7 +27,7 @@ from genlayer_py.types import TransactionStatus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONTRACT = os.path.join(os.path.dirname(HERE), "contracts", "remit_anchor.py")
-RECORD = os.path.join(HERE, "anchor-studio.json")
+RECORD = os.path.join(HERE, "anchor-studio.json")  # the default record
 RPC = "https://studio.genlayer.com/api"
 
 
@@ -56,6 +60,7 @@ def fund(address, gen=10):
 
 def main():
     log_id = sys.argv[1] if len(sys.argv) > 1 else "remit-paypal demo log"
+    record_path = os.path.join(HERE, sys.argv[2]) if len(sys.argv) > 2 else RECORD
     account = create_account(operator_key())
     print("operator", account.address)
     fund(account.address)
@@ -84,7 +89,7 @@ def main():
         "deployed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "explorer": "https://explorer-studio.genlayer.com/address/%s" % address,
     }
-    with open(RECORD, "w") as f:
+    with open(record_path, "w") as f:
         json.dump(record, f, indent=2)
     print(json.dumps(record, indent=2))
 

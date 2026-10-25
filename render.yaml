@@ -1,0 +1,47 @@
+# Render blueprint for Remit on PayPal (the GenLayer app stays on Vercel).
+# Free plan: no card, no disk. The decision log is kept in a free Postgres
+# database (Neon), so it survives the free service sleeping and redeploying.
+# Secrets are entered in Render's dashboard (sync: false), never committed.
+services:
+  - type: web
+    name: remit-paypal
+    runtime: docker
+    plan: free
+    dockerfilePath: ./paypal/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true
+    buildFilter:
+      paths:
+        - paypal/**
+        - contracts/remit_core.py
+        - contracts/remit_prompts.py
+        - contracts/jury_common.py
+        - render.yaml
+    envVars:
+      # The decision log: a Neon Postgres connection string (postgresql://...?sslmode=require).
+      - key: REMIT_DB
+        sync: false
+      # PayPal sandbox REST app. Until it is set, REMIT_OFFLINE=1 runs the demo shop on a fake PayPal.
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: REMIT_OFFLINE
+        value: "1"
+      # Models: one OpenRouter key for the support agent and the panel.
+      - key: REMIT_MODEL_API_KEY
+        sync: false
+      - key: REMIT_AGENT_MODEL
+        sync: false
+      - key: REMIT_PANEL_MODELS
+        sync: false
+      # GenLayer: the hosted log's own RemitAnchor on Studio, and its operator key.
+      # Each log needs its own contract (deploy one with paypal/deploy/deploy_anchor.py).
+      - key: REMIT_ANCHOR_CONTRACT
+        sync: false
+      - key: REMIT_ANCHOR_KEY
+        sync: false
+      # A mandate for public traffic: the daily cap is the shop's, shared by every visitor.
+      - key: REMIT_MANDATE
+        value: mandates/hosted-demo.json

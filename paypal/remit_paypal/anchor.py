@@ -24,10 +24,10 @@ EXPLORER = "https://explorer-studio.genlayer.com"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS anchors (
-  seq     INTEGER PRIMARY KEY,
+  seq     BIGINT PRIMARY KEY,
   hash    TEXT NOT NULL,
   tx      TEXT NOT NULL,
-  at      INTEGER NOT NULL
+  at      BIGINT NOT NULL
 );
 """
 
@@ -53,6 +53,13 @@ class GenLayerAnchor:
         result = str(receipt.get("result_name") or receipt.get("resultName") or "")
         if "AGREE" not in result or "DISAGREE" in result:
             raise RuntimeError("the anchor transaction did not reach agreement: %s" % (result or "unknown"))
+        # Validators can agree on a call the contract refused (an entry number
+        # not after the last one, a different log). Only what the contract
+        # now holds counts.
+        held = self.hash_at(seq)
+        if held != chain_hash:
+            raise RuntimeError("the contract refused entry %d (it holds %r there); is it anchoring another log?"
+                               % (seq, held[:16]))
         return str(tx)
 
     def latest(self):
@@ -63,7 +70,11 @@ class GenLayerAnchor:
 
 
 class FakeAnchor:
-    """An in-memory RemitAnchor, with the contract's rules, for tests."""
+    """An in-memory RemitAnchor, with the contract's rules, for tests.
+
+    ``agree_on_refusal`` mimics GenLayer reaching agreement on a call the
+    contract refused: the send returns a transaction, and nothing is stored.
+    ``GenLayerAnchor`` must notice by reading the hash back."""
 
     def __init__(self):
         self.anchored = {}
@@ -80,6 +91,8 @@ class FakeAnchor:
             self.fail -= 1
             raise ConnectionError("GenLayer unavailable")
         if seq <= self.last:
+            if getattr(self, "agree_on_refusal", False):
+                return "0xrefused%d" % seq
             raise RuntimeError("entry %d is not after %d" % (seq, self.last))
         self.anchored[seq], self.last = chain_hash, seq
         return "0xtx%d" % seq
@@ -95,7 +108,7 @@ class Anchorer:
     def __init__(self, ledger, chain, contract="", clock=time.time, retry_seconds=15):
         self.ledger, self.chain, self.contract, self.clock = ledger, chain, contract, clock
         self.retry_seconds = retry_seconds
-        self.ledger.db.executescript(SCHEMA)
+        self.ledger.db.script(SCHEMA)
         self.wake = threading.Event()
         self.stop_flag = threading.Event()
         self.thread = None

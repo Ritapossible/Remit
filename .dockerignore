@@ -1,0 +1,13 @@
+# Only what paypal/Dockerfile copies is needed; keep the build context small.
+**/node_modules
+**/.venv
+**/dist
+**/__pycache__
+**/*.sqlite3*
+frontend
+deploy
+docs
+examples
+mandates
+tests
+.git

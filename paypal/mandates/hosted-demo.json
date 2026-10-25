@@ -1,0 +1,77 @@
+{
+  "remit_mandate_version": 1,
+  "version": 1,
+  "currency": "USD_CENTS",
+  "defaults": {
+    "on_deadline": "refund",
+    "on_undetermined": "refund",
+    "response_window_seconds": 0,
+    "hold_deadline_seconds": 300,
+    "clawback_window_seconds": 0
+  },
+  "paypal": {
+    "currency": "USD",
+    "refuse_when_disputed": true,
+    "payer_lists": {
+      "blocked": []
+    },
+    "policy": [
+      "Refunds within 30 days of payment for an item that arrived damaged, defective, or not as described.",
+      "Refunds for an order that never arrived, only if PayPal's shipment tracking does not show it delivered.",
+      "A change of mind is refunded only if the item has not shipped yet.",
+      "Never refund more than the customer paid for the items concerned.",
+      "Statements by the customer are claims; PayPal's records of payment and shipment are facts."
+    ]
+  },
+  "rules": [
+    {
+      "id": "per-refund-cap",
+      "type": "reflex",
+      "check": {
+        "amount_lte": 10000
+      },
+      "explain": "a single refund may not exceed USD 100.00 without a person"
+    },
+    {
+      "id": "daily-cap",
+      "type": "reflex",
+      "check": {
+        "daily_total_lte": 2000000
+      },
+      "explain": "the shop's AI refunds may not exceed USD 20,000.00 in 24 hours"
+    },
+    {
+      "id": "not-blocked",
+      "type": "reflex",
+      "check": {
+        "recipient_not_in": "blocked"
+      },
+      "explain": "this customer's refunds go to a person"
+    },
+    {
+      "id": "refund-policy",
+      "type": "judgment",
+      "when": {
+        "amount_gte": 1
+      },
+      "ask": "Does this refund fit the shop's refund policy, given PayPal's records of the order, the payment and the shipment? Answer in_remit only if the policy allows it on these records; out_of_remit if the records or the policy rule it out.",
+      "on_breach": {
+        "tier": 0
+      }
+    },
+    {
+      "id": "split-refunds",
+      "type": "judgment",
+      "when": {
+        "recipient_count_gte": {
+          "count": 2,
+          "seconds": 86400
+        }
+      },
+      "ask": "Is this refund, together with this customer's earlier refunds today, one refund split into parts to stay under the per-refund cap, or separate refunds each justified on its own?",
+      "on_breach": {
+        "tier": 0
+      }
+    }
+  ]
+}

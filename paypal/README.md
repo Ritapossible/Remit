@@ -16,7 +16,7 @@ The agent never refunds. It asks the guard (`remit_paypal/guard.py`):
 ```bash
 cd paypal
 python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python -m pytest tests -q          # 72 tests, offline: simulated PayPal, stand-in models, a fake GenLayer
+.venv/bin/python -m pytest tests -q          # 75 tests offline (add REMIT_TEST_DB=postgresql://... to run them on Postgres)
 ```
 
 ### The MCP server
@@ -114,3 +114,9 @@ The anchor proves what the log said and when. It does not prove that every
 decision was logged: an operator could leave one out before anchoring.
 Remit on GenLayer, where the contract itself decides, is the version no
 single party controls.
+
+### Hosting
+
+Free: Render's free web service (`render.yaml`, `Dockerfile`) and a free
+Neon Postgres for the log. Step by step, with what was tested, in
+[HOSTING.md](HOSTING.md). The GenLayer app stays on Vercel.

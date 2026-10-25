@@ -119,3 +119,34 @@ def test_without_anchoring_configured_the_app_says_so():
         guard = Guard(offline_paypal(time.time()), Ledger(), load_mandate(f.read()), Panel(offline_models(), quorum=2))
     with TestClient(create_app(guard, orders_for=lambda sid: [])) as c:
         assert c.get("/api/anchor").json() == {"configured": False}
+
+
+def test_a_refused_anchor_that_validators_agreed_on_is_not_counted():
+    """Seen on Studio: a new log sent to a contract that already anchors
+    another log. The validators agree; the contract refuses; nothing is
+    stored. The anchorer must read the hash back and keep it pending."""
+    from remit_paypal.anchor import GenLayerAnchor
+
+    w = decided(World())
+    fake = FakeAnchor()
+    fake.anchor(10_000, "f" * 64)  # the contract already holds another, longer log
+    fake.agree_on_refusal = True
+
+    class Client:  # GenLayerAnchor's SDK calls, answered by the fake contract
+        def write_contract(self, **kw):
+            return fake.anchor(*kw["args"])
+
+        def wait_for_transaction_receipt(self, **kw):
+            return {"result_name": "MAJORITY_AGREE"}
+
+        def read_contract(self, **kw):
+            return fake.hash_at(kw["args"][0]) if kw["function_name"] == "hash_at" else "{}"
+
+    g = GenLayerAnchor.__new__(GenLayerAnchor)
+    g.client, g.account, g.contract = Client(), None, "0xc"
+    import sys
+    import types
+    sys.modules.setdefault("genlayer_py.types", types.SimpleNamespace(TransactionStatus=types.SimpleNamespace(ACCEPTED="ACCEPTED")))
+    a = Anchorer(w.ledger, g)
+    assert a.anchor_once() is None and "refused entry" in a.last_error
+    assert a.last_anchor() is None and a.status(check_chain=False)["pending"]

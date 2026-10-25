@@ -53,3 +53,19 @@ class World:
 @pytest.fixture
 def world():
     return World()
+
+
+@pytest.fixture(autouse=True)
+def _ledger_store(monkeypatch):
+    """REMIT_TEST_DB=postgresql://... runs every test's ledger on Postgres,
+    from empty tables, instead of SQLite in memory."""
+    url = os.environ.get("REMIT_TEST_DB")
+    if not url:
+        yield
+        return
+    import psycopg
+
+    with psycopg.connect(url, autocommit=True) as c:
+        c.execute("DROP TABLE IF EXISTS log, refunds, anchors")
+    monkeypatch.setattr(Ledger.__init__, "__defaults__", (url,))
+    yield

@@ -4,6 +4,11 @@ append-only, hash-chained log of every decision.
 Each log entry stores the SHA-256 of the entry before it, so editing or
 deleting a past entry breaks every hash after it (``verify``). This makes
 the operator's record checkable; it does not make the operator trustless.
+
+Storage is SQLite (a file, or ``:memory:`` for tests) or Postgres (a
+``postgresql://`` URL, for hosts whose disk does not persist). Both go
+through one small adapter, ``ledger.db``: ``execute(sql, params)`` with
+``?`` placeholders, and ``script(sql)``.
 """
 
 import hashlib
@@ -21,15 +26,15 @@ CREATE TABLE IF NOT EXISTS refunds (
   recipient  TEXT NOT NULL,
   payer_id   TEXT NOT NULL,
   capture_id TEXT NOT NULL,
-  amount     INTEGER NOT NULL,
+  amount     BIGINT NOT NULL,
   category   TEXT NOT NULL,
-  at         INTEGER NOT NULL,
+  at         BIGINT NOT NULL,
   state      TEXT NOT NULL,
   paypal_refund_id TEXT
 );
 CREATE TABLE IF NOT EXISTS log (
-  seq   INTEGER PRIMARY KEY,
-  at    INTEGER NOT NULL,
+  seq   BIGINT PRIMARY KEY,
+  at    BIGINT NOT NULL,
   kind  TEXT NOT NULL,
   body  TEXT NOT NULL,
   prev  TEXT NOT NULL,
@@ -50,11 +55,59 @@ def entry_hash(prev, seq, at, kind, body):
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+class _Sqlite:
+    def __init__(self, path):
+        self.conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.integrity = sqlite3.IntegrityError
+        self.lock = threading.RLock()
+
+    def execute(self, sql, params=()):
+        with self.lock:
+            return self.conn.execute(sql, params)
+
+    def script(self, sql):
+        with self.lock:
+            self.conn.executescript(sql)
+
+
+class _Postgres:
+    """Postgres through psycopg, autocommit. A dropped connection (a hosted
+    database sleeping when idle) is reopened once and the statement retried."""
+
+    def __init__(self, url):
+        import psycopg
+
+        self.psycopg, self.url = psycopg, url
+        self.integrity = psycopg.errors.IntegrityError
+        self.lock = threading.RLock()
+        self.conn = psycopg.connect(url, autocommit=True)
+
+    def execute(self, sql, params=()):
+        sql = sql.replace("?", "%s")
+        with self.lock:
+            try:
+                return self.conn.execute(sql, params)
+            except self.psycopg.OperationalError:
+                self.conn = self.psycopg.connect(self.url, autocommit=True)
+                return self.conn.execute(sql, params)
+
+    def script(self, sql):
+        for statement in sql.split(";"):
+            if statement.strip():
+                self.execute(statement)
+
+
+def open_store(path):
+    if str(path).startswith(("postgres://", "postgresql://")):
+        return _Postgres(path)
+    return _Sqlite(path)
+
+
 class Ledger:
     def __init__(self, path=":memory:"):
-        self.db = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
-        self.db.execute("PRAGMA journal_mode=WAL")
-        self.db.executescript(SCHEMA)
+        self.db = open_store(path)
+        self.db.script(SCHEMA)
         self.lock = threading.RLock()
 
     # ---------------------------------------------------------------- log
@@ -98,7 +151,7 @@ class Ledger:
             try:
                 self.db.execute("INSERT INTO refunds VALUES (?,?,?,?,?,?,?,?,NULL)",
                                 (request_id, recipient, payer_id, capture_id, int(amount), category, int(at), PENDING))
-            except sqlite3.IntegrityError:
+            except self.db.integrity:
                 raise core.RemitError("request %s was already submitted" % request_id)
 
     def finish(self, request_id, state, paypal_refund_id=None):
