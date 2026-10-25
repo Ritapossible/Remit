@@ -8,6 +8,9 @@
     REMIT_MANDATE                            default mandates/demo-shop.json
     REMIT_DB                                 default remit.sqlite3
     REMIT_OFFLINE=1                          fake PayPal and stand-in models, for trying the MCP server without keys
+    REMIT_ANCHOR_CONTRACT, REMIT_ANCHOR_KEY  RemitAnchor on GenLayer Studio and the operator's private key;
+                                             both unset: the log is not anchored
+    REMIT_ANCHOR_ENDPOINT                    default https://studio.genlayer.com/api
 """
 
 import os
@@ -36,3 +39,14 @@ def build_guard(env=os.environ):
         models = {n: ChatModel(n, key, base) for n in names}
     quorum = int(env.get("REMIT_PANEL_QUORUM", len(models) // 2 + 1))
     return Guard(paypal, ledger, mandate, Panel(models, quorum=quorum))
+
+
+def build_anchorer(ledger, env=os.environ):
+    """The GenLayer anchorer, or None when anchoring is not configured."""
+    contract, key = env.get("REMIT_ANCHOR_CONTRACT", ""), env.get("REMIT_ANCHOR_KEY", "")
+    if not contract or not key:
+        return None
+    from .anchor import Anchorer, GenLayerAnchor
+
+    chain = GenLayerAnchor(key, contract, endpoint=env.get("REMIT_ANCHOR_ENDPOINT") or None)
+    return Anchorer(ledger, chain, contract=contract)

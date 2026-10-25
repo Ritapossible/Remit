@@ -175,3 +175,15 @@ pre.code { background: var(--navy); color: #e6f7fa; padding: 16px 18px; border-r
 .site-foot .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }
 .site-foot a { color: var(--ink-2); }
 .notice { padding: 12px 14px; border-radius: var(--r-sm); background: var(--held-bg); color: var(--held); font-size: 14px; }
+
+/* ------------------------------------------------------------ GenLayer anchor */
+
+.anchor-line { padding: 10px 14px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.anchor-panel { display: grid; gap: 0; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+.anchor-panel .verify { border: 0; border-radius: 0; border-bottom: 1px solid var(--line); }
+.anchor-facts { margin: 0; padding: 6px 20px 14px; display: grid; gap: 0; }
+.anchor-facts > div { display: grid; gap: 4px 16px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.anchor-facts > div:first-child { border-top: 0; }
+@media (min-width: 760px) { .anchor-facts > div { grid-template-columns: 160px minmax(0, 1fr); } }
+.anchor-facts dt { font: 600 11px/1.8 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.anchor-facts dd { margin: 0; overflow-wrap: anywhere; }

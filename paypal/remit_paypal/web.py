@@ -6,7 +6,8 @@ live console, and read the decision log.
     GET  /api/orders?session_id  the visitor's orders, as PayPal records them
     GET  /api/events?session_id  server-sent events: tool calls, results, decisions
     GET  /api/log?since=N        the hash-chained log, and whether it verifies
-    GET  /api/decisions/{id}     one decision and its log entries
+    GET  /api/decisions/{id}     one decision, its log entries, and the GenLayer anchor covering it
+    GET  /api/anchor             the log's anchor on GenLayer, checked against GenLayer itself
     GET  /api/health
 
 The agent talks to PayPal only through the Remit MCP server, connected
@@ -91,7 +92,7 @@ class ChatIn(BaseModel):
 
 
 def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key="", base_url="",
-               transport=None, chat_per_minute=12, chats_per_day=2000, static_dir=None):
+               transport=None, chat_per_minute=12, chats_per_day=2000, static_dir=None, anchorer=None):
     """``orders_for(session_id)`` gives a new visitor their orders."""
     bus, sessions = Bus(), {}
     per_ip, daily = Limiter(chat_per_minute, 60), Limiter(chats_per_day, 86400)
@@ -99,12 +100,18 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
 
     @asynccontextmanager
     async def lifespan(app):
-        async with Client(create_server(guard)) as mcp:
-            if agent_kind == "model":
-                state["agent"] = ToolAgent(mcp, bus.emit, model, api_key, base_url, transport=transport)
-            else:
-                state["agent"] = ScriptedAgent(mcp, bus.emit)
-            yield
+        if anchorer is not None:
+            anchorer.start()
+        try:
+            async with Client(create_server(guard, anchorer=anchorer)) as mcp:
+                if agent_kind == "model":
+                    state["agent"] = ToolAgent(mcp, bus.emit, model, api_key, base_url, transport=transport)
+                else:
+                    state["agent"] = ScriptedAgent(mcp, bus.emit)
+                yield
+        finally:
+            if anchorer is not None:
+                anchorer.stop()
 
     app = FastAPI(title="Remit on PayPal", lifespan=lifespan)
 
@@ -160,6 +167,8 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
             bus.emit(s.id, {"type": "error", "text": "the agent failed: %s" % type(exc).__name__})
             text = "Sorry, something went wrong on our side. No refund was made; please try again."
         bus.emit(s.id, {"type": "agent", "text": text})
+        if anchorer is not None:
+            anchorer.notify()  # never waited on: anchoring is off the refund path
         return {"reply": text}
 
     @app.get("/api/events")
@@ -198,7 +207,15 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
         row = guard.ledger.get(request_id)
         if row is None:
             raise HTTPException(404, "unknown request")
-        return {**row, "log": [e for e in guard.ledger.entries() if e["body"].get("request_id") == request_id]}
+        log = [e for e in guard.ledger.entries() if e["body"].get("request_id") == request_id]
+        covering = anchorer.anchor_covering(log[-1]["seq"]) if anchorer is not None and log else None
+        return {**row, "log": log, "anchor": covering}
+
+    @app.get("/api/anchor")
+    def anchor():
+        if anchorer is None:
+            return {"configured": False}
+        return {"configured": True, **anchorer.status()}
 
     if static_dir and os.path.isdir(static_dir):
         app.mount("/", StaticFiles(directory=static_dir, html=True), name="web")
@@ -217,10 +234,13 @@ def app_from_env(env=os.environ):
         ids = [o.strip() for o in env.get("REMIT_DEMO_ORDERS", "").split(",") if o.strip()]
         orders_for = lambda sid: ids  # noqa: E731  (a per-visitor pool comes with the sandbox seed script)
     kind = "model" if env.get("REMIT_AGENT_MODEL") else "scripted"
+    from .config import build_anchorer
+
+    anchorer = build_anchorer(guard.ledger, env)
     return create_app(guard, orders_for=orders_for, agent_kind=kind, model=env.get("REMIT_AGENT_MODEL"),
                       api_key=env.get("REMIT_MODEL_API_KEY", ""),
                       base_url=env.get("REMIT_MODEL_BASE_URL", "https://openrouter.ai/api/v1"),
-                      static_dir=env.get("REMIT_STATIC_DIR"))
+                      static_dir=env.get("REMIT_STATIC_DIR"), anchorer=anchorer)
 
 
 def __getattr__(name):  # ``uvicorn remit_paypal.web:app`` builds the app on first use

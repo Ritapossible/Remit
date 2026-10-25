@@ -71,6 +71,15 @@ class Ledger:
         rows = self.db.execute("SELECT seq, at, kind, body, prev, hash FROM log WHERE seq > ? ORDER BY seq", (since,))
         return [{"seq": s, "at": a, "kind": k, "body": json.loads(b), "prev": p, "hash": h} for s, a, k, b, p, h in rows]
 
+    def head(self):
+        """The newest entry's ``seq`` and ``hash``, or None for an empty log."""
+        row = self.db.execute("SELECT seq, hash FROM log ORDER BY seq DESC LIMIT 1").fetchone()
+        return {"seq": row[0], "hash": row[1]} if row else None
+
+    def hash_at(self, seq):
+        row = self.db.execute("SELECT hash FROM log WHERE seq = ?", (int(seq),)).fetchone()
+        return row[0] if row else None
+
     def verify(self):
         """``(True, None)`` if every entry chains to the one before it, else
         ``(False, seq)`` naming the first entry that does not."""

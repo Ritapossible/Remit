@@ -48,12 +48,33 @@ export interface LogEntry {
   hash: string;
 }
 
+export interface Anchor {
+  seq: number;
+  hash: string;
+  tx: string;
+  at: number;
+}
+
 export interface Decision {
   request_id: string;
   state: string;
   paypal_refund_id: string | null;
   log: LogEntry[];
+  anchor?: Anchor | null;
 }
+
+export type AnchorStatus =
+  | { configured: false }
+  | {
+      configured: true;
+      contract: string;
+      explorer: string;
+      head_seq: number;
+      anchor: Anchor | null;
+      pending: boolean;
+      last_error: string;
+      check: { matches: boolean | null; seq?: number; hash?: string; reason?: string };
+    };
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -84,6 +105,7 @@ export const api = {
     call<{ reply: string }>("/api/chat", { method: "POST", body: JSON.stringify({ session_id: sid, message }) }),
   log: (since = 0) => call<{ verifies: boolean; broken_at: number | null; entries: LogEntry[] }>(`/api/log?since=${since}`),
   decision: (id: string) => call<Decision>(`/api/decisions/${encodeURIComponent(id)}`),
+  anchor: () => call<AnchorStatus>("/api/anchor"),
 };
 
 /** The session's live console: server-sent events, reconnecting with backoff.

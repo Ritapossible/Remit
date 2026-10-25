@@ -1,0 +1,69 @@
+{
+  "what": "A run of the web app's browser test (paypal/web/scripts/e2e.mjs) with offline PayPal and stand-in models, its decision log anchored on GenLayer Studio by RemitAnchor, then checked with verify_anchor.py; then the same log rewritten (one early entry edited and every later hash rebuilt) and checked again.",
+  "contract": "0xdA7921d968AA726a037a1464D1DfbF7c8D0A7B73",
+  "explorer": "https://explorer-studio.genlayer.com/address/0xdA7921d968AA726a037a1464D1DfbF7c8D0A7B73",
+  "log_entries": 21,
+  "decisions": [
+    {
+      "request_id": "cf358ade703b-r1",
+      "state": "refunded",
+      "paypal_refund_id": "REFUND-0009"
+    },
+    {
+      "request_id": "cf358ade703b-r2",
+      "state": "refused",
+      "paypal_refund_id": null
+    },
+    {
+      "request_id": "cf358ade703b-r3",
+      "state": "refused",
+      "paypal_refund_id": null
+    },
+    {
+      "request_id": "cf358ade703b-r4",
+      "state": "refused",
+      "paypal_refund_id": null
+    },
+    {
+      "request_id": "00c382c61097-r1",
+      "state": "refused",
+      "paypal_refund_id": null
+    }
+  ],
+  "anchors_sent": [
+    {
+      "seq": 5,
+      "hash": "20c8b84a9436232694f0d7c831b9b3ef7bcc9bd3e40e78dcf081fbe79190af17",
+      "tx": "0x97d4a4e17af03648aa3d613b9d35dcc3b262d2306ba804045f97e75dcaf43875",
+      "at": 1792914320
+    },
+    {
+      "seq": 21,
+      "hash": "029e29b1e60b4a1112578210dbecb8f36a58d1017b5f157351959cc76be34341",
+      "tx": "0x3c7f8cde0f608254a293eca98a6e3eea13cce9daa268e6f2972279e2c13f42c0",
+      "at": 1792914329
+    }
+  ],
+  "anchors_on_chain": [
+    {
+      "seq": 5,
+      "hash": "20c8b84a9436232694f0d7c831b9b3ef7bcc9bd3e40e78dcf081fbe79190af17",
+      "at": 1792914315
+    },
+    {
+      "seq": 21,
+      "hash": "029e29b1e60b4a1112578210dbecb8f36a58d1017b5f157351959cc76be34341",
+      "at": 1792914321
+    }
+  ],
+  "contract_status": {
+    "release": "remit-anchor/1",
+    "operator": "0x4e579b5be03703f7b92e12c34d7b4fd9d63df6de",
+    "log_id": "remit-paypal demo log",
+    "count": 2,
+    "last_seq": 21
+  },
+  "check_honest_log": "RESULT: matches. Entries 1 to 21 are exactly what was anchored on GenLayer. (exit 0)",
+  "check_rewritten_log": "RESULT:   does not match. The log up to entry 21 is not what was anchored. (exit 1); the rewritten log's own chain check passed",
+  "recorded_at": "2026-10-25T07:47:25Z"
+}

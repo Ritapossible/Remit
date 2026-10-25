@@ -3,3 +3,4 @@ mcp>=2.3,<3
 fastapi>=0.115
 uvicorn>=0.30
 pytest>=8
+genlayer-py==0.18.0

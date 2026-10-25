@@ -15,8 +15,8 @@ The agent never refunds. It asks the guard (`remit_paypal/guard.py`):
 
 ```bash
 cd paypal
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python -m pytest tests -q          # 52 tests, offline: simulated PayPal and stand-in models
+python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/python -m pytest tests -q          # 72 tests, offline: simulated PayPal, stand-in models, a fake GenLayer
 ```
 
 ### The MCP server
@@ -81,3 +81,36 @@ cd web && node scripts/e2e.mjs http://127.0.0.1:8000   # a real browser through 
 In offline mode each visitor gets their own fresh set of the demo shop's
 orders. For a public demo, use a mandate whose daily cap fits the expected
 traffic: the cap is the shop's, shared by every customer.
+
+### The log, anchored on GenLayer
+
+Remit on PayPal builds on Remit on GenLayer: PayPal moves the money; GenLayer
+makes the record independently checkable. After each decision the log's
+newest hash is published to `RemitAnchor` (`contracts/remit_anchor.py`), a
+deterministic Intelligent Contract on GenLayer Studio: only the operator
+anchors, entry numbers strictly increase, and anyone can read it. Once a hash
+is on chain, rewriting any earlier entry no longer matches it, even if every
+later hash is rebuilt. Anchoring runs in the background and never holds up a
+refund; if GenLayer is unavailable it queues and catches up.
+
+| | |
+| --- | --- |
+| Contract | [`0xdA7921d968AA726a037a1464D1DfbF7c8D0A7B73`](https://explorer-studio.genlayer.com/address/0xdA7921d968AA726a037a1464D1DfbF7c8D0A7B73) on GenLayer Studio (`deploy/anchor-studio.json`) |
+| A run | The browser test's 21 log entries, anchored in two transactions (entries 5 and 21); `verify_anchor.py` says they match. The same log with one early entry rewritten and every later hash rebuilt passes its own chain check, and `verify_anchor.py` says it does not match (`deploy/anchor-run-studio.json`) |
+
+Check a server yourself, without trusting it or its page:
+
+```bash
+.venv/bin/python verify_anchor.py https://<remit server>
+```
+
+It downloads the log, recomputes every hash itself, reads the newest anchor
+straight from GenLayer, and compares. Anchoring is on when the server has
+`REMIT_ANCHOR_CONTRACT` and `REMIT_ANCHOR_KEY` (the operator's key, kept out
+of the repository; `deploy/deploy_anchor.py` makes and funds one and deploys
+the contract).
+
+The anchor proves what the log said and when. It does not prove that every
+decision was logged: an operator could leave one out before anchoring.
+Remit on GenLayer, where the contract itself decides, is the version no
+single party controls.

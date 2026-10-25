@@ -142,6 +142,18 @@ export function DecisionCard({ result, amount }: { result: RefundResult; amount?
           </span>
         </li>
       </ol>
+      {d && d.anchor !== undefined && (
+        <footer className="anchor-line">
+          {d.anchor ? (
+            <>
+              <span className="badge ai">On GenLayer</span> covered by the anchor at log entry {d.anchor.seq}{" "}
+              <a href="#/log">check it</a>
+            </>
+          ) : (
+            <><span className="badge">GenLayer</span> anchoring pending; it never holds up a refund</>
+          )}
+        </footer>
+      )}
     </article>
   );
 }

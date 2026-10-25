@@ -34,7 +34,7 @@ def _facts_view(f):
     }
 
 
-def create_server(guard, name="Remit"):
+def create_server(guard, name="Remit", anchorer=None):
     server = MCPServer(name, instructions=INSTRUCTIONS)
     paypal = guard.paypal
 
@@ -92,15 +92,22 @@ def create_server(guard, name="Remit"):
         entries = [e for e in guard.ledger.entries() if e["body"].get("request_id") == request_id]
         for e in entries:
             e["body"].pop("prompt", None)
-        return json.dumps({"found": True, **row, "log": entries})
+        covering = anchorer.anchor_covering(entries[-1]["seq"]) if anchorer is not None and entries else None
+        return json.dumps({"found": True, **row, "log": entries, "genlayer_anchor": covering})
 
     return server
 
 
 def main():
-    from .config import build_guard
+    from .config import build_guard  # noqa: I001
 
-    create_server(build_guard()).run()
+    from .config import build_anchorer
+
+    guard = build_guard()
+    anchorer = build_anchorer(guard.ledger)
+    if anchorer is not None:
+        anchorer.start()
+    create_server(guard, anchorer=anchorer).run()
 
 
 if __name__ == "__main__":

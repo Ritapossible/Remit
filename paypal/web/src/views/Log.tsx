@@ -1,5 +1,63 @@
 import { useEffect, useState } from "react";
-import { api, type LogEntry } from "../api";
+import { api, type AnchorStatus, type LogEntry } from "../api";
+
+const REPO_VERIFY = "python verify_anchor.py " + window.location.origin;
+
+function AnchorPanel({ a }: { a: AnchorStatus | null }) {
+  if (!a) return null;
+  if (!a.configured)
+    return (
+      <div className="verify">
+        <span className="badge">GenLayer</span>
+        <span>This server does not anchor its log. The hosted demo does.</span>
+      </div>
+    );
+  const m = a.check.matches;
+  return (
+    <div className="anchor-panel">
+      <div className="verify">
+        <span className={"badge " + (m === true ? "ok" : m === false ? "no" : "")}>
+          {m === true ? "Matches GenLayer" : m === false ? "Does not match" : "Not checked yet"}
+        </span>
+        <b>
+          {m === true
+            ? `Entries 1 to ${a.check.seq} are exactly what was anchored`
+            : m === false
+              ? a.check.reason
+              : a.check.reason ?? "Nothing anchored yet"}
+        </b>
+        {a.pending && <span className="badge warn">newer entries pending</span>}
+      </div>
+      <dl className="anchor-facts">
+        <div>
+          <dt>Contract</dt>
+          <dd>
+            <a href={a.explorer} target="_blank" rel="noreferrer"><code>{a.contract}</code></a> · RemitAnchor on GenLayer Studio
+          </dd>
+        </div>
+        {a.anchor && (
+          <>
+            <div>
+              <dt>Latest anchor</dt>
+              <dd>entry {a.anchor.seq} · <code>{a.anchor.hash.slice(0, 16)}…</code></dd>
+            </div>
+            <div>
+              <dt>Transaction</dt>
+              <dd><code>{a.anchor.tx}</code></dd>
+            </div>
+          </>
+        )}
+        <div>
+          <dt>Check it yourself</dt>
+          <dd>
+            <code>{REPO_VERIFY}</code>
+            <span className="muted small"> recomputes the log and reads GenLayer directly; it trusts neither this page nor this server.</span>
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
 
 const KIND: Record<LogEntry["kind"], [string, string]> = {
   requested: ["Requested", ""],
@@ -34,7 +92,11 @@ function summary(e: LogEntry) {
 export function Log() {
   const [data, setData] = useState<{ verifies: boolean; broken_at: number | null; entries: LogEntry[] } | null>(null);
   const [error, setError] = useState("");
-  const load = () => api.log().then(setData).catch(() => setError("The log could not be loaded."));
+  const [anchor, setAnchor] = useState<AnchorStatus | null>(null);
+  const load = () => {
+    api.log().then(setData).catch(() => setError("The log could not be loaded."));
+    api.anchor().then(setAnchor).catch(() => setAnchor(null));
+  };
   useEffect(() => {
     load();
   }, []);
@@ -46,7 +108,9 @@ export function Log() {
       <h1 className="h2" style={{ marginTop: 12 }}>The decision log</h1>
       <p className="lede">
         Each entry stores the hash of the entry before it. Editing or deleting any past entry breaks every hash after it, and the
-        check below fails. This makes the operator's record checkable. It does not make the operator trustless.
+        check below fails. The newest hash is also published on GenLayer, so even a rewrite that rebuilds every hash no
+        longer matches what is on chain. This makes history impossible to rewrite unnoticed; it does not prove every
+        decision was logged, and it does not make the operator trustless.
       </p>
       <div style={{ height: 24 }} />
       {error && <p className="notice">{error}</p>}
@@ -57,6 +121,8 @@ export function Log() {
           <button className="btn sm" style={{ marginLeft: "auto" }} onClick={load}>Check again</button>
         </div>
       )}
+      <div style={{ height: 14 }} />
+      <AnchorPanel a={anchor} />
       <div style={{ height: 20 }} />
       {data && (
         <div className="table-wrap">
