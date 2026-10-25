@@ -6,6 +6,7 @@ import { NETWORKS, type NetworkId } from "../chain/networks";
 import { balanceOf, createBurner, forgetBurner, fundOnStudio } from "../chain/wallet";
 import { networkIdOfChain } from "../chain/appkit";
 import { Addr, Gen, Spinner, explainError } from "./ui";
+import { PAYPAL_URL, REPO_URL } from "../lib/docs";
 
 const APP_TABS: { route: Route; label: string; short?: string }[] = [
   { route: { name: "overview" }, label: "Mandate" },
@@ -39,7 +40,10 @@ export function SiteHeader() {
               {l.label}
             </a>
           ))}
-          <a href="https://github.com/Ritapossible/Remit" target="_blank" rel="noreferrer">
+          <a href={PAYPAL_URL} target="_blank" rel="noreferrer">
+            For PayPal
+          </a>
+          <a href={REPO_URL} target="_blank" rel="noreferrer">
             GitHub
           </a>
         </nav>
@@ -59,7 +63,10 @@ export function SiteHeader() {
               {l.label}
             </a>
           ))}
-          <a href="https://github.com/Ritapossible/Remit" target="_blank" rel="noreferrer">
+          <a href={PAYPAL_URL} target="_blank" rel="noreferrer">
+            Remit for PayPal
+          </a>
+          <a href={REPO_URL} target="_blank" rel="noreferrer">
             GitHub
           </a>
         </nav>

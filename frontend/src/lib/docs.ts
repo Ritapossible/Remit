@@ -5,6 +5,7 @@ import mandateFormat from "../../../docs/MANDATE-FORMAT.md?raw";
 import integration from "../../../docs/INTEGRATION.md?raw";
 import threatModel from "../../../docs/THREAT-MODEL.md?raw";
 import genvmNotes from "../../../docs/GENVM-NOTES.md?raw";
+import paypal from "../../../docs/REMIT-FOR-PAYPAL.md?raw";
 
 // The docs are the repository's own markdown, imported at build time. There is
 // one copy, so the site cannot drift from the project. The HTML rendered from
@@ -12,6 +13,7 @@ import genvmNotes from "../../../docs/GENVM-NOTES.md?raw";
 // this repository, never fetched or user-supplied.
 
 export const REPO_URL = "https://github.com/Ritapossible/Remit";
+export const PAYPAL_URL = "https://remit-paypal.onrender.com";
 
 export interface Doc {
   slug: string;
@@ -25,6 +27,7 @@ export const DOCS: Doc[] = [
   { slug: "getting-started", title: "Getting started", file: "GETTING-STARTED.md", group: "Guides", source: gettingStarted },
   { slug: "concepts", title: "Concepts", file: "ARCHITECTURE.md", group: "Guides", source: architecture },
   { slug: "integration", title: "Integration", file: "INTEGRATION.md", group: "Guides", source: integration },
+  { slug: "paypal", title: "Remit for PayPal", file: "REMIT-FOR-PAYPAL.md", group: "Guides", source: paypal },
   { slug: "mandate-format", title: "Mandate format", file: "MANDATE-FORMAT.md", group: "Reference", source: mandateFormat },
   { slug: "threat-model", title: "Threat model", file: "THREAT-MODEL.md", group: "Reference", source: threatModel },
   { slug: "genvm-notes", title: "Building on GenVM", file: "GENVM-NOTES.md", group: "Reference", source: genvmNotes },

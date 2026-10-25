@@ -286,6 +286,13 @@ label.field input, label.field select { width: 100%; }
 .card-link p { margin: 0; color: var(--muted); font-size: 15px; }
 .card-link:hover h3 { text-decoration: underline; text-decoration-color: var(--cyan); text-decoration-thickness: 2px; }
 
+/* A product built on Remit, linked from the landing page. */
+.spotlight { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; margin-top: 24px; padding: 28px 22px;
+  border: 1px solid var(--line); border-left: 4px solid var(--cyan); border-radius: var(--r-lg); background: var(--surface); }
+.spotlight h2 { font: 400 clamp(28px, 3.6vw, 40px)/1.1 var(--serif); letter-spacing: -0.015em; margin: 12px 0 10px; }
+.spotlight p { margin: 0; color: var(--ink-2); max-width: 62ch; }
+@media (min-width: 900px) { .spotlight { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 40px; padding: 40px 44px; } }
+
 .cta { border-radius: var(--r-lg); background: var(--navy); color: var(--navy-ink); padding: 40px 24px; display: grid; gap: 24px; }
 @media (min-width: 820px) { .cta { padding: 56px; grid-template-columns: minmax(0, 1fr) auto; align-items: end; } }
 .cta h2 { font: 400 clamp(36px, 5vw, 56px)/1.05 var(--serif); margin: 0; letter-spacing: -0.02em; }

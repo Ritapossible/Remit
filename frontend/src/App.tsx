@@ -9,7 +9,7 @@ import { RequestSpend } from "./views/RequestSpend";
 import { NewGuard } from "./views/NewGuard";
 import { Docs } from "./views/Docs";
 import { Roadmap } from "./views/Roadmap";
-import { REPO_URL } from "./lib/docs";
+import { PAYPAL_URL, REPO_URL } from "./lib/docs";
 
 export function App() {
   const { route } = useApp();
@@ -72,6 +72,7 @@ function Footer() {
             <li><a href={href({ name: "docs", slug: "getting-started" })}>Getting started</a></li>
             <li><a href={href({ name: "docs", slug: "integration" })}>Integration</a></li>
             <li><a href={href({ name: "docs", slug: "genvm-notes" })}>Building on GenVM</a></li>
+            <li><a href={href({ name: "docs", slug: "paypal" })}>Remit for PayPal</a></li>
           </ul>
         </div>
         <div>
@@ -79,6 +80,7 @@ function Footer() {
           <ul>
             <li><a href="https://genlayer.com" target="_blank" rel="noreferrer">genlayer.com</a></li>
             <li><a href="https://skills.genlayer.com" target="_blank" rel="noreferrer">skills.genlayer.com</a></li>
+            <li><a href={PAYPAL_URL} target="_blank" rel="noreferrer">Remit for PayPal</a></li>
             <li><a href={REPO_URL} target="_blank" rel="noreferrer">Source on GitHub</a></li>
           </ul>
         </div>

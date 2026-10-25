@@ -6,6 +6,7 @@ import { readDocket, readMandate, type SpendView } from "../chain/remit";
 import type { MandateInfo } from "../lib/mandate";
 import { formatGen } from "../lib/money";
 import { pathOf } from "../lib/path";
+import { PAYPAL_URL } from "../lib/docs";
 import { Eye, Key, Pin, Vault } from "../components/icons";
 
 
@@ -58,6 +59,29 @@ export function Home() {
           </div>
           <LiveCase data={data} failed={failed} />
         </div>
+      </section>
+
+      <section className="wrap">
+        <aside className="spotlight" aria-labelledby="spotlight-title">
+          <div>
+            <span className="eyebrow">New · Remit for PayPal</span>
+            <h2 id="spotlight-title">
+              Your support agent <em>can’t approve</em> its own refunds.
+            </h2>
+            <p>
+              Remit now guards PayPal refunds. Before an AI support agent refunds a customer, Remit checks PayPal’s own
+              records, the merchant’s limits and refund policy. Every decision is logged and anchored on GenLayer.
+            </p>
+          </div>
+          <div className="btn-stack">
+            <a className="btn primary lg" href={PAYPAL_URL} target="_blank" rel="noreferrer">
+              Visit Remit for PayPal ↗
+            </a>
+            <a className="btn lg" href={href({ name: "docs", slug: "paypal" })}>
+              How it works
+            </a>
+          </div>
+        </aside>
       </section>
 
       <section className="section wrap intro-video">

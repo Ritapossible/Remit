@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { href } from "../state";
-import { DOCS, REPO_URL, renderDoc } from "../lib/docs";
+import { DOCS, PAYPAL_URL, REPO_URL, renderDoc } from "../lib/docs";
 
 export function Docs({ slug }: { slug: string }) {
   const index = Math.max(0, DOCS.findIndex((d) => d.slug === slug));
@@ -42,6 +42,9 @@ export function Docs({ slug }: { slug: string }) {
             Project
           </div>
           <a href={href({ name: "roadmap" })}>Roadmap</a>
+          <a href={PAYPAL_URL} target="_blank" rel="noreferrer">
+            Remit for PayPal ↗
+          </a>
           <a href={REPO_URL} target="_blank" rel="noreferrer">
             Source on GitHub
           </a>
