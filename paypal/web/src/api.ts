@@ -98,7 +98,10 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  health: () => call<{ ok: boolean; agent: string; log_verifies: boolean; log_broken_at: number | null }>("/api/health"),
+  health: () =>
+    call<{ ok: boolean; mode: "offline" | "sandbox"; agent: string; log_verifies: boolean; log_broken_at: number | null }>(
+      "/api/health",
+    ),
   session: () => call<Session>("/api/session", { method: "POST" }),
   orders: (sid: string) => call<Order[]>(`/api/orders?session_id=${encodeURIComponent(sid)}`),
   chat: (sid: string, message: string) =>

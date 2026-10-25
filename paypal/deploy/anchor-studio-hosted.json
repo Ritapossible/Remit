@@ -1,0 +1,18 @@
+{
+  "network": "studio",
+  "contract": "0xD48D5034184B1e78a36403905515fEcA4e56F6D6",
+  "operator": "0x4e579B5be03703F7b92e12c34D7b4Fd9D63DF6dE",
+  "log_id": "remit-paypal hosted",
+  "deploy_tx": "0xbbde0c34bd413549b95452d3da691f44a0edb43f29fb18b7632c21e0c6740686",
+  "consensus": "MAJORITY_AGREE",
+  "code_sha256": "5d5b66e2b45b72bf74d1bb43b250296a1f394f576909c47f26b17c8bae1c1f3a",
+  "status_after_deploy": {
+    "release": "remit-anchor/1",
+    "operator": "0x4e579b5be03703f7b92e12c34d7b4fd9d63df6de",
+    "log_id": "remit-paypal hosted",
+    "count": 0,
+    "last_seq": 0
+  },
+  "deployed_at": "2026-10-25T08:20:29Z",
+  "explorer": "https://explorer-studio.genlayer.com/address/0xD48D5034184B1e78a36403905515fEcA4e56F6D6"
+}

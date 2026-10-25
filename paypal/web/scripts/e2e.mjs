@@ -60,8 +60,11 @@ if (SHOTS) await page.screenshot({ path: `${SHOTS}/demo.png` });
 
 console.log("[log]");
 await page.goto(`${BASE}/#/log`);
-await page.locator(".verify").waitFor();
-check("the log verifies", (await page.locator(".verify").textContent()).includes("Verified"));
+await page.locator(".verify").first().waitFor();
+check("the log verifies", (await page.locator(".verify").first().textContent()).includes("Verified"));
+const anchorText = await page.locator(".verify").nth(1).textContent({ timeout: 15000 });
+check("the GenLayer anchor panel says where the log stands",
+  /Matches GenLayer|newer entries pending|Not checked yet|does not anchor/.test(anchorText), anchorText.slice(0, 60));
 check("the log lists the decisions", (await page.locator("table.log tbody tr").count()) > 10);
 if (SHOTS) await page.screenshot({ path: `${SHOTS}/log.png`, fullPage: true });
 

@@ -124,7 +124,10 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
     @app.get("/api/health")
     def health():
         ok, broken = guard.ledger.verify()
-        return {"ok": True, "agent": state["agent"].name, "log_verifies": ok, "log_broken_at": broken}
+        from .fake_paypal import FakePayPal
+
+        mode = "offline" if isinstance(guard.paypal, FakePayPal) else "sandbox"
+        return {"ok": True, "mode": mode, "agent": state["agent"].name, "log_verifies": ok, "log_broken_at": broken}
 
     @app.post("/api/session")
     def new_session():

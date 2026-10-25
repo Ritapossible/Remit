@@ -60,8 +60,8 @@ def test_the_demo_cases_through_chat():
         assert log["verifies"] and log["entries"][-1]["kind"] == "refused"
         d = c.get("/api/decisions/%s-r1" % sid).json()
         assert d["state"] == "refunded" and d["paypal_refund_id"]
-        assert c.get("/api/health").json() == {"ok": True, "agent": "scripted", "log_verifies": True,
-                                               "log_broken_at": None}
+        assert c.get("/api/health").json() == {"ok": True, "mode": "offline", "agent": "scripted",
+                                               "log_verifies": True, "log_broken_at": None}
 
 
 def test_a_visitor_cannot_reach_another_customers_order():

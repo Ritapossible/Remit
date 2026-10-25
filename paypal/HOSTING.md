@@ -18,13 +18,15 @@ database. Neither asks for a card.
 1. **Neon.** Sign up at neon.tech with GitHub. Create a project. Copy the
    connection string; it looks like
    `postgresql://user:password@host/dbname?sslmode=require`.
-2. **A RemitAnchor for the hosted log.** Each log needs its own contract,
+2. **A RemitAnchor for the hosted log.** Done: `0xD48D5034184B1e78a36403905515fEcA4e56F6D6`
+   on GenLayer Studio (`deploy/anchor-studio-hosted.json`), with the same
+   operator as the other Remit anchors. Each log needs its own contract,
    because the contract refuses entry numbers that are not after the last
-   one it holds. Deploy one for the hosted log:
+   one it holds; a new log would need a new one:
    ```bash
    cd paypal
    REMIT_KEYS_DIR=<private folder holding anchor-operator.key> \
-     .venv/bin/python deploy/deploy_anchor.py "remit-paypal hosted" anchor-studio-hosted.json
+     .venv/bin/python deploy/deploy_anchor.py "<log name>" <record>.json
    ```
 3. **Render.** Sign up at render.com with GitHub and allow access to the
    Remit repository. Choose **New → Blueprint**, pick the repository and the
@@ -34,19 +36,19 @@ database. Neither asks for a card.
    | Key | Value |
    | --- | --- |
    | `REMIT_DB` | the Neon connection string |
-   | `REMIT_ANCHOR_CONTRACT` | the contract from step 2 |
+   | `REMIT_ANCHOR_CONTRACT` | `0xD48D5034184B1e78a36403905515fEcA4e56F6D6` |
    | `REMIT_ANCHOR_KEY` | `0x` + the operator key |
    | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` | the sandbox REST app; then set `REMIT_OFFLINE` to `0` |
    | `REMIT_MODEL_API_KEY`, `REMIT_AGENT_MODEL`, `REMIT_PANEL_MODELS` | the model key and model ids |
 
    Until the PayPal and model keys are set, `REMIT_OFFLINE=1` runs the demo
    shop on a fake PayPal with stand-in models, so the site works from day
-   one.
+   one. The demo page says so in a banner while it does.
 5. **Keep it awake.** At cron-job.org, add a job that calls
    `https://<service>.onrender.com/api/health` every 10 minutes.
 6. **Check it.** Open the site and the decision log, then from any machine:
    ```bash
-   .venv/bin/python verify_anchor.py https://<service>.onrender.com <contract from step 2>
+   .venv/bin/python verify_anchor.py https://<service>.onrender.com 0xD48D5034184B1e78a36403905515fEcA4e56F6D6
    ```
 
 ## Tested before it was written

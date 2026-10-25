@@ -117,6 +117,10 @@ export function Demo() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"chat" | "console">("chat");
+  const [mode, setMode] = useState<"offline" | "sandbox" | null>(null);
+  useEffect(() => {
+    api.health().then((h) => setMode(h.mode)).catch(() => undefined);
+  }, []);
   const { events, live } = useConsole(session?.session_id ?? null);
   const chatEnd = useRef<HTMLDivElement>(null);
   const consoleEnd = useRef<HTMLDivElement>(null);
@@ -188,6 +192,12 @@ export function Demo() {
           </button>
         </div>
       </div>
+      {mode === "offline" && (
+        <p className="notice" role="status">
+          Demo mode: a simulated PayPal shop and stand-in models, so every decision here is real Remit code but no
+          PayPal sandbox call is made. The PayPal sandbox and real models are being connected.
+        </p>
+      )}
       {error && (
         <p className="notice" role="alert">
           {error} <button className="btn sm" onClick={start}>Retry</button>
