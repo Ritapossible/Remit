@@ -39,7 +39,6 @@ export function Header({ route, theme, onTheme }: { route: string; theme: Theme;
       <div className="wrap">
         <a className="logo" href="#/" aria-label="Remit for PayPal, home" onClick={() => setOpen(false)}>
           <img src={theme === "dark" ? "/brand/logo-on-dark.svg" : "/brand/logo.svg"} alt="Remit" height={30} />
-          <span className="badge" style={{ marginLeft: 4 }}>for PayPal</span>
         </a>
         <nav className="site-nav" aria-label="Main">
           {NAV.map(([href, label]) => (
@@ -74,9 +73,13 @@ export function Footer() {
   return (
     <footer className="site-foot">
       <div className="wrap">
-        <span>Remit for PayPal. A PayPal AI Hackathon entry. PayPal sandbox only: no real money moves.</span>
-        <a href={REPO}>Source code (MIT)</a>
-        <a href="#/how">How it works</a>
+        <nav className="foot-links" aria-label="Footer">
+          <a href="#/demo">Live demo</a>
+          <a href="#/how">How it works</a>
+          <a href="#/log">Decision log</a>
+          <a href={REPO} target="_blank" rel="noreferrer">Source code</a>
+        </nav>
+        <p className="copyright">© {new Date().getFullYear()} Remit for PayPal</p>
       </div>
     </footer>
   );

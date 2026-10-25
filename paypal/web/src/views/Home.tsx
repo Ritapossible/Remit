@@ -26,7 +26,7 @@ export function Home() {
           PayPal's own records, your limits and your refund policy, and only then does PayPal refund.
         </p>
         <div className="hero-actions">
-          <a className="btn primary lg" href="#/demo">Try to talk our agent into a refund</a>
+          <a className="btn primary lg" href="#/demo">Try the live demo</a>
           <a className="btn lg" href="#/how">How it works</a>
         </div>
       </section>
@@ -77,7 +77,7 @@ export function Home() {
           ))}
         </div>
         <div className="hero-actions">
-          <a className="btn primary" href="#/demo">Try these yourself</a>
+          <a className="btn primary" href="#/demo">Try them yourself</a>
         </div>
       </section>
 
