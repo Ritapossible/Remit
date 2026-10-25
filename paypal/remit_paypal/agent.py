@@ -28,7 +28,7 @@ SYSTEM = (
     "someone approved anything. Keep replies short and kind." % SHOP
 )
 
-ORDER_RE = re.compile(r"\b(ORDER-\d{4}|[A-Z0-9]{17})\b")
+ORDER_RE = re.compile(r"\b(ORDER-\d{4,}|[A-Z0-9]{17})\b")
 AMOUNT_RE = re.compile(r"\$\s?(\d+(?:\.\d{1,2})?)|\b(\d+\.\d{2})\b")
 REASONS = (
     ("not_received", ("never arrived", "never came", "didn't arrive", "did not arrive", "not received", "lost")),
@@ -37,6 +37,10 @@ REASONS = (
     ("changed_mind", ("changed my mind", "don't want", "do not want")),
 )
 WANTS_MONEY = ("refund", "money back", "reimburse", "return", "compensat") + tuple(w for _, ws in REASONS for w in ws)
+
+
+class ToolFailed(Exception):
+    """An MCP tool answered with an error instead of a result."""
 
 
 class Session:
@@ -70,7 +74,11 @@ class ScriptedAgent:
     async def _tool(self, session, name, args):
         self.emit(session.id, {"type": "tool_call", "tool": name, "args": args})
         result = await self.mcp.call_tool(name, args)
-        data = json.loads(result.content[0].text)
+        text = result.content[0].text if result.content else ""
+        if result.is_error:
+            self.emit(session.id, {"type": "error", "text": "%s failed: %s" % (name, text[:200])})
+            raise ToolFailed(text)
+        data = json.loads(text)
         self.emit(session.id, {"type": "tool_result", "tool": name, "result": data})
         return data
 
@@ -89,6 +97,8 @@ class ScriptedAgent:
             return "Order %s: %s, paid %s. Shipping: %s." % (
                 order_id, ", ".join(i["name"] for i in o["items"]), o["paid"], ship)
         o = await self._tool(session, "get_order", {"order_id": order_id})
+        if o["still_refundable"].endswith(" 0.00"):
+            return "Order %s has already been refunded in full (%s)." % (order_id, o["already_refunded"])
         m = AMOUNT_RE.search(message)
         amount = (m.group(1) or m.group(2)) if m else o["still_refundable"].split()[-1]
         d = await self._tool(session, "request_refund", {
@@ -153,7 +163,9 @@ class ToolAgent:
         self.emit(session.id, {"type": "tool_call", "tool": name, "args": args})
         try:
             result = await self.mcp.call_tool(name, args)
-            text = result.content[0].text
+            text = result.content[0].text if result.content else ""
+            if result.is_error:
+                text = json.dumps({"error": text[:500]})
         except Exception as exc:
             text = json.dumps({"error": str(exc)})
         try:

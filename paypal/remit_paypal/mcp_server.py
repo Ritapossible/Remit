@@ -12,6 +12,7 @@ import json
 
 from mcp.server.mcpserver import MCPServer
 
+from .engine import core
 from .facts import cents, money
 
 INSTRUCTIONS = (
@@ -58,13 +59,25 @@ def create_server(guard, name="Remit"):
         "request_id must be unique per request; reuse it only to look up the same request."))
     def request_refund(request_id: str, order_id: str, amount: str, reason: str, customer_message: str = "",
                        agent_note: str = "") -> str:
-        d = guard.request_refund(request_id=request_id, order_id=order_id, amount_cents=cents(amount),
-                                 category=reason, customer_text=customer_message, agent_note=agent_note)
+        try:
+            amount_cents = cents(amount)
+            if amount_cents <= 0:
+                raise ValueError("the amount must be more than zero")
+            d = guard.request_refund(request_id=request_id, order_id=order_id, amount_cents=amount_cents,
+                                     category=reason, customer_text=customer_message, agent_note=agent_note)
+        except (ValueError, core.RemitError) as exc:
+            # A request the guard cannot take is refused, never raised: the agent
+            # gets a decision it can read, and no money moves.
+            return json.dumps({"request_id": request_id, "outcome": "refused", "reason": str(exc),
+                               "decided_by": "code", "rules": ["request"], "panel": [], "paypal_refund_id": None})
         return json.dumps({
             "request_id": d.request_id,
             "outcome": "refunded" if d.outcome == "allowed" else "refused",
             "reason": d.reason,
-            "decided_by": {"facts": "PayPal", "checks": "code", "engine": "code", "panel": "AI panel",
+            # Who decided: for an allowed refund, the panel if it was asked, else
+            # code; PayPal only carries it out. For a refusal, the stage that stopped it.
+            "decided_by": ("AI panel" if d.votes else "code") if d.outcome == "allowed" else
+                          {"facts": "PayPal", "checks": "code", "engine": "code", "panel": "AI panel",
                            "paypal": "PayPal"}.get(d.stage, d.stage),
             "rules": d.rules,
             "panel": [{"model": v["model"], "verdict": v["verdict"], "confidence": v["confidence"]} for v in d.votes],

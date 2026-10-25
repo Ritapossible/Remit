@@ -1,0 +1,188 @@
+/* Remit's design system, carried over from frontend/src/styles.css (tokens, type, header, buttons, forms). */
+/* Remit - structure after Arcus (serif display, filled highlight word, italic
+   accent, soft rounded controls), colour after Encode London × MongoDB (white,
+   cyan, deep navy, halftone). Cyan is a FILL only: cyan text on white is about
+   2:1 contrast, so text on cyan is always navy. */
+
+:root {
+  --paper: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f2f5f6;
+  --surface-3: #e8eef0;
+  --ink: #0b0b0c;
+  --ink-2: #33414a;
+  --muted: #66757d;
+  --line: #e4eaec;
+  --line-strong: #cdd6da;
+  --navy: #03222e;
+  --navy-ink: #ffffff;
+  --cyan: #0bbcd4;
+  --cyan-deep: #0891a6;
+  --cyan-soft: #e1f6f9;
+  --on-cyan: #03222e;
+  --dot: #c9d1d5;
+  --focus: #0891a6;
+
+  --primary: var(--navy);
+  --on-primary: #ffffff;
+
+  --reflex: #3f4c55;   --reflex-bg: #eaeef0;
+  --judgment: #04606e; --judgment-bg: #dff5f8;
+  --settled: #0a7a5f;  --settled-bg: #dcf2ea;
+  --refused: #bd3626;  --refused-bg: #fbe3df;
+  --held: #93600f;     --held-bg: #fbeed7;
+
+  --r-sm: 10px;
+  --r: 16px;
+  --r-lg: 28px;
+  --shadow: 0 1px 2px rgba(3, 34, 46, 0.04), 0 8px 24px rgba(3, 34, 46, 0.05);
+
+  --serif: "Newsreader Variable", "Newsreader", "Iowan Old Style", Georgia, serif;
+  --sans: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --paper: #03161d;
+  --surface: #061f28;
+  --surface-2: #0a2a35;
+  --surface-3: #0e3441;
+  --ink: #eaf5f7;
+  --ink-2: #bcd0d6;
+  --muted: #86a2aa;
+  --line: #123845;
+  --line-strong: #1d4a58;
+  --navy: #0bbcd4;
+  --navy-ink: #03222e;
+  --cyan-soft: #082f3a;
+  --dot: #1c4553;
+  --focus: #5fd9ea;
+  --primary: #0bbcd4;
+  --on-primary: #03222e;
+  --reflex: #b6c3ca;   --reflex-bg: #13303a;
+  --judgment: #6fe3f2; --judgment-bg: #0a3440;
+  --settled: #62d6ae;  --settled-bg: #0e2e26;
+  --refused: #ff9d8b;  --refused-bg: #3a1b17;
+  --held: #f2bd62;     --held-bg: #372911;
+  --shadow: none;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #03161d; --surface: #061f28; --surface-2: #0a2a35; --surface-3: #0e3441;
+    --ink: #eaf5f7; --ink-2: #bcd0d6; --muted: #86a2aa; --line: #123845; --line-strong: #1d4a58;
+    --navy: #0bbcd4; --navy-ink: #03222e; --cyan-soft: #082f3a; --dot: #1c4553; --focus: #5fd9ea;
+    --primary: #0bbcd4; --on-primary: #03222e;
+    --reflex: #b6c3ca; --reflex-bg: #13303a; --judgment: #6fe3f2; --judgment-bg: #0a3440;
+    --settled: #62d6ae; --settled-bg: #0e2e26; --refused: #ff9d8b; --refused-bg: #3a1b17;
+    --held: #f2bd62; --held-bg: #372911; --shadow: none; color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+a { color: inherit; text-decoration-color: var(--cyan); text-underline-offset: 3px; text-decoration-thickness: 2px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+img, svg { display: block; }
+
+.mono { font-family: var(--mono); font-size: 0.9em; letter-spacing: -0.01em; }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+.serif { font-family: var(--serif); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 720px) { .wrap { padding: 0 28px; } }
+
+/* ------------------------------------------------------------ header */
+
+.site-head { position: sticky; top: 0; z-index: 30; background: color-mix(in srgb, var(--paper) 92%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.site-head .wrap { display: flex; align-items: center; gap: 24px; height: 68px; }
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.logo b { font: 500 25px/1 var(--serif); letter-spacing: -0.01em; }
+.site-nav { display: none; gap: 4px; }
+.site-nav a { padding: 8px 14px; border-radius: 999px; text-decoration: none; color: var(--ink-2); font-size: 15px; }
+.site-nav a:hover { background: var(--surface-2); }
+.site-nav a[aria-current="page"] { background: var(--surface-2); color: var(--ink); font-weight: 500; }
+.head-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.icon-btn { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; border: 0; background: transparent; cursor: pointer; color: var(--ink); }
+.icon-btn:hover { background: var(--surface-2); }
+.menu-btn { display: grid; }
+@media (min-width: 900px) { .site-nav { display: flex; } .menu-btn { display: none; } }
+.sheet { border-top: 1px solid var(--line); background: var(--paper); padding: 12px 16px 20px; }
+.sheet a { display: block; padding: 14px 4px; font: 400 26px/1.2 var(--serif); text-decoration: none; border-bottom: 1px solid var(--line); }
+.sheet a:last-child { border-bottom: 0; }
+
+/* ------------------------------------------------------------ type */
+
+.ribbon {
+  display: inline-block; background: var(--cyan); color: var(--on-cyan);
+  font: 600 12px/1 var(--sans); letter-spacing: 0.2em; text-transform: uppercase;
+  padding: 11px 34px 11px 16px;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 50%, 100% 100%, 0 100%);
+}
+.eyebrow { font: 600 12px/1 var(--sans); letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+
+.display {
+  font: 400 clamp(52px, 9vw, 104px)/0.98 var(--serif);
+  letter-spacing: -0.025em; margin: 24px 0 28px;
+}
+.display em, .h2 em, .panel-title em { font-style: italic; }
+.hl {
+  background: var(--navy); color: var(--navy-ink); border-radius: 0.14em;
+  padding: 0 0.12em 0.02em; -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.h2 { font: 400 clamp(38px, 5.4vw, 60px)/1.04 var(--serif); letter-spacing: -0.02em; margin: 0 0 20px; color: var(--navy); }
+:root[data-theme="dark"] .h2 { color: var(--ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .h2 { color: var(--ink); } }
+.h3 { font: 500 24px/1.2 var(--serif); margin: 0 0 8px; }
+.lede { font-size: 19px; line-height: 1.55; color: var(--ink-2); max-width: 60ch; margin: 0; }
+
+/* ------------------------------------------------------------ buttons */
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 42px; padding: 8px 16px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--line-strong); background: var(--surface); font-size: 15px; font-weight: 500;
+  text-decoration: none; white-space: nowrap; color: var(--ink);
+}
+.btn:hover:not(:disabled) { border-color: var(--ink-2); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.btn.primary:hover:not(:disabled) { opacity: 0.9; }
+.btn.soft { background: var(--cyan-soft); border-color: transparent; color: var(--navy); }
+:root[data-theme="dark"] .btn.soft { color: var(--ink); }
+.btn.soft:hover:not(:disabled) { background: color-mix(in srgb, var(--cyan) 22%, var(--cyan-soft)); }
+.btn.black { background: #0b0b0c; border-color: #0b0b0c; color: #fff; }
+.btn.white { background: #fff; border-color: #fff; color: #0b0b0c; }
+.btn.danger { color: var(--refused); }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.sm { min-height: 34px; padding: 5px 12px; font-size: 14px; border-radius: 10px; }
+.btn.lg { min-height: 60px; padding: 14px 28px; font-size: 18px; border-radius: 16px; }
+.btn-stack { display: grid; gap: 12px; max-width: 520px; }
+@media (min-width: 720px) { .btn-stack { display: flex; flex-wrap: wrap; } }
+
+/* ------------------------------------------------------------ forms */
+
+input, select, textarea {
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-sm);
+  padding: 10px 12px; min-width: 0; min-height: 42px;
+}
+textarea { width: 100%; resize: vertical; font-family: var(--mono); font-size: 13px; line-height: 1.55; }
+label.field { display: grid; gap: 6px; font-size: 14px; color: var(--ink-2); font-weight: 500; }
+label.field input, label.field select { width: 100%; }
+.hint { font-size: 13px; color: var(--muted); font-weight: 400; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+/* Single-column grids on phones: an implicit column would grow to fit the
+   widest child (a code line, an address) and push the page sideways. */

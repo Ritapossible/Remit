@@ -34,16 +34,27 @@ def offline_models():
     return {"stand-in-a": reader, "stand-in-b": reader, "stand-in-c": reader}
 
 
-def offline_paypal(now=None):
-    """The demo shop: one order per case in the plan."""
+def demo_orders(p, now=None):
+    """Add one fresh set of the demo shop's orders, one per case in the plan,
+    and return their ids. Each visitor gets their own set, so one visitor's
+    refund never changes another's demo."""
     now = int(now if now is not None else time.time())
+    n = len(p.orders) // 4 + 1  # each set's customers are its own, so one visitor's refunds never count against another
+    who = lambda name: "DEMO-%s-%d" % (name, n)  # noqa: E731
+    return [
+        p.add_order(payer_id=who("ADA"), name="Ada Obi", items=[("Ceramic mug set", 1, 4500)],
+                    paid_at=now - 5 * DAY, delivered_at=now - 2 * DAY)[0],          # damaged, refundable
+        p.add_order(payer_id=who("BEN"), name="Ben Cole", items=[("Wireless earbuds", 1, 4500)],
+                    paid_at=now - 12 * DAY, delivered_at=now - 9 * DAY)[0],         # "never arrived", delivered
+        p.add_order(payer_id=who("CHI"), name="Chi Eze", items=[("Desk lamp", 1, 12000)],
+                    paid_at=now - 3 * DAY, delivered_at=now - DAY)[0],              # split refunds
+        p.add_order(payer_id=who("DAN"), name="Dan Roe", items=[("Wool scarf", 1, 4500)],
+                    paid_at=now - 6 * DAY, delivered_at=now - 3 * DAY, disputed=True)[0],  # open dispute
+    ]
+
+
+def offline_paypal(now=None):
+    """A fake PayPal holding one set of the demo orders (ORDER-0001 to 0004)."""
     p = FakePayPal()
-    p.add_order(payer_id="DEMO-ADA", name="Ada Obi", items=[("Ceramic mug set", 1, 4500)],
-                paid_at=now - 5 * DAY, delivered_at=now - 2 * DAY)          # ORDER-0001: damaged, refundable
-    p.add_order(payer_id="DEMO-BEN", name="Ben Cole", items=[("Wireless earbuds", 1, 4500)],
-                paid_at=now - 12 * DAY, delivered_at=now - 9 * DAY)         # ORDER-0002: "never arrived", delivered
-    p.add_order(payer_id="DEMO-CHI", name="Chi Eze", items=[("Desk lamp", 1, 12000)],
-                paid_at=now - 3 * DAY, delivered_at=now - DAY)              # ORDER-0003: split refunds
-    p.add_order(payer_id="DEMO-DAN", name="Dan Roe", items=[("Wool scarf", 1, 4500)],
-                paid_at=now - 6 * DAY, delivered_at=now - 3 * DAY, disputed=True)  # ORDER-0004: open dispute
+    demo_orders(p, now)
     return p

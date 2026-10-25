@@ -75,9 +75,24 @@ def test_the_demo_cases_through_mcp():
         ]]
     (ok, never, injection, disputed, decision), guard = run(go)
     assert ok["outcome"] == "refunded" and ok["paypal_refund_id"] and len(ok["panel"]) == 3
+    assert ok["decided_by"] == "AI panel"
     assert never["outcome"] == "refused" and never["decided_by"] == "AI panel"
     assert injection["outcome"] == "refused" and injection["decided_by"] == "code" and injection["panel"] == []
     assert disputed["outcome"] == "refused" and disputed["rules"] == ["no-open-dispute"]
     assert decision["found"] and decision["state"] == "refunded" and decision["log"][-1]["kind"] == "refunded"
     assert all("prompt" not in e["body"] for e in decision["log"])
     assert guard.paypal.refund_calls == 1
+
+
+def test_a_request_the_guard_cannot_take_is_refused_not_raised():
+    async def go(c):
+        out = []
+        for amount in ("0", "-5.00", "12.345", "lots"):
+            r = await c.call_tool("request_refund", {"request_id": "bad-" + amount, "order_id": "ORDER-0001",
+                                                     "amount": amount, "reason": "damaged"})
+            assert not r.is_error
+            out.append(text(r))
+        return out
+    results, guard = run(go)
+    assert all(r["outcome"] == "refused" and r["decided_by"] == "code" for r in results)
+    assert guard.paypal.refund_calls == 0

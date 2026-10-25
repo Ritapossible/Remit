@@ -3,6 +3,7 @@ live console, and read the decision log.
 
     POST /api/session            a visitor session: its id and its orders
     POST /api/chat               {session_id, message} -> the agent's reply
+    GET  /api/orders?session_id  the visitor's orders, as PayPal records them
     GET  /api/events?session_id  server-sent events: tool calls, results, decisions
     GET  /api/log?since=N        the hash-chained log, and whether it verifies
     GET  /api/decisions/{id}     one decision and its log entries
@@ -29,6 +30,7 @@ from mcp import Client
 from pydantic import BaseModel, Field
 
 from .agent import ScriptedAgent, Session, ToolAgent
+from .facts import money
 from .mcp_server import create_server
 
 MAX_MESSAGE = 1000
@@ -123,6 +125,28 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
         sessions[sid] = Session(sid, orders_for(sid))
         return {"session_id": sid, "orders": sessions[sid].orders, "shop": "Kiln & Co."}
 
+    @app.get("/api/orders")
+    def orders(session_id: str):
+        """The visitor's orders as PayPal records them, for the order list."""
+        out = []
+        for oid in session(session_id).orders:
+            try:
+                f = guard.paypal.facts(oid)
+            except Exception:
+                continue
+            ship = f.shipments[-1] if f.shipments else None
+            out.append({
+                "order_id": f.order_id,
+                "items": [{"name": n, "quantity": q} for n, q, _ in f.items],
+                "paid": money(f.captured_cents, f.currency),
+                "refunded": money(f.refunded_cents, f.currency),
+                "refundable": money(f.refundable_cents, f.currency),
+                "paid_at": f.captured_at,
+                "shipping": {"status": ship.status, "carrier": ship.carrier, "updated_at": ship.updated_at} if ship else None,
+                "open_disputes": f.open_disputes,
+            })
+        return out
+
     @app.post("/api/chat")
     async def chat(body: ChatIn, request: Request):
         s = session(body.session_id)
@@ -186,8 +210,9 @@ def app_from_env(env=os.environ):
 
     guard = build_guard(env)
     if env.get("REMIT_OFFLINE") == "1":
-        ids = sorted(guard.paypal.orders)
-        orders_for = lambda sid: ids  # noqa: E731
+        from .offline import demo_orders
+
+        orders_for = lambda sid: demo_orders(guard.paypal)  # noqa: E731  each visitor gets fresh orders
     else:
         ids = [o.strip() for o in env.get("REMIT_DEMO_ORDERS", "").split(",") if o.strip()]
         orders_for = lambda sid: ids  # noqa: E731  (a per-visitor pool comes with the sandbox seed script)

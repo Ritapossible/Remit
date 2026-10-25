@@ -16,7 +16,7 @@ The agent never refunds. It asks the guard (`remit_paypal/guard.py`):
 ```bash
 cd paypal
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python -m pytest tests -q          # 49 tests, offline: simulated PayPal and stand-in models
+.venv/bin/python -m pytest tests -q          # 52 tests, offline: simulated PayPal and stand-in models
 ```
 
 ### The MCP server
@@ -60,3 +60,24 @@ calling as the agent; unset, a scripted agent with no model drives the same
 tools. The server, never the model, chooses each refund's request id, passes
 the customer's own words to Remit, and refuses any order that is not the
 visitor's. Chat is rate-limited per visitor and per day.
+
+### The web app
+
+`web/` is the site judges and visitors use: the pitch, the live demo (chat
+with the shop's agent beside the Remit console, where each refund request
+appears as a decision card with PayPal's records, the code checks, each
+model's vote, and PayPal's refund id or the reason), the decision log with
+its verification, and how to connect your own agent. Remit's design system,
+light and dark, phone and desktop.
+
+```bash
+cd web && npm install && npm run build && cd ..
+REMIT_OFFLINE=1 REMIT_STATIC_DIR=web/dist .venv/bin/uvicorn remit_paypal.web:app --port 8000
+# open http://127.0.0.1:8000
+
+cd web && node scripts/e2e.mjs http://127.0.0.1:8000   # a real browser through every demo case, phone layout, dark theme
+```
+
+In offline mode each visitor gets their own fresh set of the demo shop's
+orders. For a public demo, use a mandate whose daily cap fits the expected
+traffic: the cap is the shop's, shared by every customer.
