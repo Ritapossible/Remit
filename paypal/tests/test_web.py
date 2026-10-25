@@ -89,6 +89,17 @@ def test_each_offline_visitor_gets_fresh_orders():
         assert "your own orders" in say(c, b, "%s arrived broken, refund please" % a_orders[0])
 
 
+def test_a_restart_does_not_hand_new_visitors_old_customers(tmp_path):
+    """The log outlives the server, the offline shop does not. A visitor after
+    a restart must not inherit the refund history of one before it."""
+    from remit_paypal.web import app_from_env
+    env = {"REMIT_OFFLINE": "1", "REMIT_DB": str(tmp_path / "log.sqlite3")}
+    for _ in range(3):
+        with TestClient(app_from_env(env)) as c:
+            sid, orders = start(c)
+            assert "Done" in say(c, sid, "%s arrived broken, refund please" % orders[0])
+
+
 def test_limits_and_unknown_sessions():
     app, _ = make(chat_per_minute=2)
     with TestClient(app) as c:

@@ -3,6 +3,7 @@ models that apply the demo policy plainly. For trying Remit without keys,
 and for tests. Never used when PayPal credentials are configured."""
 
 import json
+import secrets
 import time
 
 from .fake_paypal import FakePayPal
@@ -39,8 +40,11 @@ def demo_orders(p, now=None):
     and return their ids. Each visitor gets their own set, so one visitor's
     refund never changes another's demo."""
     now = int(now if now is not None else time.time())
-    n = len(p.orders) // 4 + 1  # each set's customers are its own, so one visitor's refunds never count against another
-    who = lambda name: "DEMO-%s-%d" % (name, n)  # noqa: E731
+    # Each set's customers are its own, so one visitor's refunds never count
+    # against another's. The log outlives the server (a restart empties this
+    # fake PayPal but not the database), so the ids are random, never a count.
+    n = secrets.token_hex(4)
+    who = lambda name: "DEMO-%s-%s" % (name, n)  # noqa: E731
     return [
         p.add_order(payer_id=who("ADA"), name="Ada Obi", items=[("Ceramic mug set", 1, 4500)],
                     paid_at=now - 5 * DAY, delivered_at=now - 2 * DAY)[0],          # damaged, refundable
