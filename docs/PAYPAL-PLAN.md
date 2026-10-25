@@ -153,9 +153,10 @@ So caps plus human approval alone are not new.
 4. **One refund split into several small ones is caught** by Remit's split
    rule, which plain caps miss.
 5. **A tamper-evident, hash-chained decision log.**
-6. **Stretch: verifiable by anyone.** Each decision's log hash is published
-   on GenLayer, so the operator cannot quietly rewrite history. This is
-   Remit's own lineage, and we found no one in this space doing it.
+6. **Verifiable by anyone, on GenLayer.** The log's latest hash is
+   published to a GenLayer contract after each decision, so the operator
+   cannot quietly rewrite history (section 4b). This is Remit's own
+   lineage, and we found no one in this space doing it.
 
 **Design consequence.** The guard is built as a layer, not a refund feature:
 one policy path that any money-moving toolkit tool can be routed through.
@@ -268,6 +269,70 @@ through, not a feature of one app.
 - A test proves the server's tool list contains no unguarded money-moving
   tool.
 
+## 4b. The log, anchored on GenLayer (main scope)
+
+The hash-chained log shows that no entry was edited, but only to someone
+who trusts the server: an operator could rebuild the whole chain with new
+history. Publishing the chain's latest hash on GenLayer closes that gap.
+Once a hash is on chain, any later rewrite of any earlier entry no longer
+matches it, and anyone can check.
+
+The PayPal app builds on Remit on GenLayer here, not beside it: **PayPal
+moves the money; GenLayer makes the record independently checkable.**
+
+**The contract, `RemitAnchor`:**
+
+- Plain Intelligent Contract on GenLayer Studio, with no model and no web
+  call: deterministic, cheap, fast to finalize.
+- `anchor(seq, hash)`: records the log's hash at entry `seq`. Accepted
+  only from the operator address set at deployment. `seq` must strictly
+  increase, and the hash must be 64 hex characters.
+- `latest()` and `get(seq)`: views anyone can read.
+- It does not hold or move money. Its code is verified against the
+  repository's build, as for the other Remit contracts.
+
+**The anchorer (in the server):**
+
+- After each decision, the server queues the log's latest `(seq, hash)`. A
+  background worker sends the newest queued pair to `RemitAnchor`. If
+  several decisions arrive while one anchor is in flight, only the newest
+  is sent: one anchor covers every entry before it.
+- **Never on the refund path.** A refund never waits for GenLayer, and a
+  GenLayer outage never blocks or changes a decision. Anchoring catches up
+  when the network is back, and the console shows "anchoring pending".
+- Each anchor's transaction hash is logged.
+- Built with the official Python SDK, `genlayer-py`. Its compatibility with
+  Studio is checked first; the fallback is a small Node script using
+  `genlayer-js`, which Remit already uses.
+
+**Verification anyone can run:**
+
+- The log page shows the latest anchor: entry number, hash, transaction,
+  and a link to the GenLayer Studio explorer. It reads the contract from
+  GenLayer and recomputes the local chain, and says "matches GenLayer" or
+  names the entry where they diverge.
+- `get_decision` (MCP) returns the anchor that covers the decision.
+- A short script, `verify_anchor.py`, does the same from a terminal, so a
+  judge does not need to trust our page.
+
+**Tests:**
+
+- `RemitAnchor` in the GenVM stand-in Remit already uses: operator only;
+  increasing `seq`; hash format; views.
+- The anchorer with a fake chain:
+  - only the newest pair is sent;
+  - an outage queues, then catches up;
+  - a refund is never delayed;
+  - a rewritten log no longer matches its anchor.
+- On Studio: deploy, anchor a real run of the six cases, and verify from
+  the page and the script. The records are kept in `paypal/deploy/`.
+
+**Honest limit:** the anchor proves what the log said and when; it does not
+prove the log was complete in the first place. A dishonest operator could
+skip logging a decision before anchoring. The README says so. Remit on
+GenLayer, where the contract itself decides, remains the version where no
+single party can.
+
 ## 5. What is and is not settled with PayPal
 
 **Settled by PayPal's docs:**
@@ -340,7 +405,7 @@ job brief.
 | --- | --- |
 | 0:00 to 0:20 | The problem: AI support agents can be talked into refunds. |
 | 0:20 to 2:10 | Live: case 1 refunded (the PayPal refund ID shown, then opened in the sandbox); case 2 refused with PayPal's tracking as the reason; case 3, the injection, stopped by code; case 4, the split. |
-| 2:10 to 2:40 | How it works: one diagram, the same MCP server refusing a refund from a second agent (Claude Desktop), the hash-chained log. |
+| 2:10 to 2:40 | How it works: one diagram, the same MCP server refusing a refund from a second agent (Claude Desktop), and the log matching its anchor on GenLayer. |
 | 2:40 to 3:00 | The ask: drop Remit in front of any PayPal Agent Toolkit agent. |
 
 No music, no third-party material.
@@ -358,7 +423,7 @@ test-token spending. During the hackathon we built:
 - real sandbox refunds with idempotency;
 - a support agent;
 - a panel of AI models replacing the validator jury;
-- a hash-chained log;
+- a hash-chained log, anchored on GenLayer by a new `RemitAnchor` contract;
 - a new web app with a live console;
 - hosting.
 
@@ -374,7 +439,8 @@ prompt-building code.
 | Sat 24 Oct | Plan v2. Guard core with fake PayPal and fake models; tests | Six cases pass offline |
 | Sat 24 to Mon 26 Oct | **Owner:** PayPal developer account (Nigeria), sandbox app keys, model key. **Then:** real PayPal client, seed script | Real refund on a seeded sandbox order |
 | Tue 27 to Fri 30 Oct | Remit MCP server (stdio) over the guard; the support agent using it as its only tools; server; events | Six cases from chat, end to end, in the sandbox, through MCP |
-| Sat 31 Oct to Wed 4 Nov | Web app: chat, console, decision detail, log | Hosted on Render, works on a phone |
+| Sat 31 Oct to Sun 1 Nov | **GenLayer anchor**: `RemitAnchor` contract and tests, deploy on Studio, anchorer, verification on the log page and in `verify_anchor.py` | A real run's log matches its anchor on GenLayer, checked from the page and the script |
+| Mon 2 to Wed 4 Nov | Web app polish with real data; hosting | Hosted on Render, works on a phone |
 | Thu 5 to Sun 8 Nov | Visitor pool, rate limits, replay mode, README, setup script | A fresh machine runs it in 10 minutes |
 | Mon 9 to Tue 10 Nov | Video, Devpost text | Uploaded |
 | Wed 11 Nov | Submit | Done; Thursday is buffer |
@@ -384,7 +450,7 @@ prompt-building code.
 milestone, and is dropped if that milestone is not met by Wednesday
 4 November. Remit is never cut for RedLine.
 
-**Cut list, in order:** the Payouts stretch → the hosted MCP endpoint (stdio stays) → the dispute case → the third
+**Cut list, in order:** the Payouts stretch → the hosted MCP endpoint (stdio stays) → the dispute case → the anchor check on the log page (the script stays) → the third
 panel model (go to 2 of 2) → the replay mode. **Never cut:** real sandbox
 refunds, PayPal-sourced facts, the code checks, fail-closed panel, the log,
 the video.
@@ -399,9 +465,13 @@ the video.
 | Scripted sandbox checkout is blocked | Sandbox test card; or seed by hand once, since orders are reused from a pool |
 | Model cost or outage while judges try it | Daily cap; replay mode; the video stands alone |
 | Judges try other injections | That is the point: the cap and PayPal-sourced facts hold no matter what the model says, and the panel decides only what is left |
-| Honest limit | Whoever runs the Remit server runs the panel and holds the refund keys. The log makes every decision checkable; it does not make the operator trustless. Remit on GenLayer is the version where no single party decides, and stays on the roadmap. |
+| GenLayer Studio unavailable (Studio Next was down for a day in October) | Anchoring is never on the refund path: it queues and catches up; the page says \"pending\" |
+| Honest limit | Whoever runs the Remit server runs the panel and holds the refund keys. The log, anchored on GenLayer, makes every recorded decision checkable and history impossible to rewrite unnoticed; it does not make the operator trustless. Remit on GenLayer is the version where no single party decides, and stays on the roadmap. |
 
 **Needed from the owner:**
 
 1. A PayPal developer account and sandbox REST app (client ID and secret).
 2. A model API key; one OpenRouter key covers the panel and the agent.
+3. Nothing for GenLayer: a new operator key is made and funded from the
+   Studio faucet (the earlier GenLayer test keys were lost with the cloud
+   session's scratchpad).
