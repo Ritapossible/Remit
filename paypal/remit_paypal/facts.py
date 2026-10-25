@@ -115,6 +115,11 @@ def from_paypal(order, trackers, disputes):
                    if r.get("status") in ("COMPLETED", "PENDING"))
     payer = order.get("payer", {})
     name = payer.get("name", {})
+    card = order.get("payment_source", {}).get("card", {})
+    # A PayPal account payment names its payer. A card payment has no payer
+    # id; the customer is the shop's own reference PayPal recorded on the
+    # order at payment time (custom_id), never anything said at refund time.
+    payer_id = payer.get("payer_id") or ("customer:" + unit["custom_id"] if unit.get("custom_id") else "")
     items = tuple((i["name"], int(i.get("quantity", 1)), cents(i["unit_amount"]["value"])) for i in unit.get("items", []))
     shipments = tuple(
         Shipment(status=str(t.get("status", "")).upper(), carrier=str(t.get("carrier", "")),
@@ -125,8 +130,8 @@ def from_paypal(order, trackers, disputes):
     return Facts(
         order_id=order["id"],
         capture_id=capture["id"],
-        payer_id=payer.get("payer_id", ""),
-        payer_name=(" ".join(p for p in (name.get("given_name"), name.get("surname")) if p)) or "unknown",
+        payer_id=payer_id,
+        payer_name=(" ".join(p for p in (name.get("given_name"), name.get("surname")) if p)) or card.get("name") or "unknown",
         currency=currency,
         items=items,
         captured_cents=cents(capture["amount"]["value"]),

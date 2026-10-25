@@ -92,10 +92,12 @@ class ChatIn(BaseModel):
 
 
 def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key="", base_url="",
-               transport=None, chat_per_minute=12, chats_per_day=2000, static_dir=None, anchorer=None):
+               transport=None, chat_per_minute=12, chats_per_day=2000, sessions_per_hour=30, static_dir=None,
+               anchorer=None):
     """``orders_for(session_id)`` gives a new visitor their orders."""
     bus, sessions = Bus(), {}
     per_ip, daily = Limiter(chat_per_minute, 60), Limiter(chats_per_day, 86400)
+    new_per_ip = Limiter(sessions_per_hour, 3600)  # in the sandbox, each new session creates real orders
     state = {}
 
     @asynccontextmanager
@@ -130,9 +132,15 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
         return {"ok": True, "mode": mode, "agent": state["agent"].name, "log_verifies": ok, "log_broken_at": broken}
 
     @app.post("/api/session")
-    def new_session():
+    def new_session(request: Request):
+        if not new_per_ip.allow(request.client.host if request.client else "unknown"):
+            raise HTTPException(429, "Too many new sessions; wait a while and try again.")
         sid = secrets.token_hex(6)
-        sessions[sid] = Session(sid, orders_for(sid))
+        try:
+            orders = orders_for(sid)
+        except Exception as exc:
+            raise HTTPException(503, "The demo shop could not set up your orders: %s" % type(exc).__name__)
+        sessions[sid] = Session(sid, orders)
         return {"session_id": sid, "orders": sessions[sid].orders, "shop": "Kiln & Co."}
 
     @app.get("/api/orders")
@@ -234,8 +242,10 @@ def app_from_env(env=os.environ):
 
         orders_for = lambda sid: demo_orders(guard.paypal)  # noqa: E731  each visitor gets fresh orders
     else:
-        ids = [o.strip() for o in env.get("REMIT_DEMO_ORDERS", "").split(",") if o.strip()]
-        orders_for = lambda sid: ids  # noqa: E731  (a per-visitor pool comes with the sandbox seed script)
+        from .sandbox_shop import card_from, demo_orders
+
+        card = card_from(env.get("REMIT_SANDBOX_CARD", ""))
+        orders_for = lambda sid: demo_orders(guard.paypal, card)  # noqa: E731  each visitor: fresh sandbox orders
     kind = "model" if env.get("REMIT_AGENT_MODEL") else "scripted"
     from .config import build_anchorer
 

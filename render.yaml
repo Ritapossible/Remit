@@ -29,8 +29,11 @@ services:
         sync: false
       - key: REMIT_OFFLINE
         value: "1"
-      # Models: one OpenRouter key for the support agent and the panel.
+      # Models: one key for the support agent and the panel, on any OpenAI-compatible API.
+      # For Qwen, REMIT_MODEL_BASE_URL is Model Studio's compatible-mode URL for the key's region.
       - key: REMIT_MODEL_API_KEY
+        sync: false
+      - key: REMIT_MODEL_BASE_URL
         sync: false
       - key: REMIT_AGENT_MODEL
         sync: false

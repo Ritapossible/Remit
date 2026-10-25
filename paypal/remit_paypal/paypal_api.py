@@ -1,7 +1,8 @@
 """PayPal REST, as the guard uses it. Sandbox only.
 
 The guard needs four calls: the order, the trackers on its capture, the
-disputes on its capture, and the refund. Reads are retried on transient
+disputes on its capture, and the refund. Two more set up the demo shop: an
+order paid by a sandbox test card, and its shipment tracking. Reads are retried on transient
 failures (network, 429, 5xx). A refund is retried only with the same
 ``PayPal-Request-Id``, so PayPal returns the first refund instead of making a
 second one.
@@ -118,3 +119,42 @@ class RestPayPal:
         return self._call("POST", "/v2/payments/captures/%s/refund" % capture_id, retry=True, json=body,
                           headers={"PayPal-Request-Id": request_id, "Prefer": "return=representation",
                                    "Content-Type": "application/json"})
+
+    # ------------------------------------------------ demo shop (sandbox)
+    def create_paid_order(self, *, customer_id, items, currency, card, request_id):
+        """An order paid in full by a sandbox test card and captured, with no
+        buyer approval step. ``customer_id`` is the shop's own customer
+        reference, recorded by PayPal on the order as ``custom_id``.
+        ``request_id`` makes a retry return the same order, never a second."""
+        total = sum(q * c for _, q, c in items)
+        body = {
+            "intent": "CAPTURE",
+            "purchase_units": [{
+                "custom_id": customer_id,
+                "amount": dict(_money(total, currency), breakdown={"item_total": _money(total, currency)}),
+                "items": [{"name": n, "quantity": str(q), "unit_amount": _money(c, currency),
+                           "category": "PHYSICAL_GOODS"} for n, q, c in items],
+            }],
+            "payment_source": {"card": card},
+        }
+        headers = {"PayPal-Request-Id": request_id, "Prefer": "return=representation",
+                   "Content-Type": "application/json"}
+        order = self._call("POST", "/v2/checkout/orders", retry=True, json=body, headers=headers)
+        if order.get("status") != "COMPLETED":  # created and approved by the card, not yet captured
+            order = self._call("POST", "/v2/checkout/orders/%s/capture" % order["id"], retry=True, json={},
+                               headers=dict(headers, **{"PayPal-Request-Id": request_id + "-capture"}))
+        captures = order.get("purchase_units", [{}])[0].get("payments", {}).get("captures", [])
+        if order.get("status") != "COMPLETED" or not captures or captures[0].get("status") != "COMPLETED":
+            raise PayPalError(0, "NOT_CAPTURED", "order %s is %s" % (order.get("id"), order.get("status")))
+        return order["id"], captures[0]["id"]
+
+    def add_tracker(self, capture_id, *, status, carrier, tracking_number):
+        r = self._call("POST", "/v1/shipping/trackers-batch", retry=True, json={"trackers": [{
+            "transaction_id": capture_id, "tracking_number": tracking_number, "status": status, "carrier": carrier}]})
+        if r.get("errors"):
+            e = r["errors"][0]
+            raise PayPalError(400, e.get("name", "TRACKER_ERROR"), e.get("message", ""), r.get("debug_id", ""))
+
+
+def _money(value_cents, currency):
+    return {"currency_code": currency, "value": "%d.%02d" % (value_cents // 100, value_cents % 100)}

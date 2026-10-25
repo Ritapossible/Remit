@@ -16,7 +16,7 @@ The agent never refunds. It asks the guard (`remit_paypal/guard.py`):
 ```bash
 cd paypal
 python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python -m pytest tests -q          # 75 tests offline (add REMIT_TEST_DB=postgresql://... to run them on Postgres)
+.venv/bin/python -m pytest tests -q          # 83 tests offline (add REMIT_TEST_DB=postgresql://... to run them on Postgres)
 ```
 
 ### The MCP server
@@ -36,6 +36,30 @@ With a PayPal sandbox app and a model key (see `remit_paypal/config.py`):
 PAYPAL_CLIENT_ID=... PAYPAL_CLIENT_SECRET=... REMIT_MODEL_API_KEY=... \
   .venv/bin/python -m remit_paypal.mcp_server
 ```
+
+Any OpenAI-compatible model API works. The hosted demo uses Qwen:
+`REMIT_MODEL_BASE_URL` is Model Studio's compatible-mode URL for the key's
+region (international: `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`),
+`REMIT_PANEL_MODELS=qwen-max,qwen-plus,qwen-turbo` and
+`REMIT_AGENT_MODEL=qwen-plus`.
+
+### On the real sandbox
+
+With the keys set and `REMIT_OFFLINE` unset, each visitor gets their own
+sandbox orders (`remit_paypal/sandbox_shop.py`): paid by a sandbox test card
+and captured, with shipment tracking added through PayPal's tracking API. The
+sandbox cannot open a dispute from the merchant's side, so the disputed-order
+case runs offline only.
+
+```bash
+PAYPAL_CLIENT_ID=... PAYPAL_CLIENT_SECRET=... REMIT_MODEL_API_KEY=... \
+  REMIT_MODEL_BASE_URL=... REMIT_PANEL_MODELS=... .venv/bin/python sandbox_check.py
+```
+
+`sandbox_check.py` creates one set of orders and checks three cases against
+PayPal's own record afterwards: a broken item is refunded, "never arrived" on
+an order PayPal shows delivered is refused, and a $900 refund on a $120 order
+is refused by code.
 
 ### The web server
 
