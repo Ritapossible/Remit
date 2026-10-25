@@ -5,6 +5,17 @@ file's history; section 2 says why it was replaced.
 Deadline: **Thursday 12 November 2026, 12:00 PST** (20:00 UTC, 21:00 in
 Lagos). Target: submit **Wednesday 11 November**.
 
+**Rule: this builds on Remit on GenLayer; it never replaces it.**
+
+- Everything for PayPal lives in `paypal/` and in new docs. No file of the
+  GenLayer build (contracts, GenLayer app, deploy records, README sections,
+  tests) is removed or rewritten.
+- The guard imports `contracts/remit_core.py`, `remit_prompts.py` and
+  `jury_common.py` unchanged. A change one version needs is made in the
+  shared code, with both versions' tests passing.
+- When this branch is merged, the README gains a "Remit on PayPal" section
+  beside the GenLayer one.
+
 ---
 
 ## 1. What the hackathon asks for (official site, read 24 October)
