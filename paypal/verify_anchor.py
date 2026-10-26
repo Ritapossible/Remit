@@ -3,7 +3,7 @@ without trusting the server.
 
     python verify_anchor.py https://<remit server> [contract address]
 
-1. Downloads the whole log from the server (GET /api/log).
+1. Downloads the whole log from the server (GET /api/log, page by page).
 2. Recomputes every hash itself; the hashes the server reports are ignored.
 3. Reads the newest anchor directly from the RemitAnchor contract on GenLayer
    Studio (address from the argument, else deploy/anchor-studio.json).
@@ -38,7 +38,11 @@ def main():
         with open(os.path.join(HERE, "deploy", "anchor-studio.json")) as f:
             contract = json.load(f)["contract"]
 
-    entries = httpx.get(server + "/api/log", timeout=60).json()["entries"]
+    entries, since = [], 0
+    while since is not None:
+        page = httpx.get(server + "/api/log", params={"since": since}, timeout=60).json()
+        entries += page["entries"]
+        since = page.get("next")
     hashes = recompute(entries)
     reported = {e["seq"]: e["hash"] for e in entries}
     mismatched = [s for s in hashes if hashes[s] != reported.get(s)]

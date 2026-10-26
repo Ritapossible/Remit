@@ -42,12 +42,18 @@ CREATE TABLE IF NOT EXISTS log (
 );
 """
 
-# States a refund can end in. Only REFUNDED counts toward the engine's
-# windows: a refused or failed request moved no money.
+# States a refund can be in. The engine's windows count every request that
+# moved money or may have: REFUNDED; UNKNOWN, when PayPal may have refunded
+# before the call failed; and PENDING, a decision a crash cut off (decisions
+# are made one at a time, so any pending request but the current one is one).
+# REFUSED and FAILED (PayPal declined) moved nothing. Failing closed: an
+# unknown refund lowers what the caps still allow, never raises it.
 REFUNDED = "refunded"
 REFUSED = "refused"
 FAILED = "failed"
+UNKNOWN = "unknown"
 PENDING = "pending"
+COUNTED = (REFUNDED, UNKNOWN, PENDING)
 
 
 def entry_hash(prev, seq, at, kind, body):
@@ -117,11 +123,22 @@ class Ledger:
             row = self.db.execute("SELECT seq, hash FROM log ORDER BY seq DESC LIMIT 1").fetchone()
             seq, prev = (row[0] + 1, row[1]) if row else (1, GENESIS)
             h = entry_hash(prev, seq, int(at), kind, text)
-            self.db.execute("INSERT INTO log VALUES (?,?,?,?,?,?)", (seq, int(at), kind, text, prev, h))
+            try:
+                self.db.execute("INSERT INTO log VALUES (?,?,?,?,?,?)", (seq, int(at), kind, text, prev, h))
+            except self.db.integrity:
+                # A reconnect retried an insert that had already been written:
+                # the entry is there, and it is this one.
+                if self.hash_at(seq) != h:
+                    raise
         return seq, h
 
-    def entries(self, since=0):
-        rows = self.db.execute("SELECT seq, at, kind, body, prev, hash FROM log WHERE seq > ? ORDER BY seq", (since,))
+    def entries(self, since=0, limit=None):
+        """Entries after ``since``, oldest first, at most ``limit`` of them."""
+        sql = "SELECT seq, at, kind, body, prev, hash FROM log WHERE seq > ? ORDER BY seq"
+        params = (int(since),)
+        if limit is not None:
+            sql, params = sql + " LIMIT ?", params + (int(limit),)
+        rows = self.db.execute(sql, params)
         return [{"seq": s, "at": a, "kind": k, "body": json.loads(b), "prev": p, "hash": h} for s, a, k, b, p, h in rows]
 
     def head(self):
@@ -165,8 +182,8 @@ class Ledger:
         return {"request_id": row[0], "state": row[1], "paypal_refund_id": row[2]} if row else None
 
     def history(self, exclude=None):
-        """Refunds that moved money, as engine spends (oldest first)."""
+        """Refunds that moved money or may have, as engine spends (oldest first)."""
         rows = self.db.execute(
-            "SELECT amount, recipient, category, at FROM refunds WHERE state = ? AND request_id != ? ORDER BY at",
-            (REFUNDED, exclude or ""))
+            "SELECT amount, recipient, category, at FROM refunds WHERE state IN (?,?,?) AND request_id != ? "
+            "ORDER BY at", (*COUNTED, exclude or ""))
         return [core.Spend(amount=a, recipient=r, category=c, at=t) for a, r, c, t in rows]

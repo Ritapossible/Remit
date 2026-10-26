@@ -39,6 +39,21 @@ REASONS = (
 WANTS_MONEY = ("refund", "money back", "reimburse", "return", "compensat") + tuple(w for _, ws in REASONS for w in ws)
 
 
+KEEP_MESSAGES = 30  # the conversation sent to the model: the system prompt and the newest turns
+
+
+def trim(messages, keep=KEEP_MESSAGES):
+    """The system prompt and at most ``keep`` newest messages, starting at a
+    customer's message, so a tool result is never sent without the call that
+    asked for it."""
+    if len(messages) <= keep + 1:
+        return messages
+    head, tail = messages[:1], messages[-keep:]
+    while tail and tail[0].get("role") != "user":
+        tail = tail[1:]
+    return head + tail
+
+
 class ToolFailed(Exception):
     """An MCP tool answered with an error instead of a result."""
 
@@ -135,6 +150,7 @@ class ToolAgent:
             session.messages.append({"role": "system", "content": SYSTEM + " The customer's orders: %s." % (
                 ", ".join(session.orders))})
         session.messages.append({"role": "user", "content": message})
+        session.messages = trim(session.messages)
         for _ in range(self.max_steps):
             r = await self.http.post("/chat/completions", json={
                 "model": self.model, "temperature": 0, "messages": session.messages, "tools": await self.tools()})
@@ -158,6 +174,8 @@ class ToolAgent:
         if args.get("order_id") and args["order_id"] not in session.orders:
             return json.dumps({"error": "that order does not belong to this customer"})
         if name == "request_refund":
+            if isinstance(args.get("amount"), (int, float)) and not isinstance(args["amount"], bool):
+                args["amount"] = "%.2f" % args["amount"]  # the tool takes a decimal string; models often send a number
             args["request_id"] = session.next_request_id()  # the server chooses, never the model
             args["customer_message"] = "\n".join(session.customer_lines[-5:])  # the customer's own words
         self.emit(session.id, {"type": "tool_call", "tool": name, "args": args})

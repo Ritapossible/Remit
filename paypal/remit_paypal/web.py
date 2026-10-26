@@ -5,7 +5,8 @@ live console, and read the decision log.
     POST /api/chat               {session_id, message} -> the agent's reply
     GET  /api/orders?session_id  the visitor's orders, as PayPal records them
     GET  /api/events?session_id  server-sent events: tool calls, results, decisions
-    GET  /api/log?since=N        the hash-chained log, and whether it verifies
+    GET  /api/log?since=N        the hash-chained log in pages, and whether the whole chain verifies
+    GET  /api/log?tail=N         the newest N entries
     GET  /api/decisions/{id}     one decision, its log entries, and the GenLayer anchor covering it
     GET  /api/anchor             the log's anchor on GenLayer, checked against GenLayer itself
     GET  /api/health
@@ -21,7 +22,7 @@ import os
 import secrets
 import threading
 import time
-from collections import defaultdict, deque
+from collections import OrderedDict, defaultdict, deque
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
@@ -35,6 +36,7 @@ from .facts import money
 from .mcp_server import create_server
 
 MAX_MESSAGE = 1000
+LOG_PAGE = 1000  # entries per /api/log response; ``next`` pages through the rest
 
 
 class Bus:
@@ -68,6 +70,12 @@ class Bus:
         with self.lock:
             self.queues[sid].discard((q, loop))
 
+    def forget(self, sid):
+        with self.lock:
+            self.history.pop(sid, None)
+            if not self.queues.get(sid):
+                self.queues.pop(sid, None)
+
 
 class Limiter:
     """A sliding window per key: at most ``n`` calls in ``seconds``."""
@@ -92,12 +100,17 @@ class ChatIn(BaseModel):
 
 
 def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key="", base_url="",
-               transport=None, chat_per_minute=12, chats_per_day=2000, sessions_per_hour=30, static_dir=None,
-               anchorer=None):
-    """``orders_for(session_id)`` gives a new visitor their orders."""
-    bus, sessions = Bus(), {}
+               transport=None, chat_per_minute=12, chats_per_day=2000, sessions_per_hour=30,
+               all_sessions_per_hour=300, max_sessions=1000, static_dir=None, anchorer=None):
+    """``orders_for(session_id)`` gives a new visitor their orders.
+
+    Limits: chats per address per minute and in all per day; new sessions per
+    address and in all per hour (in the sandbox each one creates real orders,
+    and an address can be claimed in X-Forwarded-For, so only the total is a
+    hard bound); and at most ``max_sessions`` kept, the oldest dropped first."""
+    bus, sessions = Bus(), OrderedDict()
     per_ip, daily = Limiter(chat_per_minute, 60), Limiter(chats_per_day, 86400)
-    new_per_ip = Limiter(sessions_per_hour, 3600)  # in the sandbox, each new session creates real orders
+    new_per_ip, new_all = Limiter(sessions_per_hour, 3600), Limiter(all_sessions_per_hour, 3600)
     state = {}
 
     @asynccontextmanager
@@ -125,15 +138,17 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
 
     @app.get("/api/health")
     def health():
-        ok, broken = guard.ledger.verify()
+        """Cheap enough for the host's health check: one query, not the whole
+        log. ``/api/log`` verifies the chain."""
+        head = guard.ledger.head()
         from .fake_paypal import FakePayPal
 
         mode = "offline" if isinstance(guard.paypal, FakePayPal) else "sandbox"
-        return {"ok": True, "mode": mode, "agent": state["agent"].name, "log_verifies": ok, "log_broken_at": broken}
+        return {"ok": True, "mode": mode, "agent": state["agent"].name, "log_head": head["seq"] if head else 0}
 
     @app.post("/api/session")
     def new_session(request: Request):
-        if not new_per_ip.allow(request.client.host if request.client else "unknown"):
+        if not new_per_ip.allow(request.client.host if request.client else "unknown") or not new_all.allow("all"):
             raise HTTPException(429, "Too many new sessions; wait a while and try again.")
         sid = secrets.token_hex(6)
         try:
@@ -141,6 +156,10 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
         except Exception as exc:
             raise HTTPException(503, "The demo shop could not set up your orders: %s" % type(exc).__name__)
         sessions[sid] = Session(sid, orders)
+        sessions[sid].lock = asyncio.Lock()  # one message at a time per session: the conversation is ordered
+        while len(sessions) > max_sessions:
+            old, _ = sessions.popitem(last=False)
+            bus.forget(old)
         return {"session_id": sid, "orders": sessions[sid].orders, "shop": "Kiln & Co."}
 
     @app.get("/api/orders")
@@ -171,12 +190,17 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
         ip = request.client.host if request.client else "unknown"
         if not per_ip.allow(ip) or not daily.allow("all"):
             raise HTTPException(429, "Too many messages; wait a minute and try again.")
-        bus.emit(s.id, {"type": "customer", "text": body.message})
-        try:
-            text = await state["agent"].reply(s, body.message)
-        except Exception as exc:  # the agent failed: say so, move no money
-            bus.emit(s.id, {"type": "error", "text": "the agent failed: %s" % type(exc).__name__})
-            text = "Sorry, something went wrong on our side. No refund was made; please try again."
+        async with s.lock:
+            bus.emit(s.id, {"type": "customer", "text": body.message})
+            asked = s.refunds
+            try:
+                text = await state["agent"].reply(s, body.message)
+            except Exception as exc:  # the agent failed: say so, and say truly whether a refund was asked for
+                bus.emit(s.id, {"type": "error", "text": "the agent failed: %s" % type(exc).__name__})
+                text = ("Sorry, something went wrong on our side. No refund was made; please try again."
+                        if s.refunds == asked else
+                        "Sorry, something went wrong on our side after Remit decided your refund request. "
+                        "Its decision is in the console; please don't ask again for the same refund.")
         bus.emit(s.id, {"type": "agent", "text": text})
         if anchorer is not None:
             anchorer.notify()  # never waited on: anchoring is off the refund path
@@ -209,9 +233,17 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
         return list(bus.history[session_id])
 
     @app.get("/api/log")
-    def log(since: int = 0):
+    def log(since: int = 0, tail: int = 0):
+        """``verifies`` always covers the whole chain, whatever page is served."""
         ok, broken = guard.ledger.verify()
-        return {"verifies": ok, "broken_at": broken, "entries": guard.ledger.entries(since)}
+        head = guard.ledger.head()
+        last = head["seq"] if head else 0
+        if tail > 0:
+            since = max(since, last - min(tail, LOG_PAGE))
+        entries = guard.ledger.entries(since, limit=LOG_PAGE)
+        more = bool(entries) and entries[-1]["seq"] < last
+        return {"verifies": ok, "broken_at": broken, "head": last, "entries": entries,
+                "next": entries[-1]["seq"] if more else None}
 
     @app.get("/api/decisions/{request_id}")
     def decision(request_id: str):

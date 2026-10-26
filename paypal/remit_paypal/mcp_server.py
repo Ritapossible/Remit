@@ -78,7 +78,7 @@ def create_server(guard, name="Remit", anchorer=None):
             # code; PayPal only carries it out. For a refusal, the stage that stopped it.
             "decided_by": ("AI panel" if d.votes else "code") if d.outcome == "allowed" else
                           {"facts": "PayPal", "checks": "code", "engine": "code", "panel": "AI panel",
-                           "paypal": "PayPal"}.get(d.stage, d.stage),
+                           "paypal": "PayPal", "error": "code"}.get(d.stage, d.stage),
             "rules": d.rules,
             "panel": [{"model": v["model"], "verdict": v["verdict"], "confidence": v["confidence"]} for v in d.votes],
             "paypal_refund_id": d.refund_id or None,

@@ -11,8 +11,9 @@ The agent never refunds. It asks the guard, which:
    ID as PayPal's idempotency key;
 5. logs every step in the hash-chained ledger.
 
-Every failure ends without a refund. Decisions are made one at a time, so
-two requests cannot both fit under one cap.
+Every failure ends without a refund, and every request ends in the log as
+refunded, refused or failed. Decisions are made one at a time, so two
+requests cannot both fit under one cap.
 """
 
 import json
@@ -22,7 +23,8 @@ from dataclasses import asdict, dataclass, field
 
 from . import facts as factsmod
 from .engine import core, prompts
-from .ledger import FAILED, REFUNDED, REFUSED
+from .ledger import FAILED, REFUNDED, REFUSED, UNKNOWN
+from .paypal_api import PayPalError
 
 ALLOWED, DENIED = core.OUTCOME_ALLOWED, core.OUTCOME_REFUSED
 
@@ -84,12 +86,40 @@ class Guard:
         return d
 
     def _decide(self, request_id, order_id, amount, category, customer_text, agent_note):
-        now = int(self.clock())
-        d = Decision(request_id=request_id, outcome=DENIED, stage="request")
         if isinstance(amount, bool) or not isinstance(amount, int) or amount <= 0:
             raise core.RemitError("amount_cents: expected a positive integer")
+        if self.ledger.get(request_id) is not None:
+            raise core.RemitError("request %s was already submitted" % request_id)
+        d = Decision(request_id=request_id, outcome=DENIED, stage="request")
         self._log("requested", request_id=request_id, order_id=order_id, amount_cents=amount, category=category,
                   customer_text=customer_text, agent_note=agent_note)
+        try:
+            return self._run(d, request_id, order_id, amount, category, customer_text, agent_note)
+        except Exception as exc:
+            # A bug or an outage mid-decision: the request ends refused, unless
+            # PayPal was already asked, in which case money may have moved.
+            reason = "Remit could not finish this decision: %s" % type(exc).__name__
+            if d.stage == "paypal":
+                return self._unsure(d, reason)
+            if self.ledger.get(request_id) is None:
+                self.ledger.start(request_id, "", "", "", amount, category, int(self.clock()))
+            return self._refuse(d, "error", reason, d.rules)
+
+    def _unsure(self, d, reason):
+        """PayPal may have refunded: the caps count it, and the log says so.
+        If PayPal's refund id is known, the refund happened, and the decision
+        says so even though recording it failed."""
+        if d.refund_id:
+            d.outcome, reason = ALLOWED, "refunded by PayPal (%s), but %s" % (d.refund_id, reason[0].lower() + reason[1:])
+        else:
+            d.outcome = DENIED
+        d.stage, d.reason = "paypal", reason
+        self.ledger.finish(d.request_id, UNKNOWN)
+        self._log("failed", request_id=d.request_id, reason=reason, money_may_have_moved=True)
+        return d
+
+    def _run(self, d, request_id, order_id, amount, category, customer_text, agent_note):
+        now = int(self.clock())
 
         # 1. Facts, from PayPal only.
         try:
@@ -139,13 +169,17 @@ class Guard:
                 return self._refuse(d, "panel", why, rule_ids)
 
         # 5. PayPal, only now.
+        d.stage = "paypal"
         try:
             refund = self.paypal.refund(f.capture_id, amount, f.currency, request_id,
                                         note="Refund authorized by Remit (%s)" % request_id)
         except Exception as exc:
-            d.outcome, d.stage, d.reason = DENIED, "paypal", "PayPal did not complete the refund: %s" % exc
+            reason = "PayPal did not complete the refund: %s" % exc
+            if not declined(exc):  # a timeout or a server error: PayPal may have refunded
+                return self._unsure(d, reason)
+            d.outcome, d.reason = DENIED, reason
             self.ledger.finish(request_id, FAILED)
-            self._log("failed", request_id=request_id, reason=d.reason)
+            self._log("failed", request_id=request_id, reason=reason, money_may_have_moved=False)
             return d
         d.outcome, d.stage, d.refund_id = ALLOWED, "paypal", refund["id"]
         d.reason = "refunded by PayPal (%s)" % refund.get("status", "")
@@ -183,3 +217,11 @@ class Guard:
         record = ["These records were read from PayPal by the guard itself, not supplied by the customer or the agent:"]
         record += ["- " + line for line in f.lines(now)]
         return template.replace(prompts.DELIVERABLE_MARKER, "\n".join(record))
+
+
+def declined(exc):
+    """Whether PayPal answered that it did not refund. Any 4xx but a timeout
+    or a rate limit is a decision PayPal made; everything else (a network
+    error, a 5xx, retries running out) leaves open whether the refund went
+    through."""
+    return isinstance(exc, PayPalError) and 400 <= exc.status < 500 and exc.status not in (408, 409, 429)

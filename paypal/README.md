@@ -16,7 +16,7 @@ The agent never refunds. It asks the guard (`remit_paypal/guard.py`):
 ```bash
 cd paypal
 python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python -m pytest tests -q          # 83 tests offline (add REMIT_TEST_DB=postgresql://... to run them on Postgres)
+.venv/bin/python -m pytest tests -q          # 98 tests offline (add REMIT_TEST_DB=postgresql://... to run them on Postgres)
 ```
 
 ### The MCP server
@@ -76,7 +76,7 @@ REMIT_OFFLINE=1 .venv/bin/uvicorn remit_paypal.web:app --port 8000   # the demo 
 | `POST /api/session` | A visitor session: its id and its orders |
 | `POST /api/chat` | `{session_id, message}`, returns the agent's reply |
 | `GET /api/events?session_id=` | Server-sent events: the customer's messages, each tool call and result, the agent's replies |
-| `GET /api/log?since=` | The hash-chained log, and whether it verifies |
+| `GET /api/log?since=` | The hash-chained log, 1,000 entries a page (`next` gives the following page; `tail=N` the newest N), and whether the whole chain verifies |
 | `GET /api/decisions/{request_id}` | One decision and its log entries |
 
 `REMIT_AGENT_MODEL` set (with `REMIT_MODEL_API_KEY`) runs a model with tool

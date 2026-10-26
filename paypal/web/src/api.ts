@@ -48,6 +48,14 @@ export interface LogEntry {
   hash: string;
 }
 
+export interface LogPage {
+  verifies: boolean;
+  broken_at: number | null;
+  head: number;
+  entries: LogEntry[];
+  next: number | null;
+}
+
 export interface Anchor {
   seq: number;
   hash: string;
@@ -99,14 +107,15 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: () =>
-    call<{ ok: boolean; mode: "offline" | "sandbox"; agent: string; log_verifies: boolean; log_broken_at: number | null }>(
+    call<{ ok: boolean; mode: "offline" | "sandbox"; agent: string; log_head: number }>(
       "/api/health",
     ),
   session: () => call<Session>("/api/session", { method: "POST" }),
   orders: (sid: string) => call<Order[]>(`/api/orders?session_id=${encodeURIComponent(sid)}`),
   chat: (sid: string, message: string) =>
     call<{ reply: string }>("/api/chat", { method: "POST", body: JSON.stringify({ session_id: sid, message }) }),
-  log: (since = 0) => call<{ verifies: boolean; broken_at: number | null; entries: LogEntry[] }>(`/api/log?since=${since}`),
+  /** The newest ``tail`` entries; ``verifies`` always covers the whole chain. */
+  log: (tail = 300) => call<LogPage>(`/api/log?tail=${tail}`),
   decision: (id: string) => call<Decision>(`/api/decisions/${encodeURIComponent(id)}`),
   anchor: () => call<AnchorStatus>("/api/anchor"),
 };

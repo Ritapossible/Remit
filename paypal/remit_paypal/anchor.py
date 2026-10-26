@@ -105,7 +105,7 @@ class FakeAnchor:
 
 
 class Anchorer:
-    def __init__(self, ledger, chain, contract="", clock=time.time, retry_seconds=15):
+    def __init__(self, ledger, chain, contract="", clock=time.time, retry_seconds=15, check_seconds=20):
         self.ledger, self.chain, self.contract, self.clock = ledger, chain, contract, clock
         self.retry_seconds = retry_seconds
         self.ledger.db.script(SCHEMA)
@@ -114,6 +114,8 @@ class Anchorer:
         self.thread = None
         self.last_error = ""
         self.lock = threading.Lock()
+        self.check_seconds = check_seconds
+        self._check = None  # (when, the log's head then, the result): /api/anchor is public
 
     # ------------------------------------------------------------ worker
     def notify(self):
@@ -182,8 +184,19 @@ class Anchorer:
             "last_error": self.last_error,
         }
         if check_chain:
-            out["check"] = verify(self.ledger, self.chain)
+            out["check"] = self.check(head, last)
         return out
+
+    def check(self, head, last):
+        """``verify``, reused for ``check_seconds`` while neither the log nor
+        its anchors have changed, so a public page cannot turn into a stream
+        of GenLayer reads."""
+        now, key = time.monotonic(), (head["seq"] if head else 0, last["seq"] if last else 0)
+        if self._check and self._check[1] == key and now - self._check[0] < self.check_seconds:
+            return self._check[2]
+        result = verify(self.ledger, self.chain)
+        self._check = (now, key, result)
+        return result
 
 
 def verify(ledger, chain):

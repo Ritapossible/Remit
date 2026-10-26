@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, type AnchorStatus, type LogEntry } from "../api";
+import { api, type AnchorStatus, type LogEntry, type LogPage } from "../api";
 
 const REPO_VERIFY = "python verify_anchor.py " + window.location.origin;
 
@@ -90,7 +90,7 @@ function summary(e: LogEntry) {
 }
 
 export function Log() {
-  const [data, setData] = useState<{ verifies: boolean; broken_at: number | null; entries: LogEntry[] } | null>(null);
+  const [data, setData] = useState<LogPage | null>(null);
   const [error, setError] = useState("");
   const [anchor, setAnchor] = useState<AnchorStatus | null>(null);
   const load = () => {
@@ -117,9 +117,15 @@ export function Log() {
       {data && (
         <div className="verify">
           <span className={"badge " + (data.verifies ? "ok" : "no")}>{data.verifies ? "Verified" : "Broken"}</span>
-          <b>{data.verifies ? `${data.entries.length} entries, unbroken chain` : `The chain breaks at entry ${data.broken_at}`}</b>
+          <b>{data.verifies ? `${data.head} entries, unbroken chain` : `The chain breaks at entry ${data.broken_at}`}</b>
           <button className="btn sm" style={{ marginLeft: "auto" }} onClick={load}>Check again</button>
         </div>
+      )}
+      {data && data.entries.length < data.head && (
+        <p className="small muted" style={{ marginTop: 10 }}>
+          Showing the newest {data.entries.length} entries. The whole log is at <code>/api/log</code>, page by page;{" "}
+          <code>verify_anchor.py</code> downloads and checks all of it.
+        </p>
       )}
       <div style={{ height: 14 }} />
       <AnchorPanel a={anchor} />

@@ -12,6 +12,7 @@ undetermined. A model that errors, times out or answers nonsense counts as
 undetermined too.
 """
 
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
@@ -69,13 +70,19 @@ class Panel:
         return Vote(name, verdict, parsed["confidence"], parsed["reason"], raw)
 
     def decide(self, prompt):
+        """Every model's vote within ``timeout`` seconds in all. A model still
+        running then counts as unsure and is not waited for."""
         names = list(self.models)
-        with ThreadPoolExecutor(max_workers=len(names)) as pool:
+        pool = ThreadPoolExecutor(max_workers=len(names))
+        try:
             futures = {n: pool.submit(self._ask, n, prompt) for n in names}
+            deadline = time.monotonic() + self.timeout
             votes = []
             for n in names:
                 try:
-                    votes.append(futures[n].result(timeout=self.timeout))
+                    votes.append(futures[n].result(timeout=max(0.0, deadline - time.monotonic())))
                 except Exception as exc:
-                    votes.append(Vote(n, UNSURE, 0, "", "", error="timeout: %s" % exc))
+                    votes.append(Vote(n, UNSURE, 0, "", "", error="timeout: %s" % (exc or "no answer in time")))
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
         return aggregate(votes, self.quorum), votes
