@@ -17,6 +17,8 @@ environment, see ``config.py``).
 """
 
 import asyncio
+
+import httpx
 import json
 import os
 import secrets
@@ -93,6 +95,15 @@ class Limiter:
             return False
         q.append(now)
         return True
+
+
+def describe(exc):
+    """An error as an operator needs it: a model API's status and its own
+    message, PayPal's name and issue. Never a credential: these are the
+    services' answers, not our requests."""
+    if isinstance(exc, httpx.HTTPStatusError):
+        return "the model API answered %d: %s" % (exc.response.status_code, exc.response.text[:300])
+    return ("%s: %s" % (type(exc).__name__, exc))[:400]
 
 
 class ChatIn(BaseModel):
@@ -174,7 +185,8 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
         for oid in session(session_id).orders:
             try:
                 f = guard.paypal.facts(oid)
-            except Exception:
+            except Exception as exc:  # shown in place of the order, so a broken read is visible
+                out.append({"order_id": oid, "error": describe(exc)})
                 continue
             ship = f.shipments[-1] if f.shipments else None
             out.append({
@@ -201,7 +213,7 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
             try:
                 text = await state["agent"].reply(s, body.message)
             except Exception as exc:  # the agent failed: say so, and say truly whether a refund was asked for
-                bus.emit(s.id, {"type": "error", "text": "the agent failed: %s" % type(exc).__name__})
+                bus.emit(s.id, {"type": "error", "text": "the agent failed: %s" % describe(exc)})
                 text = ("Sorry, something went wrong on our side. No refund was made; please try again."
                         if s.refunds == asked else
                         "Sorry, something went wrong on our side after Remit decided your refund request. "

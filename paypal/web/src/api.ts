@@ -20,6 +20,12 @@ export interface Order {
   open_disputes: number;
 }
 
+/** An order PayPal could not be read for: shown as such, not hidden. */
+export interface OrderError {
+  order_id: string;
+  error: string;
+}
+
 /** What request_refund returns through MCP. */
 export interface RefundResult {
   request_id: string;
@@ -111,7 +117,7 @@ export const api = {
       "/api/health",
     ),
   session: () => call<Session>("/api/session", { method: "POST" }),
-  orders: (sid: string) => call<Order[]>(`/api/orders?session_id=${encodeURIComponent(sid)}`),
+  orders: (sid: string) => call<(Order | OrderError)[]>(`/api/orders?session_id=${encodeURIComponent(sid)}`),
   chat: (sid: string, message: string) =>
     call<{ reply: string }>("/api/chat", { method: "POST", body: JSON.stringify({ session_id: sid, message }) }),
   /** The newest ``tail`` entries; ``verifies`` always covers the whole chain. */

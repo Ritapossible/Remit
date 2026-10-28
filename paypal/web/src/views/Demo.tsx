@@ -126,7 +126,14 @@ export function Demo() {
   const chatEnd = useRef<HTMLDivElement>(null);
   const consoleEnd = useRef<HTMLDivElement>(null);
 
-  const refreshOrders = useCallback((sid: string) => api.orders(sid).then(setOrders).catch(() => undefined), []);
+  const refreshOrders = useCallback(
+    (sid: string) =>
+      api
+        .orders(sid)
+        .then((list) => setOrders(list.filter((o): o is Order => !("error" in o))))
+        .catch(() => undefined),
+    [],
+  );
 
   const start = useCallback(async () => {
     setError("");
