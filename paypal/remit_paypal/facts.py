@@ -29,9 +29,13 @@ def cents(value):
 
 
 def epoch(stamp):
-    """An RFC 3339 time from PayPal, as Unix seconds."""
-    text = str(stamp).replace("Z", "+00:00")
-    dt = datetime.fromisoformat(text)
+    """An RFC 3339 time from PayPal, as Unix seconds. A time that cannot be
+    read is an error that names it, never a guess."""
+    text = str(stamp).strip().replace("Z", "+00:00")
+    try:
+        dt = datetime.fromisoformat(text)
+    except ValueError:
+        raise ValueError("unreadable time from PayPal: %r" % (stamp,)) from None
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return int(dt.timestamp())
