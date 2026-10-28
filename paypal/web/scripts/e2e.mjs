@@ -1,6 +1,11 @@
-// The web app end to end in a real browser, against the server in offline
-// mode (fake PayPal, stand-in models): every suggested message, the decision
-// cards, the log, phone layout, dark theme, and no page errors.
+// The web app end to end in a real browser: every suggested message, the
+// decision cards, the log, phone layout, dark theme, and no page errors.
+//
+// It reads the server's mode from /api/health and checks what is true in it:
+// - offline: the fake PayPal's four orders (one disputed) and the scripted agent;
+// - sandbox: three real PayPal sandbox orders, a real model as the agent and the
+//   configured panel. Real models word things their own way, so the checks are on
+//   outcomes (refunded or refused, by whom, PayPal's record), never on phrasing.
 //
 //   REMIT_OFFLINE=1 REMIT_STATIC_DIR=web/dist uvicorn remit_paypal.web:app --port 8766   (from paypal/)
 //   node scripts/e2e.mjs [baseUrl] [screenshotDir]
@@ -13,6 +18,11 @@ const check = (label, ok, detail = "") => {
   if (!ok) failures++;
   console.log(`  ${ok ? "ok  " : "FAIL"} ${label}${detail ? ` - ${detail}` : ""}`);
 };
+
+const health = await (await fetch(`${BASE}/api/health`)).json();
+const SANDBOX = health.mode === "sandbox";
+const WAIT = SANDBOX ? 120000 : 20000; // real models, and their rate limits, take longer
+console.log(`mode: ${health.mode}, agent: ${health.agent}`);
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? "/opt/pw-browsers/chromium" });
 const errors = [];
@@ -29,33 +39,62 @@ if (SHOTS) await page.screenshot({ path: `${SHOTS}/home.png`, fullPage: true });
 console.log("[demo]");
 await page.goto(`${BASE}/#/demo`);
 await page.locator(".order").first().waitFor();
-check("the visitor's orders are listed", (await page.locator(".order").count()) === 4);
+check("the visitor's orders are listed", (await page.locator(".order").count()) === (SANDBOX ? 3 : 4));
 await page.locator(".badge[title=\"Connected\"]").waitFor({ timeout: 10000 });
 check("the console is live", true);
 
+// Each case: the suggestion, the outcome its decision card must show, and
+// whether the case must reach Remit at all. A real agent may refuse an
+// injection itself without asking Remit; that is a pass, as long as no money
+// moved, which the order list checks below.
 const expect = [
-  ["It arrived broken", "Refunded"],
-  ["It never arrived", "Refused"],
-  ["Prompt injection", "Refused"],
-  ["Disputed order", "Refused"],
+  ["It arrived broken", "Refunded", true],
+  ["It never arrived", "Refused", true],
+  ["Prompt injection", "Refused", !SANDBOX],
+  ...(SANDBOX ? [] : [["Disputed order", "Refused", true]]),
 ];
-for (const [label, outcome] of expect) {
+const cardFor = {};
+// The agent's replies, not the typing indicator (which is also a bot bubble).
+const BOT = ".msg.bot:not([aria-label])";
+// A decision card arrives over the event stream, a moment after the reply.
+const newCard = (p, before) =>
+  p.waitForFunction((n) => document.querySelectorAll(".decision").length > n, before, { timeout: 8000 })
+    .then(() => true, () => false);
+for (const [label, outcome, mustAsk] of expect) {
   const before = await page.locator(".decision").count();
+  const replies = await page.locator(BOT).count();
   await page.getByRole("button", { name: label }).click();
-  await page.locator(".decision").nth(before).waitFor({ timeout: 20000 });
+  await page.locator(BOT).nth(replies).waitFor({ timeout: WAIT });
+  if (!(await newCard(page, before))) {
+    check(`${label}: ${mustAsk ? outcome : "no refund"}`, !mustAsk, "the agent did not ask Remit");
+    continue;
+  }
   const card = page.locator(".decision").nth(before);
+  cardFor[label] = card;
   await card.locator(".steps li").first().locator(".facts").waitFor({ timeout: 10000 }).catch(() => {});
   const text = await card.textContent();
   check(`${label}: ${outcome}`, text.includes(outcome), text.slice(0, 90));
 }
-const cards = page.locator(".decision");
-check("the refund card names PayPal's refund", (await cards.nth(0).textContent()).includes("PayPal refund REFUND-"));
-check("the 'never arrived' card shows three panel votes", (await cards.nth(1).locator(".vote").count()) === 3);
-check("the injection was stopped by code, no model", (await cards.nth(2).textContent()).includes("No model was asked"));
-check("the refunded order now shows its refund", (await page.locator(".order").first().textContent()).includes("refunded USD 45.00"));
+const refunded = cardFor["It arrived broken"];
+if (refunded) {
+  check("the refund card names PayPal's refund", /PayPal refund [A-Z0-9-]{8,}/.test(await refunded.textContent()));
+}
+if (cardFor["It never arrived"]) {
+  check("the 'never arrived' card shows the panel's votes", (await cardFor["It never arrived"].locator(".vote").count()) >= 1);
+}
+if (cardFor["Prompt injection"]) {
+  check("the injection was stopped by code, no model", (await cardFor["Prompt injection"].textContent()).includes("No model was asked"));
+}
+// PayPal's own record, as the order list shows it: only the first order was refunded.
+await page.waitForTimeout(1000);
+const orderTexts = await page.locator(".order").allTextContents();
+check("the refunded order now shows its refund", orderTexts[0].includes("refunded USD 45.00"), orderTexts[0].slice(0, 80));
+check("no other order was refunded", orderTexts.slice(1).every((t) => !t.includes("refunded")), orderTexts.slice(1).join(" | ").slice(0, 120));
+const replies = await page.locator(BOT).count();
 await page.getByRole("button", { name: "Where is my order?" }).click();
-await page.locator(".msg.bot").last().filter({ hasText: "Shipping" }).waitFor({ timeout: 10000 });
-check("an ordinary question gets an ordinary answer", true);
+await page.locator(BOT).nth(replies).waitFor({ timeout: WAIT });
+const answer = await page.locator(BOT).nth(replies).textContent();
+check("an ordinary question gets an answer from PayPal's tracking", /deliver|shipping/i.test(answer), answer.slice(0, 80));
 if (SHOTS) await page.screenshot({ path: `${SHOTS}/demo.png` });
 
 console.log("[log]");
@@ -98,10 +137,10 @@ for (const path of ["/", "/demo", "/log", "/how"]) {
 await phone.goto(`${BASE}/#/demo`);
 await phone.locator(".order").first().waitFor();
 await phone.getByRole("button", { name: "It never arrived" }).click();
-await phone.locator(".msg.bot").nth(1).waitFor({ timeout: 20000 });
+await phone.locator(BOT).nth(1).waitFor({ timeout: WAIT });
 await phone.getByRole("tab", { name: /Console/ }).click();
-await phone.locator(".decision").first().waitFor({ timeout: 10000 });
-check("on a phone, the console tab shows the decision", await phone.locator(".decision").first().isVisible());
+const shown = await phone.locator(".decision").first().waitFor({ timeout: 15000 }).then(() => true, () => false);
+check("on a phone, the console tab shows the decision", shown && (await phone.locator(".decision").first().isVisible()));
 if (SHOTS) await phone.screenshot({ path: `${SHOTS}/phone-console.png` });
 
 check("no page errors", errors.length === 0, errors.slice(0, 3).join(" | "));

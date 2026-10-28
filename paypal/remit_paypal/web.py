@@ -156,7 +156,8 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
         from .fake_paypal import FakePayPal
 
         mode = "offline" if isinstance(guard.paypal, FakePayPal) else "sandbox"
-        return {"ok": True, "mode": mode, "agent": state["agent"].name, "log_head": head["seq"] if head else 0}
+        return {"ok": True, "mode": mode, "agent": state["agent"].name, "log_head": head["seq"] if head else 0,
+                "build": os.environ.get("RENDER_GIT_COMMIT", "")[:7]}  # the commit running, on Render
 
     @app.post("/api/session")
     def new_session(request: Request):
