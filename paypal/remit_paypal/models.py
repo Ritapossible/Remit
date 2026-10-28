@@ -1,9 +1,18 @@
 """Models behind any OpenAI-compatible chat API (OpenRouter, OpenAI, Qwen's
 Model Studio, a local server). One key can give the panel several models."""
 
+import re
+
 import httpx
 
 DEFAULT_BASE = "https://openrouter.ai/api/v1"
+THINK = re.compile(r"<think>.*?(</think>|$)", re.S)
+
+
+def without_thinking(text):
+    """A reasoning model's answer without its ``<think>`` block (Qwen3 and
+    others write one before the answer). An unclosed block is all thinking."""
+    return THINK.sub("", text or "").strip()
 
 
 class ChatModel:
@@ -11,7 +20,7 @@ class ChatModel:
     re-run of the same case is as close to repeatable as the model allows.
     Errors propagate; the panel counts them as doubt."""
 
-    def __init__(self, model, api_key, base_url=DEFAULT_BASE, timeout=45.0, transport=None, max_tokens=300):
+    def __init__(self, model, api_key, base_url=DEFAULT_BASE, timeout=45.0, transport=None, max_tokens=2000):
         if not api_key:
             raise ValueError("a model API key is required")
         self.model, self.max_tokens = model, max_tokens
@@ -26,4 +35,4 @@ class ChatModel:
             "messages": [{"role": "user", "content": prompt}],
         })
         r.raise_for_status()
-        return r.json()["choices"][0]["message"]["content"] or ""
+        return without_thinking(r.json()["choices"][0]["message"]["content"])

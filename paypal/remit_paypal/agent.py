@@ -16,6 +16,8 @@ import re
 
 import httpx
 
+from .models import without_thinking
+
 SHOP = "Kiln & Co."
 
 SYSTEM = (
@@ -156,6 +158,8 @@ class ToolAgent:
                 "model": self.model, "temperature": 0, "messages": session.messages, "tools": await self.tools()})
             r.raise_for_status()
             msg = r.json()["choices"][0]["message"]
+            if isinstance(msg.get("content"), str):
+                msg["content"] = without_thinking(msg["content"])  # the customer sees the answer, not the reasoning
             calls = msg.get("tool_calls") or []
             session.messages.append({k: v for k, v in msg.items() if k in ("role", "content", "tool_calls")})
             if not calls:

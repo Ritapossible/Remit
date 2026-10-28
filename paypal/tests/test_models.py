@@ -39,3 +39,16 @@ def test_a_failing_model_is_a_doubt_on_the_panel_not_a_crash():
 def test_a_model_needs_a_key():
     with pytest.raises(ValueError):
         ChatModel("m", "")
+
+
+def test_a_reasoning_models_thinking_is_not_read_as_its_answer():
+    import httpx
+    from remit_paypal.engine import read_verdict
+    from remit_paypal.models import ChatModel, without_thinking
+
+    raw = '<think>The tracking says {"status": "DELIVERED"}, so...</think>\n{"verdict": "out_of_remit", "reason": "violates_rule", "confidence": 90}'
+    t = httpx.MockTransport(lambda r: httpx.Response(200, json={"choices": [{"message": {"content": raw}}]}))
+    out = ChatModel("qwen/qwen3-32b", "k", "https://example.test/v1", transport=t)("q")
+    assert read_verdict(out)["verdict"] == "out_of_remit"
+    assert without_thinking("<think>still thinking when it ran out of tokens") == ""
+    assert without_thinking("plain answer") == "plain answer"
