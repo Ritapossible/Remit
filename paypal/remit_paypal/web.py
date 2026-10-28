@@ -34,6 +34,7 @@ from pydantic import BaseModel, Field
 from .agent import ScriptedAgent, Session, ToolAgent
 from .facts import money
 from .mcp_server import create_server
+from .paypal_api import PayPalError
 
 MAX_MESSAGE = 1000
 LOG_PAGE = 1000  # entries per /api/log response; ``next`` pages through the rest
@@ -153,7 +154,11 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
         sid = secrets.token_hex(6)
         try:
             orders = orders_for(sid)
+        except PayPalError as exc:  # PayPal's own error name and message: no credentials in them
+            print("demo shop setup failed: %s" % exc, flush=True)
+            raise HTTPException(503, "The demo shop could not set up your orders. PayPal said: %s" % str(exc)[:300])
         except Exception as exc:
+            print("demo shop setup failed: %r" % exc, flush=True)
             raise HTTPException(503, "The demo shop could not set up your orders: %s" % type(exc).__name__)
         sessions[sid] = Session(sid, orders)
         sessions[sid].lock = asyncio.Lock()  # one message at a time per session: the conversation is ordered
