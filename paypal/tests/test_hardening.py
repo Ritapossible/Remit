@@ -239,3 +239,31 @@ def test_a_refund_paypal_made_is_reported_even_if_recording_it_fails():
     d = w.ask(o, 4500, customer="broken", request_id="r1")
     assert d.outcome == "allowed" and d.refund_id and "could not finish" in d.reason
     assert w.ledger.get("r1")["state"] == "unknown"  # counted against the caps
+
+
+# ------------------------------------------------------------- the audit, second pass
+
+def test_one_decisions_entries_come_without_reading_the_whole_log():
+    w = World()
+    o, _ = w.order(cents=4500, delivered_at=w.now - 2 * DAY)
+    w.ask(o, 1000, customer="broken", request_id="a_1%")  # LIKE wildcards in the id must match literally
+    w.ask(o, 1000, customer="broken", request_id="ab1x")
+    w.ledger.entries = lambda *a, **k: (_ for _ in ()).throw(AssertionError("read the whole log"))
+    got = w.ledger.entries_for("a_1%")
+    assert got and all(e["body"]["request_id"] == "a_1%" for e in got)
+    assert [e["kind"] for e in got][0] == "requested" and w.ledger.entries_for("nope") == []
+
+
+def test_the_panel_hears_what_the_customer_said_about_this_order_only():
+    s = Session("s", ["AAA111", "BBB222"])
+    s.customer_lines += ["AAA111 never arrived, refund it", "thanks", "BBB222 arrived broken", "please hurry"]
+    assert s.words_about("BBB222") == "BBB222 arrived broken\nplease hurry"
+    assert "never arrived" not in s.words_about("BBB222")
+
+
+def test_reading_orders_is_rate_limited():
+    app, _ = make_app(reads_per_minute=2)
+    with TestClient(app) as c:
+        sid = c.post("/api/session").json()["session_id"]
+        codes = [c.get("/api/orders", params={"session_id": sid}).status_code for _ in range(3)]
+        assert codes == [200, 200, 429]

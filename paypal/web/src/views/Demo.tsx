@@ -258,6 +258,9 @@ export function Demo() {
                      placeholder="Ask for a refund, or try to trick the agent…" autoComplete="off" />
               <button className="btn primary" disabled={!draft.trim() || busy || !session}>Send</button>
             </form>
+            <p className="small muted composer-note">
+              What you type here appears in the public decision log. Don't include personal details.
+            </p>
           </div>
         </section>
 

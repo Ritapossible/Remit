@@ -89,7 +89,7 @@ def create_server(guard, name="Remit", anchorer=None):
         row = guard.ledger.get(request_id)
         if row is None:
             return json.dumps({"request_id": request_id, "found": False})
-        entries = [e for e in guard.ledger.entries() if e["body"].get("request_id") == request_id]
+        entries = guard.ledger.entries_for(request_id)
         for e in entries:
             e["body"].pop("prompt", None)
         covering = anchorer.anchor_covering(entries[-1]["seq"]) if anchorer is not None and entries else None

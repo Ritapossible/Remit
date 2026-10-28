@@ -199,3 +199,5 @@ pre.code { background: var(--navy); color: #e6f7fa; padding: 16px 18px; border-r
 @media (min-width: 760px) { .anchor-facts > div { grid-template-columns: 160px minmax(0, 1fr); } }
 .anchor-facts dt { font: 600 11px/1.8 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .anchor-facts dd { margin: 0; overflow-wrap: anywhere; }
+
+.composer-note { margin: 8px 2px 0; font-size: 12.5px; }

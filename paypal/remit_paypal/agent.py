@@ -69,6 +69,15 @@ class Session:
         self.customer_lines = []
         self.refunds = 0
 
+    def words_about(self, order_id, keep=5):
+        """What the customer said about this order: the messages naming it,
+        and the latest message (which may refer to it without naming it),
+        the newest ``keep`` of them. Messages about other orders stay out of
+        this order's decision."""
+        latest = len(self.customer_lines) - 1
+        lines = [m for i, m in enumerate(self.customer_lines) if order_id in m.upper() or i == latest]
+        return "\n".join(lines[-keep:])
+
     def next_request_id(self):
         self.refunds += 1
         return "%s-r%d" % (self.id, self.refunds)
@@ -122,7 +131,7 @@ class ScriptedAgent:
         amount = (m.group(1) or m.group(2)) if m else o["still_refundable"].split()[-1]
         d = await self._tool(session, "request_refund", {
             "request_id": session.next_request_id(), "order_id": order_id, "amount": "%.2f" % float(amount),
-            "reason": _reason(message), "customer_message": "\n".join(session.customer_lines[-5:]),
+            "reason": _reason(message), "customer_message": session.words_about(order_id),
             "agent_note": "Customer asked for %s back on %s." % (amount, order_id)})
         if d["outcome"] == "refunded":
             return "Done: Remit approved it and PayPal refunded %s to you (refund %s)." % (
@@ -189,7 +198,7 @@ class ToolAgent:
             if isinstance(args.get("amount"), (int, float)) and not isinstance(args["amount"], bool):
                 args["amount"] = "%.2f" % args["amount"]  # the tool takes a decimal string; models often send a number
             args["request_id"] = session.next_request_id()  # the server chooses, never the model
-            args["customer_message"] = "\n".join(session.customer_lines[-5:])  # the customer's own words
+            args["customer_message"] = session.words_about(str(args.get("order_id", "")))  # their own words
         self.emit(session.id, {"type": "tool_call", "tool": name, "args": args})
         try:
             result = await self.mcp.call_tool(name, args)

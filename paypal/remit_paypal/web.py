@@ -113,7 +113,8 @@ class ChatIn(BaseModel):
 
 def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key="", base_url="",
                transport=None, chat_per_minute=12, chats_per_day=2000, sessions_per_hour=30,
-               all_sessions_per_hour=300, max_sessions=1000, static_dir=None, anchorer=None):
+               all_sessions_per_hour=300, max_sessions=1000, reads_per_minute=30, static_dir=None,
+               anchorer=None):
     """``orders_for(session_id)`` gives a new visitor their orders.
 
     Limits: chats per address per minute and in all per day; new sessions per
@@ -123,6 +124,7 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
     bus, sessions = Bus(), OrderedDict()
     per_ip, daily = Limiter(chat_per_minute, 60), Limiter(chats_per_day, 86400)
     new_per_ip, new_all = Limiter(sessions_per_hour, 3600), Limiter(all_sessions_per_hour, 3600)
+    reads_per_ip = Limiter(reads_per_minute, 60)  # each order list read costs PayPal API calls
     state = {}
 
     @asynccontextmanager
@@ -180,10 +182,13 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
         return {"session_id": sid, "orders": sessions[sid].orders, "shop": "Kiln & Co."}
 
     @app.get("/api/orders")
-    def orders(session_id: str):
+    def orders(session_id: str, request: Request):
         """The visitor's orders as PayPal records them, for the order list."""
+        s = session(session_id)
+        if not reads_per_ip.allow(request.client.host if request.client else "unknown"):
+            raise HTTPException(429, "Too many requests; wait a minute and try again.")
         out = []
-        for oid in session(session_id).orders:
+        for oid in s.orders:
             try:
                 f = guard.paypal.facts(oid)
             except Exception as exc:  # shown in place of the order, so a broken read is visible
@@ -268,7 +273,7 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
         row = guard.ledger.get(request_id)
         if row is None:
             raise HTTPException(404, "unknown request")
-        log = [e for e in guard.ledger.entries() if e["body"].get("request_id") == request_id]
+        log = guard.ledger.entries_for(request_id)
         covering = anchorer.anchor_covering(log[-1]["seq"]) if anchorer is not None and log else None
         return {**row, "log": log, "anchor": covering}
 

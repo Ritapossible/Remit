@@ -141,6 +141,17 @@ class Ledger:
         rows = self.db.execute(sql, params)
         return [{"seq": s, "at": a, "kind": k, "body": json.loads(b), "prev": p, "hash": h} for s, a, k, b, p, h in rows]
 
+    def entries_for(self, request_id):
+        """One request's entries, oldest first. The body is stored as compact
+        JSON, so the request id appears in it exactly as ``"request_id":"<id>"``;
+        the match is narrowed in SQL and confirmed on the decoded body."""
+        needle = json.dumps({"request_id": str(request_id)}, separators=(",", ":"))[1:-1]
+        pattern = "%" + needle.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        rows = self.db.execute("SELECT seq, at, kind, body, prev, hash FROM log WHERE body LIKE ? ESCAPE '\\' "
+                               "ORDER BY seq", (pattern,))
+        out = [{"seq": s, "at": a, "kind": k, "body": json.loads(b), "prev": p, "hash": h} for s, a, k, b, p, h in rows]
+        return [e for e in out if e["body"].get("request_id") == request_id]
+
     def head(self):
         """The newest entry's ``seq`` and ``hash``, or None for an empty log."""
         row = self.db.execute("SELECT seq, hash FROM log ORDER BY seq DESC LIMIT 1").fetchone()
