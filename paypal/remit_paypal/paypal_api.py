@@ -33,8 +33,13 @@ def _error(resp):
         body = resp.json()
     except Exception:
         body = {}
-    return PayPalError(resp.status_code, body.get("name") or body.get("error") or "HTTP_ERROR",
-                       body.get("message") or body.get("error_description") or resp.text[:200],
+    message = body.get("message") or body.get("error_description") or resp.text[:200]
+    # The specific reason (PAYEE_NOT_ENABLED_FOR_CARD_PROCESSING, ...) is in ``details``.
+    issues = ["%s%s" % (d.get("issue", ""), ": " + d["description"] if d.get("description") else "")
+              for d in body.get("details", []) if isinstance(d, dict)]
+    if issues:
+        message = "%s [%s]" % (message, "; ".join(issues))
+    return PayPalError(resp.status_code, body.get("name") or body.get("error") or "HTTP_ERROR", message,
                        body.get("debug_id", ""))
 
 

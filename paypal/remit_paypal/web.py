@@ -156,7 +156,7 @@ def create_app(guard, *, orders_for, agent_kind="scripted", model=None, api_key=
             orders = orders_for(sid)
         except PayPalError as exc:  # PayPal's own error name and message: no credentials in them
             print("demo shop setup failed: %s" % exc, flush=True)
-            raise HTTPException(503, "The demo shop could not set up your orders. PayPal said: %s" % str(exc)[:300])
+            raise HTTPException(503, "The demo shop could not set up your orders. PayPal said: %s" % str(exc)[:600])
         except Exception as exc:
             print("demo shop setup failed: %r" % exc, flush=True)
             raise HTTPException(503, "The demo shop could not set up your orders: %s" % type(exc).__name__)
