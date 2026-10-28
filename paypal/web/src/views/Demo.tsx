@@ -229,6 +229,11 @@ export function Demo() {
           )}
           <div className="pane-body">
             <div className="msgs">
+              {!session && !error && (
+                <div className="msg sys" role="status">
+                  Setting up your orders{mode === "sandbox" ? " in the PayPal sandbox" : ""}…
+                </div>
+              )}
               {lines.map((l, i) => (
                 <div key={i} className={"msg " + l.who}>
                   {l.who !== "sys" && <span className="who">{l.who === "me" ? "You" : "Agent"}</span>}

@@ -168,3 +168,47 @@ def test_the_sandbox_check_passes_on_a_sandbox_that_behaves(monkeypatch, capsys)
     out = capsys.readouterr().out
     assert done.value.code == 0, out
     assert out.count("ok   case") == 3 and "refund id R" in out
+
+
+def wait_until(cond, seconds=5):
+    end = time.time() + seconds
+    while time.time() < end:
+        if cond():
+            return True
+        time.sleep(0.02)
+    return False
+
+
+def test_the_order_pool_hands_out_ready_sets_and_makes_more():
+    from remit_paypal.sandbox_shop import OrderPool
+
+    made = []
+
+    def make():
+        made.append(len(made))
+        return ["set-%d" % made[-1]]
+
+    pool = OrderPool(make, size=2)
+    pool.fill()
+    assert wait_until(lambda: len(pool.ready) == 2)
+    first = pool.take()
+    assert first == ["set-0"]  # ready, not made on the spot
+    assert wait_until(lambda: len(pool.ready) == 2) and len(made) == 3
+    assert len({tuple(pool.take()), tuple(pool.take())}) == 2  # every visitor's set is their own
+
+
+def test_an_empty_pool_makes_a_set_on_the_spot_and_a_failing_paypal_is_retried_later():
+    from remit_paypal.sandbox_shop import OrderPool
+
+    calls = {"n": 0}
+
+    def make():
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("PayPal down")
+        return ["set-%d" % calls["n"]]
+
+    pool = OrderPool(make, size=1, retry_seconds=0.05)
+    pool.fill()
+    assert wait_until(lambda: len(pool.ready) == 1)  # the failure was retried
+    assert pool.take()[0].startswith("set-") and pool.last_error == ""

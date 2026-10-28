@@ -6,7 +6,10 @@ The offline shop (``offline.py``) has a fourth case, an open dispute; the
 sandbox cannot open a dispute from the merchant's side, so it is offline only.
 """
 
+import collections
 import secrets
+import threading
+import time
 
 # A sandbox test card. PayPal's sandbox accepts its published test numbers;
 # REMIT_SANDBOX_CARD=number,YYYY-MM overrides it.
@@ -41,3 +44,51 @@ def demo_orders(paypal, card=None, currency="USD"):
                            tracking_number="1Z%s%02d" % (token.upper(), i))
         ids.append(order_id)
     return ids
+
+
+class OrderPool:
+    """Sets of demo orders made ahead of time. Creating a set takes PayPal
+    about ten seconds; a visitor takes a ready set and a background thread
+    makes the next one. With none ready (a burst of visitors, or PayPal
+    failing), ``take`` makes a set on the spot, as without a pool."""
+
+    def __init__(self, make, size=3, retry_seconds=60):
+        self.make, self.size, self.retry_seconds = make, size, retry_seconds
+        self.ready = collections.deque()
+        self.lock = threading.Lock()
+        self.filling = False
+        self.last_error = ""
+
+    def take(self):
+        with self.lock:
+            ready = self.ready.popleft() if self.ready else None
+        self.fill()
+        return ready if ready is not None else self.make()
+
+    def fill(self):
+        """Top the pool up in the background; one filler at a time."""
+        with self.lock:
+            if self.filling or len(self.ready) >= self.size:
+                return
+            self.filling = True
+        threading.Thread(target=self._fill, name="remit-order-pool", daemon=True).start()
+
+    def _fill(self):
+        try:
+            while True:
+                with self.lock:
+                    if len(self.ready) >= self.size:
+                        return
+                try:
+                    made = self.make()
+                except Exception as exc:  # PayPal is down or refusing: try later, visitors still get orders on the spot
+                    self.last_error = "%s: %s" % (type(exc).__name__, str(exc)[:200])
+                    print("order pool: %s" % self.last_error, flush=True)
+                    time.sleep(self.retry_seconds)
+                    continue
+                with self.lock:
+                    self.ready.append(made)
+                self.last_error = ""
+        finally:
+            with self.lock:
+                self.filling = False

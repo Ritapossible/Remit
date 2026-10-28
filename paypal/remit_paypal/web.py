@@ -299,8 +299,12 @@ def app_from_env(env=os.environ):
     else:
         from .sandbox_shop import card_from, demo_orders
 
+        from .sandbox_shop import OrderPool
+
         card = card_from(env.get("REMIT_SANDBOX_CARD", ""))
-        orders_for = lambda sid: demo_orders(guard.paypal, card)  # noqa: E731  each visitor: fresh sandbox orders
+        pool = OrderPool(lambda: demo_orders(guard.paypal, card), size=int(env.get("REMIT_ORDER_POOL", "3")))
+        pool.fill()  # ready before the first visitor
+        orders_for = lambda sid: pool.take()  # noqa: E731  each visitor: their own sandbox orders, made ahead
     kind = "model" if env.get("REMIT_AGENT_MODEL") else "scripted"
     from .config import build_anchorer
 
