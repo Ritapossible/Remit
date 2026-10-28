@@ -16,7 +16,7 @@ The agent never refunds. It asks the guard (`remit_paypal/guard.py`):
 ```bash
 cd paypal
 python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python -m pytest tests -q          # 104 tests offline (add REMIT_TEST_DB=postgresql://... to run them on Postgres)
+.venv/bin/python -m pytest tests -q          # 106 tests offline (add REMIT_TEST_DB=postgresql://... to run them on Postgres)
 ```
 
 ### The MCP server
