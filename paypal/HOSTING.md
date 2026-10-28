@@ -38,8 +38,8 @@ database. Neither asks for a card.
    | `REMIT_DB` | the Neon connection string |
    | `REMIT_ANCHOR_CONTRACT` | `0xD48D5034184B1e78a36403905515fEcA4e56F6D6` |
    | `REMIT_ANCHOR_KEY` | `0x` + the operator key |
-   | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` | the sandbox REST app; then set `REMIT_OFFLINE` to `0` |
-   | `REMIT_MODEL_API_KEY`, `REMIT_AGENT_MODEL`, `REMIT_PANEL_MODELS` | the model key and model ids |
+   | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` | the sandbox REST app, on a **US** sandbox business account (the demo shop pays by card, which other countries' sandbox accounts refuse); then set `REMIT_OFFLINE` to `0` |
+   | `REMIT_MODEL_API_KEY`, `REMIT_MODEL_BASE_URL`, `REMIT_AGENT_MODEL`, `REMIT_PANEL_MODELS` | the model key, the API's address and the model ids (the hosted demo: Groq, `https://api.groq.com/openai/v1`, `openai/gpt-oss-120b`, `qwen/qwen3.8-27b,openai/gpt-oss-20b`) |
 
    Until the PayPal and model keys are set, `REMIT_OFFLINE=1` runs the demo
    shop on a fake PayPal with stand-in models, so the site works from day

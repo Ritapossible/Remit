@@ -2,6 +2,20 @@
   <img src="frontend/public/brand/logo.svg" alt="Remit" height="56" />
 </p>
 
+> ### PayPal AI Hackathon entry: Remit for PayPal
+>
+> **Your AI support agent can't approve its own refunds.** A policy firewall
+> between AI agents and PayPal's refunds: Remit reads PayPal's own records,
+> applies the shop's limits in code, asks a panel of AI models whether the
+> refund fits the written policy, and only then lets PayPal refund. Every
+> decision is logged and anchored on GenLayer.
+>
+> **[Live demo](https://remit-paypal.onrender.com)** (PayPal sandbox, no login) ·
+> **[README, setup and evidence](paypal/README.md)** · code in [`paypal/`](paypal/)
+>
+> Remit for PayPal is built on Remit on GenLayer, described below: it reuses
+> Remit's rules engine unchanged and anchors its decision log on GenLayer.
+
 # Remit
 
 **Spending authority for AI agents.**
