@@ -29,9 +29,15 @@ def cents(value):
 
 
 def epoch(stamp):
-    """An RFC 3339 time from PayPal, as Unix seconds. A time that cannot be
-    read is an error that names it, never a guess."""
-    text = str(stamp).strip().replace("Z", "+00:00")
+    """A time from PayPal, as Unix seconds. PayPal sends RFC 3339 strings,
+    except the tracking API, which sends milliseconds since 1970 (seen on the
+    sandbox: ``1793177871751``). A time that cannot be read is an error that
+    names it, never a guess."""
+    text = str(stamp).strip()
+    if text.isdigit():
+        n = int(text)
+        return n // 1000 if n >= 10 ** 11 else n  # milliseconds, or already seconds
+    text = text.replace("Z", "+00:00")
     try:
         dt = datetime.fromisoformat(text)
     except ValueError:

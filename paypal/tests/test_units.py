@@ -51,3 +51,16 @@ def test_payer_addresses_are_stable_and_engine_shaped():
     a = payer_address("PAYER1")
     assert a == payer_address("PAYER1") != payer_address("PAYER2")
     assert core.normalize_address(a) == a and len(a) == 42
+
+
+def test_paypal_times_in_both_shapes_it_sends():
+    from remit_paypal.facts import epoch
+    assert epoch("2026-10-28T09:37:51Z") == 1793180271
+    assert epoch("1793177871751") == 1793177871  # the tracking API: milliseconds
+    assert epoch(1793177871751) == 1793177871
+    assert epoch("1793177871") == 1793177871
+    try:
+        epoch("28/10/2026")
+        raise AssertionError("an unreadable time must be an error")
+    except ValueError as exc:
+        assert "28/10/2026" in str(exc)
