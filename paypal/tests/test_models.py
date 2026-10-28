@@ -52,3 +52,20 @@ def test_a_reasoning_models_thinking_is_not_read_as_its_answer():
     assert read_verdict(out)["verdict"] == "out_of_remit"
     assert without_thinking("<think>still thinking when it ran out of tokens") == ""
     assert without_thinking("plain answer") == "plain answer"
+
+
+def test_a_rate_limited_model_is_retried_after_the_wait_it_asks_for():
+    import httpx
+    from remit_paypal.models import ChatModel, retry_after
+
+    msg = {"error": {"message": "Rate limit reached ... Please try again in 10.928571428s. Need more tokens?"}}
+    answers = [httpx.Response(429, json=msg), httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})]
+    waits = []
+    m = ChatModel("m", "k", "https://example.test/v1", transport=httpx.MockTransport(lambda r: answers.pop(0)),
+                  sleep=waits.append)
+    assert m("q") == "ok" and 11 < waits[0] < 12
+    assert retry_after(httpx.Response(429, headers={"retry-after": "3"})) == 3.5
+    assert retry_after(httpx.Response(429, text="try again in 250ms")) == 0.75
+    assert retry_after(httpx.Response(429, text="try again in 5m")) == 2.0  # unreadable wait: a short default
+    assert retry_after(httpx.Response(429, headers={"retry-after": "120"})) is None  # too long: fail, don't hang
+    assert retry_after(httpx.Response(500)) is None

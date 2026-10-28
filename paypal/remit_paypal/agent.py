@@ -11,12 +11,13 @@ Both report every tool call to ``emit`` so the console can show it, and both
 let the server, not the model, choose each refund's ``request_id``.
 """
 
+import asyncio
 import json
 import re
 
 import httpx
 
-from .models import without_thinking
+from .models import retry_after, without_thinking
 
 SHOP = "Kiln & Co."
 
@@ -154,8 +155,14 @@ class ToolAgent:
         session.messages.append({"role": "user", "content": message})
         session.messages = trim(session.messages)
         for _ in range(self.max_steps):
-            r = await self.http.post("/chat/completions", json={
-                "model": self.model, "temperature": 0, "messages": session.messages, "tools": await self.tools()})
+            body = {"model": self.model, "temperature": 0, "messages": session.messages, "tools": await self.tools()}
+            r = await self.http.post("/chat/completions", json=body)
+            for _ in range(2):  # rate limited: wait as asked, twice at most
+                wait = retry_after(r)
+                if wait is None:
+                    break
+                await asyncio.sleep(wait)
+                r = await self.http.post("/chat/completions", json=body)
             r.raise_for_status()
             msg = r.json()["choices"][0]["message"]
             if isinstance(msg.get("content"), str):
